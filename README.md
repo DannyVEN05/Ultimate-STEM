@@ -3,9 +3,11 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 ## Getting Started
 
 1. Global Libraries
-Before cloning the project, ensure that [npm](https://nodejs.org/en/download/) is installed on your computer.
+
+  Before cloning the project, ensure that [npm](https://nodejs.org/en/download/) is installed on your computer.
 
 2. Project Setup
+
   i. Open your computer terminal, and ensure that your current directory is the folder where you would like to save the project (e.g. a documents folder). To check your current directory, type 'pwd' and press enter.
 
   ii. In the directory where you would like your project to be installed, clone the project using the following command:
@@ -15,7 +17,7 @@ Before cloning the project, ensure that [npm](https://nodejs.org/en/download/) i
 
   iii. Open the new dictory in VSCode. Go to VSCode -> File -> Open Folder -> Select the folder that was created by the command -> Select it.
 
-  iv. Open the terminal in VSCode (if on Windows, change the terminal type to Git Bash, not Powershell - must install git first). Run the command:
+  iv. Open the terminal in VSCode (if on Windows, change the terminal type to Git Bash, not Powershell). In the VSCode terminal: run the command:
    ```bash
    npm install
    ```
@@ -36,15 +38,17 @@ Before cloning the project, ensure that [npm](https://nodejs.org/en/download/) i
 
 
 ## Running the project
-To run the development server:
+
+1. To run the development server:
 ```bash
 npm run dev
 ```
 
-To build the project and run the build:
+2. To build the project and run the build:
 ```bash
 npm run build
 ```
+
 Then:
 ```bash
 npm run start

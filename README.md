@@ -2,19 +2,55 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+1. Global Libraries
+Before cloning the project, ensure that [npm](https://nodejs.org/en/download/) is installed on your computer.
 
+2. Project Setup
+  i. Open your computer terminal, and ensure that your current directory is the folder where you would like to save the project (e.g. a documents folder). To check your current directory, type 'pwd' and press enter.
+
+  ii. In the directory where you would like your project to be installed, clone the project using the following command:
+   ```bash
+   git clone https://github.com/DannyVEN05/Ultimate-STEM.git
+   ```
+
+  iii. Open the new dictory in VSCode. Go to VSCode -> File -> Open Folder -> Select the folder that was created by the command -> Select it.
+
+  iv. Open the terminal in VSCode (if on Windows, change the terminal type to Git Bash, not Powershell - must install git first). Run the command:
+   ```bash
+   npm install
+   ```
+   This will install the dependencies for this project.
+
+  v. Add the environment variables: Create a new file in the root of the project (same folder as where this README is) called '.env.local'. Inside this file, add the environment variables required for the project:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://rguysiybissxllvoisof.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJndXlzaXliaXNzeGxsdm9pc29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNTM0NjMsImV4cCI6MjA4NzkyOTQ2M30.GcjHFUajX_Go14xXgDZnPOZrX-XgMoeiSnPNOZbqDPg
+   ```
+
+  vi. Run the development server. In the terminal, run:
+   ```bash
+   npm run dev
+   ```
+
+  vii. In your browser, go to [http://localhost:4000](http://localhost:4000) and you should see the home page of the website.
+
+
+## Running the project
+To run the development server:
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+To build the project and run the build:
+```bash
+npm run build
+```
+Then:
+```bash
+npm run start
+```
+
+Open [http://localhost:4000](http://localhost:4000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

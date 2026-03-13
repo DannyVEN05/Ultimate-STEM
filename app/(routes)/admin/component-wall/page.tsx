@@ -1,5 +1,5 @@
 import { Metadata, NextPage } from "next";
-import ComponentWallPage from "./ComponentWallPage";
+import ComponentWallPage from "./_components/ComponentWallPage";
 
 export const metadata: Metadata = {
   title: "Component Wall",

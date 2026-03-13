@@ -1,5 +1,5 @@
 import { Metadata, NextPage } from "next";
-import AdminPage from "./AdminPage";
+import AdminPage from "./_components/AdminPage";
 
 export const metadata: Metadata = {
   title: "Admin",

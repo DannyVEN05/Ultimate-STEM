@@ -16,7 +16,7 @@ type formType = {
   age: string;
 };
 
-const ComponentWallContent = () => {
+const ComponentWallPage = () => {
   const router = useRouter();
 
   const [formData, setFormData] = useState<formType>({
@@ -233,4 +233,4 @@ const ComponentWallContent = () => {
   );
 };
 
-export default ComponentWallContent;
+export default ComponentWallPage;

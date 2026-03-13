@@ -3,7 +3,7 @@
 import UsButton from "@/app/_common/ui/buttons/UsButton";
 import { useRouter } from "next/navigation";
 
-const AdminContent = () => {
+const AdminPage = () => {
   const router = useRouter();
   return (
     <div className="h-full w-full flex items-center justify-center flex-col gap-4">
@@ -13,4 +13,4 @@ const AdminContent = () => {
   );
 };
 
-export default AdminContent;
+export default AdminPage;

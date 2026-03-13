@@ -1,0 +1,12 @@
+"use client";
+
+const DashboardContent = () => {
+  return (
+    <div className="text-4xl">
+      This is the dashboard content.
+      {/* This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content.  This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. This is the dashboard content. */}
+    </div>
+  );
+};
+
+export default DashboardContent;

@@ -1,5 +1,5 @@
 import { Metadata, NextPage } from "next";
-import RegisterPage from "./RegisterPage";
+import RegisterPage from "./_components/RegisterPage";
 
 export const metadata: Metadata = {
   title: "Register",

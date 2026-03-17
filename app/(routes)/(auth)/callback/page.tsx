@@ -1,5 +1,5 @@
 import { Metadata, NextPage } from "next";
-import CallbackPage from "./CallbackPage";
+import CallbackPage from "./_components/CallbackPage";
 
 export const metadata: Metadata = {
   title: "Callback",

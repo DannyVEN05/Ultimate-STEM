@@ -4,9 +4,8 @@ import UsButton from "@/app/_common/ui/buttons/UsButton";
 import UsInput from "@/app/_common/ui/inputs/UsInput";
 import UsWidget from "@/app/_common/ui/other/UsWidget";
 import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 import React from "react";
-
-type Props = {};
 
 type RegisterFormState = {
   firstName: string;
@@ -18,7 +17,9 @@ type RegisterFormState = {
   confirmPassword: string;
 };
 
-const RegisterPage: React.FC<Props> = () => {
+const RegisterPage: React.FC = () => {
+  const router = useRouter();
+
   const [form, setForm] = React.useState<RegisterFormState>({
     firstName: "",
     lastName: "",
@@ -29,6 +30,7 @@ const RegisterPage: React.FC<Props> = () => {
     confirmPassword: "",
   });
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
 
   const updateField = (key: keyof RegisterFormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,27 +44,35 @@ const RegisterPage: React.FC<Props> = () => {
 
     setSuccess(null);
 
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
+    const { data: exists, error } = await supabase.rpc("email_exists", { email_to_check: form.email.trim() });
+
+    if (error) {
+      setError("An error occurred while checking the email: " + error.message);
+      return;
+    }
+
+    if (exists) {
+      setError("An account with this email already exists.");
       return;
     }
 
     if (form.password.length < 8) {
+      setError("Password must be at least 8 characters long.");
       return;
     }
 
     if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const emailRedirectTo = `${window.location.origin}/callback`;
 
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email: form.email.trim(),
         password: form.password,
         options: {
-          emailRedirectTo,
           data: {
             firstName: form.firstName.trim(),
             lastName: form.lastName.trim(),
@@ -73,12 +83,14 @@ const RegisterPage: React.FC<Props> = () => {
       });
 
       if (signUpError) {
+        setError("Registration failed: " + signUpError.message);
         return;
       }
 
-      setSuccess("Account created. Please check your email to confirm your account.");
+      setSuccess("Account created!");
+      router.push('/dashboard');
     } catch (err) {
-      console.error(err);
+      setError("An unexpected error occurred: " + err);
     } finally {
       setIsSubmitting(false);
     }
@@ -91,6 +103,14 @@ const RegisterPage: React.FC<Props> = () => {
           <p className="text-green-500">{success}</p>
         ) : (
           <form className="grid grid-cols-2 gap-3" onSubmit={onSubmit}>
+
+            {error && (
+              <div className="flex justify-center col-span-2">
+                <p className="text-red-500 text-sm mb-2">
+                  {error}
+                </p>
+              </div>
+            )}
 
             <div className="col-span-1">
               <label htmlFor="firstName" className="block text-sm font-medium ml-1">First Name:</label>
@@ -132,6 +152,7 @@ const RegisterPage: React.FC<Props> = () => {
                 className="w-full"
                 value={form.email}
                 onChange={updateField("email")}
+                onBlur={() => setForm((prev) => ({ ...prev, email: form.email.trim().toLowerCase() }))}
               />
             </div>
 

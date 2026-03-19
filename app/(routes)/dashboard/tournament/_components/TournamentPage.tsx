@@ -17,8 +17,9 @@ const TournamentPage = () => {
         </div>
         <div className="w-full max-w-md border-2 border-gray-700 p-12">
           <h2 className="my-10">Tournament Bracket</h2>
-          <UsButton variant="blue" onClick={() => {router.push("")}}>
-            Submissions
+          <UsButton variant="blue" onClick={() => {router
+            .push("./tournament/tournamentbracket")}}>
+            Tournament Bracket
           </UsButton>
         </div>
       </div>

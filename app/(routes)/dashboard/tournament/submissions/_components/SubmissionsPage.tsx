@@ -2,9 +2,13 @@
 
 import UsButton from "@/app/_common/ui/buttons/UsButton";
 import { useRouter } from "next/navigation";
-import SwipeMode from "../swipemode/page";
+import { useState } from "react";
+import GridViewPage from "./GridViewPage";
+import SwipeViewPage from "./SwipeViewPage";
 
 const SubmissionsPage = () => {
+  const [isGridMode, setIsGridMode] = useState<boolean>(true);
+
   const router = useRouter();
   return (
     <div className="flex w-full flex-col items-center font-bold">
@@ -13,10 +17,15 @@ const SubmissionsPage = () => {
         <UsButton variant="blue" onClick={() => {router.push("/dashboard/tournament/submissions/bookbuilder")}}>
           Submit a Book
         </UsButton>
-        <UsButton className="ml-auto" variant="blue" onClick={() => {""}}>
+        <UsButton className="ml-auto" variant="blue" onClick={() => {setIsGridMode(!isGridMode)}}>
           Swipe Mode
         </UsButton>
       </div>
+      {isGridMode ? (
+        <GridViewPage/>
+      ): (
+        <SwipeViewPage/>
+      )}
     </div>
   );
 };

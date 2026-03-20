@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import UsHeader from "./UsHeader";
+import UsHeader from "./header/UsHeader";
 import UsFooter from "./UsFooter";
 
 type Props = {

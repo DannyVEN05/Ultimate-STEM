@@ -3,9 +3,9 @@
 import UsButton from "@/app/_common/ui/buttons/UsButton";
 import UsInput from "@/app/_common/ui/inputs/UsInput";
 import UsWidget from "@/app/_common/ui/other/UsWidget";
-import { supabase } from "@/lib/supabase";
+import AuthContext from "@/app/_context/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import React, { useEffect } from "react";
+import React, { useContext, useEffect } from "react";
 
 type LoginFormState = {
   email: string;
@@ -14,6 +14,8 @@ type LoginFormState = {
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
+
+  const { logIn, user } = useContext(AuthContext);
 
   const [form, setForm] = React.useState<LoginFormState>({
     email: "",
@@ -24,12 +26,8 @@ const LoginPage: React.FC = () => {
   const [success, setSuccess] = React.useState<string | null>(null);
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (data.user) router.push('/dashboard');
-    };
-    checkSession();
-  }, [router]);
+    if (user) router.push('/dashboard');
+  }, [router, user]);
 
   const updateField = (key: keyof LoginFormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -53,24 +51,14 @@ const LoginPage: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: form.email.trim(),
-        password: form.password,
-      });
-
-      if (signInError) {
-        setError("Login failed: " + signInError.message);
-        return;
-      }
-
+    const response = await logIn({ email: form.email.trim(), password: form.password });
+    if (response === null) {
       setSuccess("Login successful! Redirecting...");
       router.push('/dashboard');
-    } catch (err) {
-      setError("An unexpected error occurred: " + err);
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      setError("Login failed: " + response);
     }
+    setIsSubmitting(false);
   };
 
   return (

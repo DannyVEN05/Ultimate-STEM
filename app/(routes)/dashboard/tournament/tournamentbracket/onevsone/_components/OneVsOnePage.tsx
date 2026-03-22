@@ -31,13 +31,14 @@ const OneVsOnePage = () => {
       <div className="border rounded-lg p-4 mt-8 bg-gray-100 shadow-md h-[600px] w-[500px]">
         <h2 className="text-4xl font-semibold">Book title</h2>
         <p className="text-xl text-gray-600 mt-2">Book description will go here.</p> 
-      
+
+        <div className="flex items-center justify-center flex-1">
         <UsButton sizeOptions={{height: 50, width: 100}} variant="green" textSize="text-lg" onClick={() => {router.push("/")}}>
         Vote
       </UsButton>
-      
       </div>    
-      
+     </div>
+    
     </div>
   </div>
   );

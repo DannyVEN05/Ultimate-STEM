@@ -96,11 +96,24 @@ const AuthState = ({ children }: Props) => {
     }
   };
 
+  const logOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) return error.message ?? String(error);
+
+      dispatch({ type: AuthActionKind.SET_USER, payload: null });
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user: state.user,
         logIn,
+        logOut,
       }}
     >
       {children}

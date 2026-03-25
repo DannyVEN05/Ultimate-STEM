@@ -63,7 +63,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="w-full h-full flex items-center justify-center">
-      <UsWidget title="Login">
+      <UsWidget title="Login" sizeOptions={{ width: 350 }}>
         {success ? (
           <p className="text-green-500 text-sm mb-4">{success}</p>
         ) : (
@@ -77,7 +77,7 @@ const LoginPage: React.FC = () => {
               </div>
             )}
 
-            <div className="col-span-1">
+            <div className="col-span-2">
               <label htmlFor="email" className="block text-sm font-medium ml-1">Email:</label>
               <UsInput
                 id="email"
@@ -91,11 +91,12 @@ const LoginPage: React.FC = () => {
               />
             </div>
 
-            <div className="col-span-1">
+            <div className="col-span-2">
               <label htmlFor="password" className="block text-sm font-medium ml-1">Password:</label>
               <UsInput
                 id="password"
                 name="password"
+                type="password"
                 autoComplete="current-password"
                 required
                 sizeOptions={{ height: 24 }}

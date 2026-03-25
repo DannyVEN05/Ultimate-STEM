@@ -7,6 +7,7 @@ import { LogInData } from "./AuthState";
 export type AuthContextType = {
   user: User | null;
   logIn: (logInData: LogInData) => Promise<null | string>;
+  logOut: () => Promise<null | string>;
 };
 
 const AuthContext = createContext({} as AuthContextType);

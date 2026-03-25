@@ -1,7 +1,6 @@
 "use client";
 
 import UsButton from "@/app/_common/ui/buttons/UsButton";
-import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
 const AdminPage = () => {

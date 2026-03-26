@@ -2,7 +2,7 @@ import type { Metadata, NextPage } from "next";
 import OneVsOnePage from "./_components/OneVsOnePage";
 
 export const metadata: Metadata = {
-  title: "changeit",
+  title: "Battle Page",
   description: "Ultimate STEM",
 };
 

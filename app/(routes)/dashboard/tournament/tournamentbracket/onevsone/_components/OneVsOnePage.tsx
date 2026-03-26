@@ -6,6 +6,11 @@ import { useState } from "react";
 const OneVsOnePage = () => {
   const router = useRouter();
   
+// changes to implement 
+// 1. Make everything fit on one page without scrolling
+// 2. Don't need console message, allow user to switch vote between the two books. 
+
+
 
 const [selectedBook, setSelectedBook] = useState<string | null>(null);
 
@@ -29,16 +34,17 @@ const [selectedBook, setSelectedBook] = useState<string | null>(null);
 
   return (
     <div className="text-4xl">
-      <h1 className="mb-8 text-4xl font-bold text-center">{'{tournamentName}'}</h1>
-      <div className="my-4 h-1 w-full bg-black" />
-      <Button onClick={() => {router.push("./")}}>
+      
+      <h1 className="mb-1 text-3xl font-bold text-center">{'{tournamentName}'}</h1>
+     
+      <Button className="absolute top-25 left-4" onClick={() => {router.push("./")}}>
         Back
       </Button>
       
-      <p className="mx-auto mt-4 max-w-4xl text-base font-bold text-gray-700 sm:text-2xl text-center">Vote for the best book in this round!</p>
+      {/* <p className="mx-auto mt-4 max-w-4xl text-base font-bold text-gray-700 sm:text-2xl text-center">Vote for the best book in this round!</p> */}
       
 
-    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-5 mt-5 items-center text-center justify-items-center">
+    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-1 mt-1 items-center text-center justify-items-center">
       
       {/* book 1 item */}
       <div className="border rounded-lg p-6 mt-8 bg-gray-100 shadow-md h-[700px] w-[500px] flex flex-col">
@@ -63,7 +69,7 @@ const [selectedBook, setSelectedBook] = useState<string | null>(null);
       </Button>
       
       </div>
-      </div>
+    </div>
 
 
       <div className="flex items-center justify-center">

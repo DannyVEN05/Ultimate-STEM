@@ -117,7 +117,7 @@ const BookBuilderPage = () => {
               <UsInput multiple placeholder="Enter description..." sizeOptions={{ height: 200, width: 600 }} value={description} onChange={(e: any) => setDescription(e.target.value)} />
             </h2>
             <div className="flex w-full flex-col items-center mt-6 font-medium text-base space-y-4">
-              Categories
+              Genres
 
               <UsAutofillBox
                 options={[

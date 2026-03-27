@@ -6,6 +6,7 @@ import { LogInData } from "./AuthState";
 
 export type AuthContextType = {
   user: User | null;
+  isLoading: boolean;
   logIn: (logInData: LogInData) => Promise<null | string>;
   logOut: () => Promise<null | string>;
 };

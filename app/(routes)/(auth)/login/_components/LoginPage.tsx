@@ -8,8 +8,8 @@ import { useRouter } from "next/navigation";
 import React, { useContext, useEffect } from "react";
 
 type LoginFormState = {
-  email: string;
-  password: string;
+  user_email: string;
+  user_password: string;
 };
 
 const LoginPage: React.FC = () => {
@@ -18,8 +18,8 @@ const LoginPage: React.FC = () => {
   const { logIn, user } = useContext(AuthContext);
 
   const [form, setForm] = React.useState<LoginFormState>({
-    email: "",
-    password: "",
+    user_email: "",
+    user_password: "",
   });
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -40,18 +40,18 @@ const LoginPage: React.FC = () => {
 
     setSuccess(null);
 
-    if (!form.email.trim()) {
+    if (!form.user_email.trim()) {
       setError("Email is required.");
       return;
     }
 
-    if (form.password.length < 8) {
+    if (form.user_password.length < 8) {
       setError("Password must be at least 8 characters long.");
       return;
     }
 
     setIsSubmitting(true);
-    const response = await logIn({ email: form.email.trim(), password: form.password });
+    const response = await logIn({ email: form.user_email.trim(), password: form.user_password });
     if (response === null) {
       setSuccess("Login successful! Redirecting...");
       router.push('/dashboard');
@@ -86,8 +86,8 @@ const LoginPage: React.FC = () => {
                 required
                 sizeOptions={{ height: 24 }}
                 className="w-full"
-                value={form.email}
-                onChange={updateField("email")}
+                value={form.user_email}
+                onChange={updateField("user_email")}
               />
             </div>
 
@@ -101,8 +101,8 @@ const LoginPage: React.FC = () => {
                 required
                 sizeOptions={{ height: 24 }}
                 className="w-full"
-                value={form.password}
-                onChange={updateField("password")}
+                value={form.user_password}
+                onChange={updateField("user_password")}
               />
             </div>
 

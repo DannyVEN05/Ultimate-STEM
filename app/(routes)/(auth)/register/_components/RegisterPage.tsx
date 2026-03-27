@@ -8,26 +8,26 @@ import { useRouter } from "next/navigation";
 import React from "react";
 
 type RegisterFormState = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
-  dateOfBirth: string;
-  password: string;
-  confirmPassword: string;
+  user_firstname: string;
+  user_lastname: string;
+  user_email: string;
+  user_phone_number: string;
+  user_dob: string;
+  user_password: string;
+  confirm_password: string;
 };
 
 const RegisterPage: React.FC = () => {
   const router = useRouter();
 
   const [form, setForm] = React.useState<RegisterFormState>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phoneNumber: "",
-    dateOfBirth: "",
-    password: "",
-    confirmPassword: "",
+    user_firstname: "",
+    user_lastname: "",
+    user_email: "",
+    user_phone_number: "",
+    user_dob: "",
+    user_password: "",
+    confirm_password: "",
   });
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -44,7 +44,7 @@ const RegisterPage: React.FC = () => {
 
     setSuccess(null);
 
-    const { data: exists, error } = await supabase.rpc("email_exists", { email_to_check: form.email.trim() });
+    const { data: exists, error } = await supabase.rpc("email_exists", { email_to_check: form.user_email.trim() });
 
     if (error) {
       setError("An error occurred while checking the email: " + error.message);
@@ -56,28 +56,28 @@ const RegisterPage: React.FC = () => {
       return;
     }
 
-    if (form.password.length < 8) {
+    if (form.user_password.length < 8) {
       setError("Password must be at least 8 characters long.");
       return;
     }
 
-    if (form.password !== form.confirmPassword) {
+    if (form.user_password !== form.confirm_password) {
       setError("Passwords do not match.");
       return;
     }
 
     setIsSubmitting(true);
-    try {
 
+    try {
       const { data, error: signUpError } = await supabase.auth.signUp({
-        email: form.email.trim(),
-        password: form.password,
+        email: form.user_email.trim(),
+        password: form.user_password,
         options: {
           data: {
-            firstName: form.firstName.trim(),
-            lastName: form.lastName.trim(),
-            phoneNumber: form.phoneNumber.trim(),
-            dateOfBirth: form.dateOfBirth,
+            user_firstname: form.user_firstname.trim(),
+            user_lastname: form.user_lastname.trim(),
+            user_phone_number: form.user_phone_number.trim(),
+            user_dob: form.user_dob.trim(),
           },
         },
       });
@@ -121,8 +121,8 @@ const RegisterPage: React.FC = () => {
                 required
                 sizeOptions={{ height: 24 }}
                 className="w-full"
-                value={form.firstName}
-                onChange={updateField("firstName")}
+                value={form.user_firstname}
+                onChange={updateField("user_firstname")}
               />
             </div>
 
@@ -135,8 +135,8 @@ const RegisterPage: React.FC = () => {
                 required
                 sizeOptions={{ height: 24 }}
                 className="w-full"
-                value={form.lastName}
-                onChange={updateField("lastName")}
+                value={form.user_lastname}
+                onChange={updateField("user_lastname")}
               />
             </div>
 
@@ -150,9 +150,9 @@ const RegisterPage: React.FC = () => {
                 required
                 sizeOptions={{ height: 24 }}
                 className="w-full"
-                value={form.email}
-                onChange={updateField("email")}
-                onBlur={() => setForm((prev) => ({ ...prev, email: form.email.trim().toLowerCase() }))}
+                value={form.user_email}
+                onChange={updateField("user_email")}
+                onBlur={() => setForm((prev) => ({ ...prev, user_email: form.user_email.trim().toLowerCase() }))}
               />
             </div>
 
@@ -165,8 +165,8 @@ const RegisterPage: React.FC = () => {
                 autoComplete="tel"
                 sizeOptions={{ height: 24 }}
                 className="w-full"
-                value={form.phoneNumber}
-                onChange={updateField("phoneNumber")}
+                value={form.user_phone_number}
+                onChange={updateField("user_phone_number")}
               />
             </div>
 
@@ -180,8 +180,8 @@ const RegisterPage: React.FC = () => {
                 required
                 sizeOptions={{ height: 24 }}
                 className="w-full"
-                value={form.dateOfBirth}
-                onChange={updateField("dateOfBirth")}
+                value={form.user_dob}
+                onChange={updateField("user_dob")}
               />
             </div>
 
@@ -195,8 +195,8 @@ const RegisterPage: React.FC = () => {
                 required
                 sizeOptions={{ height: 24 }}
                 className="w-full"
-                value={form.password}
-                onChange={updateField("password")}
+                value={form.user_password}
+                onChange={updateField("user_password")}
               />
             </div>
 
@@ -210,8 +210,8 @@ const RegisterPage: React.FC = () => {
                 required
                 sizeOptions={{ height: 24 }}
                 className="w-full"
-                value={form.confirmPassword}
-                onChange={updateField("confirmPassword")}
+                value={form.confirm_password}
+                onChange={updateField("confirm_password")}
               />
             </div>
 

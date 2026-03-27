@@ -19,6 +19,7 @@ type Props = {
 const AuthState = ({ children }: Props) => {
   const initialState: AuthReducerState = {
     user: null,
+    isLoading: true,
   };
 
   const [state, dispatch] = useReducer(authReducer, initialState);
@@ -26,71 +27,57 @@ const AuthState = ({ children }: Props) => {
   useEffect(() => {
     let mounted = true;
 
-    const mapToAppUser = (rawUser: any): User | null => {
-      if (!rawUser) return null;
-      const meta = rawUser.user_metadata ?? {};
-      return new User(
-        rawUser.id ?? meta.sub ?? "",
-        meta.firstName ?? "",
-        meta.lastName ?? "",
-        rawUser.email ?? meta.email ?? "",
-        meta.phoneNumber ?? "",
-        meta.dateOfBirth ? new Date(meta.dateOfBirth) : new Date(),
-        rawUser.created_at ? new Date(rawUser.created_at) : new Date()
-      );
-    };
-
     const hydrate = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!mounted) return;
-      const appUser = mapToAppUser(data.user);
-      dispatch({ type: AuthActionKind.SET_USER, payload: appUser });
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+
+        if (authUser && mounted) {
+          const { data: user, error } = await supabase
+            .from("user")
+            .select("*")
+            .eq("user_id", authUser.id)
+            .single();
+
+          if (error) console.log("Error fetching user profile during hydration:", error);
+
+          if (user) dispatch({ type: AuthActionKind.SET_USER, payload: user });
+        }
+      } finally {
+        if (mounted) dispatch({ type: AuthActionKind.SET_LOADING, payload: false });
+      }
     };
     hydrate();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      const appUser = mapToAppUser(session?.user ?? null);
-      dispatch({ type: AuthActionKind.SET_USER, payload: appUser });
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        dispatch({ type: AuthActionKind.SET_USER, payload: null });
+      }
     });
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
   const logIn = async (logInData: LogInData) => {
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword(logInData);
+      if (signInError) return signInError.message;
 
-      if (signInError) return signInError.message ?? String(signInError);
+      const { data: user, error: profileError } = await supabase
+        .from('user')
+        .select('*')
+        .eq('user_id', data.user.id)
+        .single();
 
-      const { created_at } = data.user;
-      const {
-        sub,
-        firstName,
-        lastName,
-        email,
-        phoneNumber,
-        dateOfBirth,
-      } = data.user.user_metadata as any;
-
-      const user = new User(
-        sub ?? "",
-        firstName ?? "",
-        lastName ?? "",
-        email ?? "",
-        phoneNumber ?? "",
-        dateOfBirth ? new Date(dateOfBirth) : new Date(),
-        created_at ? new Date(created_at) : new Date()
-      );
+      if (profileError) return "Could not fetch user profile.";
 
       dispatch({
         type: AuthActionKind.SET_USER,
         payload: user,
       });
       return null;
-
     } catch (err) {
       return err instanceof Error ? err.message : String(err);
     }
@@ -112,6 +99,7 @@ const AuthState = ({ children }: Props) => {
     <AuthContext.Provider
       value={{
         user: state.user,
+        isLoading: state.isLoading,
         logIn,
         logOut,
       }}

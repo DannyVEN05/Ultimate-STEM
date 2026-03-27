@@ -131,7 +131,11 @@ const AuthState = ({ children }: Props) => {
         .eq('user_id', data.user.id)
         .single();
 
-      if (profileError) return "Could not fetch user profile.";
+      if (profileError) {
+        await supabase.auth.signOut();
+        dispatch({ type: AuthActionKind.SET_USER, payload: null });
+        return "Could not fetch user profile.";
+      }
 
       dispatch({
         type: AuthActionKind.SET_USER,

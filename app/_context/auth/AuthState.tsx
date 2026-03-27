@@ -12,6 +12,15 @@ export type LogInData = {
   password: string;
 };
 
+export type SignUpData = {
+  email: string;
+  password: string;
+  user_firstname: string;
+  user_lastname: string;
+  user_phone_number: string;
+  user_dob: string;
+};
+
 type Props = {
   children?: React.ReactNode | React.ReactNode[];
 }
@@ -73,6 +82,41 @@ const AuthState = ({ children }: Props) => {
     };
   }, []);
 
+  const signUp = async (signUpData: SignUpData) => {
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: signUpData.email.trim(),
+        password: signUpData.password,
+        options: {
+          data: {
+            user_firstname: signUpData.user_firstname.trim(),
+            user_lastname: signUpData.user_lastname.trim(),
+            user_phone_number: signUpData.user_phone_number.trim(),
+            user_dob: signUpData.user_dob.trim(),
+          },
+        },
+      });
+
+      if (signUpError) return signUpError.message;
+
+      const { data: user, error: profileError } = await supabase
+        .from("user")
+        .select("*")
+        .eq("user_id", data.user?.id)
+        .single();
+
+      if (profileError) return "Could not fetch user profile after sign up.";
+
+      dispatch({
+        type: AuthActionKind.SET_USER,
+        payload: mapToAppUser(user),
+      });
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+    }
+  };
+
   const logIn = async (logInData: LogInData) => {
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword(logInData);
@@ -113,6 +157,7 @@ const AuthState = ({ children }: Props) => {
       value={{
         user: state.user,
         isLoading: state.isLoading,
+        signUp,
         logIn,
         logOut,
       }}

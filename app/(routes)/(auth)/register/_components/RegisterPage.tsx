@@ -3,9 +3,10 @@
 import UsButton from "@/app/_common/ui/buttons/UsButton";
 import UsInput from "@/app/_common/ui/inputs/UsInput";
 import UsWidget from "@/app/_common/ui/other/UsWidget";
+import AuthContext from "@/app/_context/auth/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { useContext } from "react";
 
 type RegisterFormState = {
   user_firstname: string;
@@ -19,6 +20,8 @@ type RegisterFormState = {
 
 const RegisterPage: React.FC = () => {
   const router = useRouter();
+
+  const { signUp } = useContext(AuthContext);
 
   const [form, setForm] = React.useState<RegisterFormState>({
     user_firstname: "",
@@ -69,21 +72,18 @@ const RegisterPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const error = await signUp({
         email: form.user_email.trim(),
         password: form.user_password,
-        options: {
-          data: {
-            user_firstname: form.user_firstname.trim(),
-            user_lastname: form.user_lastname.trim(),
-            user_phone_number: form.user_phone_number.trim(),
-            user_dob: form.user_dob.trim(),
-          },
-        },
+        user_firstname: form.user_firstname.trim(),
+        user_lastname: form.user_lastname.trim(),
+        user_phone_number: form.user_phone_number.trim(),
+        user_dob: form.user_dob.trim(),
       });
 
-      if (signUpError) {
-        setError("Registration failed: " + signUpError.message);
+
+      if (error) {
+        setError("Registration failed: " + error);
         return;
       }
 

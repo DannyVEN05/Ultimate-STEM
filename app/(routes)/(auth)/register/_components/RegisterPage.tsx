@@ -73,7 +73,7 @@ const RegisterPage: React.FC = () => {
 
     try {
       const error = await signUp({
-        email: form.user_email.trim(),
+        email: form.user_email.trim().toLowerCase(),
         password: form.user_password,
         user_firstname: form.user_firstname.trim(),
         user_lastname: form.user_lastname.trim(),

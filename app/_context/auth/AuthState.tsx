@@ -70,7 +70,7 @@ const AuthState = ({ children }: Props) => {
     };
     hydrate();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
         dispatch({ type: AuthActionKind.SET_USER, payload: null });
       } else if (
@@ -79,15 +79,22 @@ const AuthState = ({ children }: Props) => {
         event === "USER_UPDATED"
       ) {
         if (session?.user) {
-          const { data: user, error } = await supabase
-            .from("user")
-            .select("*")
-            .eq("user_id", session.user.id)
-            .single();
+          // Defer the DB call with setTimeout to avoid a deadlock with Supabase's
+          // internal auth lock (initializePromise). Calling supabase methods directly
+          // inside onAuthStateChange blocks the lock and prevents hydrate() from
+          // completing, keeping isLoading stuck at true.
+          const userId = session.user.id;
+          setTimeout(async () => {
+            const { data: user, error } = await supabase
+              .from("user")
+              .select("*")
+              .eq("user_id", userId)
+              .single();
 
-          if (error) console.error("Error fetching user profile on auth state change:", error);
+            if (error) console.error("Error fetching user profile on auth state change:", error);
 
-          if (user && mounted) dispatch({ type: AuthActionKind.SET_USER, payload: mapToAppUser(user) });
+            if (user && mounted) dispatch({ type: AuthActionKind.SET_USER, payload: mapToAppUser(user) });
+          }, 0);
         }
       }
     });

@@ -24,6 +24,19 @@ const AuthState = ({ children }: Props) => {
 
   const [state, dispatch] = useReducer(authReducer, initialState);
 
+  const mapToAppUser = (u: any): User => {
+    return new User(
+      u.user_id,
+      u.user_firstname,
+      u.user_lastname,
+      u.user_email,
+      u.user_phone_number,
+      u.user_dob ? new Date(u.user_dob) : null,
+      u.user_created_at ? new Date(u.user_created_at) : new Date(),
+      u.user_role
+    );
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -40,7 +53,7 @@ const AuthState = ({ children }: Props) => {
 
           if (error) console.log("Error fetching user profile during hydration:", error);
 
-          if (user) dispatch({ type: AuthActionKind.SET_USER, payload: user });
+          if (user) dispatch({ type: AuthActionKind.SET_USER, payload: mapToAppUser(user) });
         }
       } finally {
         if (mounted) dispatch({ type: AuthActionKind.SET_LOADING, payload: false });
@@ -75,7 +88,7 @@ const AuthState = ({ children }: Props) => {
 
       dispatch({
         type: AuthActionKind.SET_USER,
-        payload: user,
+        payload: mapToAppUser(user),
       });
       return null;
     } catch (err) {

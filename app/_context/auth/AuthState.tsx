@@ -70,9 +70,25 @@ const AuthState = ({ children }: Props) => {
     };
     hydrate();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_OUT") {
         dispatch({ type: AuthActionKind.SET_USER, payload: null });
+      } else if (
+        event === "SIGNED_IN" ||
+        event === "TOKEN_REFRESHED" ||
+        event === "USER_UPDATED"
+      ) {
+        if (session?.user) {
+          const { data: user, error } = await supabase
+            .from("user")
+            .select("*")
+            .eq("user_id", session.user.id)
+            .single();
+
+          if (error) console.error("Error fetching user profile on auth state change:", error);
+
+          if (user && mounted) dispatch({ type: AuthActionKind.SET_USER, payload: mapToAppUser(user) });
+        }
       }
     });
 

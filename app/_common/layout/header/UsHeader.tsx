@@ -6,10 +6,10 @@ import UsNavigationButtons from "./UsNavigationButtons";
 const UsHeader = () => {
 
   return (
-    <div className="h-20 bg-gray-200 p-4 flex items-center">
+    <div className="h-16 bg-white border-b border-gray-200 px-6 flex items-center gap-8">
+      <a href="/dashboard" className="text-lg font-bold text-primary whitespace-nowrap">STEM Lab Tournament</a>
       <div className="flex-1"><UsNavigationButtons /></div>
-      <h1 className="text-2xl font-bold flex-1 text-center">Ultimate STEM</h1>
-      <div className="flex-1 text-right"><UsAuthMenu /></div>
+      <UsAuthMenu />
     </div>
   );
 };

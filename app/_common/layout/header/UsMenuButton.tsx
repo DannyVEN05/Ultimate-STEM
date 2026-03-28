@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
 import AuthContext from "@/app/_context/auth/AuthContext";
 import { useContext } from "react";
 
@@ -20,12 +19,15 @@ const UsMenuButton: React.FC = ({ }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" className="relative h-8 w-8 rounded-full">
+        <button
+          type="button"
+          className="relative h-12 w-12 rounded-full p-0 border-0 bg-transparent"
+        >
           <Avatar className="h-12 w-12">
             <AvatarImage src="" alt="@username" />
             <AvatarFallback>{user?.user_firstname?.charAt(0)}{user?.user_lastname?.charAt(0)}</AvatarFallback>
           </Avatar>
-        </Button>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">

@@ -1,7 +1,7 @@
 "use client";
 
 import UsButton from "@/app/_common/ui/buttons/UsButton";
-import UsInput from "@/app/_common/ui/inputs/UsInput";
+import { Input } from "@/components/ui/input";
 import UsWidget from "@/app/_common/ui/other/UsWidget";
 import AuthContext from "@/app/_context/auth/AuthContext";
 import { useRouter } from "next/navigation";
@@ -79,12 +79,11 @@ const LoginPage: React.FC = () => {
 
             <div className="col-span-2">
               <label htmlFor="email" className="block text-sm font-medium ml-1">Email:</label>
-              <UsInput
+              <Input
                 id="email"
                 name="email"
                 autoComplete="email"
                 required
-                sizeOptions={{ height: 24 }}
                 className="w-full"
                 value={form.user_email}
                 onChange={updateField("user_email")}
@@ -93,13 +92,12 @@ const LoginPage: React.FC = () => {
 
             <div className="col-span-2">
               <label htmlFor="password" className="block text-sm font-medium ml-1">Password:</label>
-              <UsInput
+              <Input
                 id="password"
                 name="password"
                 type="password"
                 autoComplete="current-password"
                 required
-                sizeOptions={{ height: 24 }}
                 className="w-full"
                 value={form.user_password}
                 onChange={updateField("user_password")}

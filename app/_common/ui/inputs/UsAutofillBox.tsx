@@ -174,6 +174,7 @@ const UsAutofillBox: React.FC<UsAutofillBoxProps> = ({
     paddingBottom: sizeOptions.paddingY ? `${sizeOptions.paddingY}px` : "8px",
     paddingLeft: sizeOptions.paddingX ? `${sizeOptions.paddingX}px` : "22px",
     paddingRight: sizeOptions.paddingX ? `${sizeOptions.paddingX}px` : "24px",
+    minHeight: sizeOptions.height ? undefined : "32px",
   }
 
   /************************************************************
@@ -199,7 +200,7 @@ const UsAutofillBox: React.FC<UsAutofillBoxProps> = ({
       {/* Input Field */}
       <input
         {...props}
-        className={`block rounded-xl ${textSize} font-medium cursor-pointer focus:outline-none transition-all duration-200 truncate ${presetStyles.UsInput} ${className}`}
+        className={`block rounded-sm ${textSize} font-medium cursor-pointer focus:outline-none transition-all duration-200 truncate ${presetStyles.UsInput} ${className}`}
         style={{ ...sizeStyling }}
         value={inputValue}
         onClick={toggleDropdown}

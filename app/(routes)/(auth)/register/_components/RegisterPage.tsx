@@ -119,7 +119,6 @@ const RegisterPage: React.FC = () => {
                 name="firstName"
                 autoComplete="given-name"
                 required
-                sizeOptions={{ height: 24 }}
                 className="w-full"
                 value={form.user_firstname}
                 onChange={updateField("user_firstname")}
@@ -133,7 +132,6 @@ const RegisterPage: React.FC = () => {
                 name="lastName"
                 autoComplete="family-name"
                 required
-                sizeOptions={{ height: 24 }}
                 className="w-full"
                 value={form.user_lastname}
                 onChange={updateField("user_lastname")}
@@ -148,7 +146,6 @@ const RegisterPage: React.FC = () => {
                 type="email"
                 autoComplete="email"
                 required
-                sizeOptions={{ height: 24 }}
                 className="w-full"
                 value={form.user_email}
                 onChange={updateField("user_email")}
@@ -163,7 +160,6 @@ const RegisterPage: React.FC = () => {
                 name="phoneNumber"
                 type="tel"
                 autoComplete="tel"
-                sizeOptions={{ height: 24 }}
                 className="w-full"
                 value={form.user_phone_number}
                 onChange={updateField("user_phone_number")}
@@ -178,7 +174,6 @@ const RegisterPage: React.FC = () => {
                 type="date"
                 autoComplete="bday"
                 required
-                sizeOptions={{ height: 24 }}
                 className="w-full"
                 value={form.user_dob}
                 onChange={updateField("user_dob")}
@@ -193,7 +188,6 @@ const RegisterPage: React.FC = () => {
                 type="password"
                 autoComplete="new-password"
                 required
-                sizeOptions={{ height: 24 }}
                 className="w-full"
                 value={form.user_password}
                 onChange={updateField("user_password")}
@@ -208,7 +202,6 @@ const RegisterPage: React.FC = () => {
                 type="password"
                 autoComplete="new-password"
                 required
-                sizeOptions={{ height: 24 }}
                 className="w-full"
                 value={form.confirm_password}
                 onChange={updateField("confirm_password")}

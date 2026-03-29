@@ -15,7 +15,6 @@ const UsAuthMenu: React.FC = ({ }) => {
     <>
       {user ? (
         <div className="flex justify-end items-center gap-10 mr-4">
-          <span>Hello, {user.user_firstname} {user.user_lastname}</span>
           <UsMenuButton />
         </div>
       ) : (

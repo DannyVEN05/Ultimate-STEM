@@ -22,7 +22,8 @@ const UsInput: React.FC<UsInputProps> = ({
   const sizeStyling = {
     height: sizeOptions.height ? `${sizeOptions.height}px` : "",
     width: sizeOptions.width ? `${sizeOptions.width}px` : "",
-    padding: `${sizeOptions.paddingY ? sizeOptions.paddingY : 8}px ${sizeOptions.paddingX ? sizeOptions.paddingX : 12}px`,
+    padding: `${sizeOptions.paddingY ? sizeOptions.paddingY : 4}px ${sizeOptions.paddingX ? sizeOptions.paddingX : 12}px`,
+    minHeight: sizeOptions.height ? undefined : "32px",
   }
 
   /************************************************************
@@ -31,7 +32,7 @@ const UsInput: React.FC<UsInputProps> = ({
   return (
     <input
       {...props}
-      className={`block rounded-xl ${textSize} font-medium focus:outline-none transition-all duration-200 ${presetStyles.UsInput} ${className}`}
+      className={`block rounded-sm ${textSize} font-medium focus:outline-none transition-all duration-200 ${presetStyles.UsInput} ${className}`}
       style={{ ...sizeStyling }}
     />
   );

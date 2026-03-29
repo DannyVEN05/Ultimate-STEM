@@ -1,24 +1,27 @@
 "use client";
 
+import AuthContext from "@/app/_context/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import { use, useContext, useEffect } from "react";
 
 const UsNavigationButtons = () => {
   const router = useRouter();
+  const { user } = useContext(AuthContext);
+  useEffect(() => {console.log("User in UsNavigationButtons:", user);}, [user]);
 
   return (
-    <div className="flex items-center space-x-4 text-sm font-semibold">
-      <button onClick={() => router.push("/dashboard")} className="hover:cursor-pointer hover:text-blue-500 hover:underline">
-        Home
+    <div className="flex items-center space-x-6 text-sm font-medium">
+      <button onClick={() => router.push("/dashboard")} className="hover:cursor-pointer hover:text-primary transition-colors">
+        Active Battles
       </button>
-      <button onClick={() => router.push("")} className="hover:cursor-pointer hover:text-blue-500 hover:underline ">
-        Leaderboard
+      <button onClick={() => router.push("")} className="hover:cursor-pointer hover:text-primary transition-colors">
+        Archives
       </button>
-      <button onClick={() => router.push("")} className="hover:cursor-pointer hover:text-blue-500 hover:underline">
-        Past Tournaments
-      </button>
-      <button onClick={() => router.push("/admin")} className="hover:cursor-pointer hover:text-blue-500 hover:underline">
-        Admin (temporary)
-      </button>
+      {user?.user_role == "admin" && (
+        <button onClick={() => router.push("/admin")} className="hover:cursor-pointer hover:text-primary transition-colors">
+          Admin
+        </button>
+      )}
     </div>
   );
 };

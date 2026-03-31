@@ -27,7 +27,7 @@ const SubmissionsPage = () => {
         <SwipeViewPage/>
       )}
     </div>
-  );
+  )
 };
 
 export default SubmissionsPage;

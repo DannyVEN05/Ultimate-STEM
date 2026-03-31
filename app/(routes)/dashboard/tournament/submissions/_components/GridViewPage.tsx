@@ -31,10 +31,10 @@ const GridViewPage = () => {
     <div className="mt-3 grid w-full gap-4 sm:grid-cols-4 md:grid-cols-8">
       {concepts.map((concept) => (
       <div key={concept.id} className="flex flex-col items-center">
-        {/* Add the code for including theme */}
+        {/* Add the code for including theme*/}
         <p className="mt-2 font-bold">{concept.title}</p>
       </div>
-      ))}; 
+      ))}
     </div>
   );
 };

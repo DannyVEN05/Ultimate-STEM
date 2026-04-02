@@ -2,6 +2,20 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  const isPrivateRoute =
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/dashboard/tournament/submissions/bookbuilder')
+
+  const isPublicRoute =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/signup')
+
+  // Skip auth check entirely for routes that don't need it
+  if (!isPrivateRoute && !isPublicRoute) return NextResponse.next({ request })
+
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -23,28 +37,22 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isPrivateRoute =
-    request.nextUrl.pathname.startsWith('/admin') ||
-    request.nextUrl.pathname.startsWith('/profile') ||
-    request.nextUrl.pathname.startsWith('/dashboard/tournament/submissions/bookbuilder')
-
-  const isPublicRoute =
-    request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/signup')
+  // Helper: build a redirect that carries any cookies Supabase wrote during getUser()
+  const redirectWithCookies = (dest: string) => {
+    const url = request.nextUrl.clone()
+    url.pathname = dest
+    const redirectResponse = NextResponse.redirect(url)
+    response.cookies.getAll().forEach(({ name, value }) =>
+      redirectResponse.cookies.set(name, value, response.cookies.get(name) as any)
+    )
+    return redirectResponse
+  }
 
   // Redirect unauthenticated users away from protected pages
-  if (!user && isPrivateRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
+  if (!user && isPrivateRoute) return redirectWithCookies('/login')
 
   // Redirect authenticated users away from login/signup
-  if (user && isPublicRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
+  if (user && isPublicRoute) return redirectWithCookies('/dashboard')
 
   return response
 }

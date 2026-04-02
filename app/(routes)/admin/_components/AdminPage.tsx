@@ -1,16 +1,14 @@
 "use client";
 
-import UsButton from "@/app/_common/ui/buttons/UsButton";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const AdminPage = () => {
   const router = useRouter();
-  return (
-    <div className="h-full w-full flex items-center justify-center flex-col gap-4">
-      <p>This is the admin page</p>
-      <UsButton onClick={() => { router.push("/admin/component-wall") }}>Go to component wall</UsButton>
-    </div>
-  );
+  useEffect(() => {
+    router.replace("/admin/tournaments");
+  }, [router]);
+  return null;
 };
 
 export default AdminPage;

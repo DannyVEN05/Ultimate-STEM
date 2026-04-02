@@ -6,7 +6,6 @@ import AuthContext from "@/app/_context/auth/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useContext, useState } from "react";
-import { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { Profanity } from '@2toad/profanity';
 import { Stage, Layer, Text as KonvaText, Rect, Group} from 'react-konva';

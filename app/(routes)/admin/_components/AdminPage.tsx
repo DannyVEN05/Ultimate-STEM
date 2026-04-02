@@ -1,14 +1,4 @@
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-
-const AdminPage = () => {
-  const router = useRouter();
-  useEffect(() => {
-    router.replace("/admin/tournaments");
-  }, [router]);
+// Redirect is handled server-side in page.tsx — this file is no longer used.
+export default function AdminPage() {
   return null;
-};
-
-export default AdminPage;
+}

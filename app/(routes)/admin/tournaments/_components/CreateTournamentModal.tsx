@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useContext, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { CalendarDays, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ interface TournamentToEdit {
   startDate: string;
   endDate: string;
   participantLimit: number;
+  status?: string;
 }
 
 interface CreateTournamentModalProps {
@@ -66,10 +67,16 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
     setSubmitState("submitting");
     setSubmitError(null);
 
+    if (formData.endDate && formData.startDate && formData.endDate < formData.startDate) {
+      setSubmitError("End date must be on or after the start date.");
+      setSubmitState("error");
+      return;
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const start = new Date(formData.startDate);
-    const status = start > today ? "upcoming" : "active";
+    const newStatus = start > today ? "upcoming" : "active";
 
     if (isEdit && tournament) {
       const { error } = await supabase
@@ -80,7 +87,9 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
           tournament_start_date: formData.startDate,
           tournament_end_date: formData.endDate,
           tournament_user_limit: Number(formData.participantLimit),
-          tournament_status: status,
+          tournament_status: ["completed", "cancelled"].includes(tournament.status as string)
+            ? tournament.status
+            : newStatus,
           tournament_updated_at: new Date().toISOString(),
         })
         .eq("tournament_id", tournament.id);
@@ -98,7 +107,7 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
         tournament_end_date: formData.endDate,
         tournament_user_limit: Number(formData.participantLimit),
         tournament_participants: 0,
-        tournament_status: status,
+        tournament_status: newStatus,
       });
 
       if (error) {
@@ -176,7 +185,7 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
                     type="button"
                     tabIndex={-1}
                     className="absolute top-1/2 right-3 -translate-y-1/2"
-                    onClick={() => startDateRef.current?.showPicker()}
+                    onClick={() => (startDateRef.current as any)?.showPicker?.()}
                   >
                     <CalendarDays className="h-4 w-4 text-[#9aa3b8]" />
                   </button>
@@ -197,7 +206,7 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
                     type="button"
                     tabIndex={-1}
                     className="absolute top-1/2 right-3 -translate-y-1/2"
-                    onClick={() => endDateRef.current?.showPicker()}
+                    onClick={() => (endDateRef.current as any)?.showPicker?.()}
                   >
                     <CalendarDays className="h-4 w-4 text-[#9aa3b8]" />
                   </button>

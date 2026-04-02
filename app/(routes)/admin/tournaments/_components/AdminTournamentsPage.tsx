@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Clock, CheckCircle2, XCircle, Search, ChevronDown, Plus, Pencil } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Search, ChevronDown, Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -53,10 +53,11 @@ async function getTournaments(): Promise<Tournament[]> {
 }
 
 function formatDate(value: string): string {
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return value;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  // Parse YYYY-MM-DD or ISO strings without converting to local time
+  const datePart = value.slice(0, 10); // "YYYY-MM-DD"
+  const timePart = value.length > 10 ? value.slice(11, 16) : null; // "HH:MM" if present
+  if (timePart) return `${datePart} ${timePart}`;
+  return datePart;
 }
 
 const statusConfig: Record<TournamentStatus, { label: string; className: string; icon: React.ReactNode }> = {
@@ -127,7 +128,6 @@ async function getQueueItems(): Promise<QueueItem[]> {
 
 const AdminTournamentsPage = () => {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<TournamentStatus | "all">("all");
@@ -139,18 +139,18 @@ const AdminTournamentsPage = () => {
   const openEdit = (t: Tournament) => { setEditingTournament(t); setModalOpen(true); };
 
   useEffect(() => {
-    setLoading(true);
+    setError(null);
     Promise.all([getTournaments(), getQueueItems()])
       .then(([t, q]) => { setTournaments(t); setQueue(q); })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false));
+      .catch((err: Error) => setError(err.message));
   }, [modalOpen]);
 
   const handleQueueAction = async (item: QueueItem, action: "approved" | "rejected") => {
-    await supabase
+    const { error } = await supabase
       .from("tournament_submission")
       .update({ tournamentsub_status: action, tournamentsub_updated_at: new Date().toISOString() })
       .eq("tournamentsub_id", item.submissionId);
+    if (error) { setError(error.message); return; }
     setQueue((prev) => prev.filter((q) => q.submissionId !== item.submissionId));
   };
 
@@ -377,6 +377,7 @@ const AdminTournamentsPage = () => {
           startDate: editingTournament.startDate,
           endDate: editingTournament.endDate,
           participantLimit: editingTournament.participantLimit,
+          status: editingTournament.status,
         } : undefined}
       />
     </div>

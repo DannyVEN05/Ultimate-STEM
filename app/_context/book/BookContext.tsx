@@ -10,7 +10,7 @@ export type BookContextType = {
   setIsGridMode: (mode:boolean) => void;
   setBooks: (books: Book[]) => void;
   updateLikes: (submissionId: string, newLikes: number) => void;
-}
+};
 
 const BookContext = createContext({} as BookContextType)
 

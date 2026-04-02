@@ -3,13 +3,13 @@ import { TournamentSubmission } from "./TournamentSubmission";
 
 export class Book {
   concept: Concept;
-  tournamentsub: TournamentSubmission;
+  tournamentSubmission: TournamentSubmission;
 
   constructor(
     concept: Concept,
-    tournamentsub: TournamentSubmission
+    tournamentSubmission: TournamentSubmission
   ){
     this.concept = concept;
-    this.tournamentsub = tournamentsub;
+    this.tournamentSubmission = tournamentSubmission;
   }
 }

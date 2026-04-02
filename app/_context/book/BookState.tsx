@@ -5,6 +5,9 @@ import bookReducer, { BookReducerState } from "./BookReducer";
 import { Concept } from "@/app/_types/model/Concept";
 import { Book } from "@/app/_types/model/Book";
 import { TournamentSubmission } from "@/app/_types/model/TournamentSubmission";
+import { supabase } from "@/lib/supabase";
+import { BookActionKind } from "@/app/_types/context";
+import BookContext from "./BookContext";
 
 type Props = {
   children?: React.ReactNode | React.ReactNode[];
@@ -13,7 +16,7 @@ type Props = {
 const BookState = ( {children}: Props ) => {
   const initialState: BookReducerState = {
     books: [],
-    isLoading: true,
+    status: '',
     isGridMode: true
   }
 
@@ -33,6 +36,7 @@ const BookState = ( {children}: Props ) => {
       row.concept.concept_genre,
       row.concept.concept_user_id,
     )
+    console.log("Concept: ", concept)
 
     // Creating TournamentSubmission (Top-Level Object)
     const tournamentsub = new TournamentSubmission (
@@ -44,17 +48,8 @@ const BookState = ( {children}: Props ) => {
       row.tournament_id,
       row.concept_id
     )
+    console.log("Tournament Submission: ", tournamentsub)
 
-    /*  Example JSON
-    {
-      "tournamentsub_id": "foo",
-      "tournamentsub_likes": 15,
-      "concept": {
-        "concept_id": "foobar",
-        "concept_title": "STEM for you"  
-      }
-    }
-    */
     return new Book(concept, tournamentsub);
   }
 
@@ -62,4 +57,96 @@ const BookState = ( {children}: Props ) => {
      Supabase will return null for the concept field.
      NOTE: Updating Concept data in Book may be difficult as code need to tell supabase to target the concept table not the tournament sub table
   */
+  
+  useEffect(() => {
+    let mounted = true
+    const fetchBooks = async () => {
+      dispatch({ type:BookActionKind.SET_STATUS, payload: 'loading' })
+      
+      console.log("Started fetching books")
+
+      try {
+        const {data, error} = await supabase
+          .from('tournament_submission')
+          .select(`
+            *,
+            concept!inner(*)
+          `)
+
+        console.log('Data received: ',data)
+        
+        if (error) throw error
+
+        if (mounted) {
+          const mappedBooks = data.map(mapToBook)
+          dispatch({ type:BookActionKind.SET_BOOKS, payload: mappedBooks })
+          dispatch({ type:BookActionKind.SET_STATUS, payload: 'ready' })
+        }
+
+      } catch (err) {
+        console.warn('Error fetching tournament submissions', err)
+        if (mounted) dispatch({ type:BookActionKind.SET_STATUS, payload: 'error' })
+      }
+    }
+    fetchBooks()
+
+   // Displaying is reliant on reviewing filter with .eq(confrimed_at, !null)
+   // Depending on the tournament_id, filter books into groups for displaying
+   // Below function is currently not working as a realtime EventListener
+   // Have to reload the page to refresh the grid
+
+    const channel = supabase.channel('tounament_submission_changes')
+      .on(
+        'postgres_changes', 
+        {
+          event: '*',
+          schema: 'public',
+          table:'tournament_submission'
+        },
+        (payload) => {
+          console.log('Receiving data: ', payload)
+          if(mounted && payload.eventType === 'UPDATE'){
+            dispatch({ type:BookActionKind.UPDATE_LIKES, payload: {
+              id: payload.new.tournamentsub_id,
+              newLikes: payload.new.tournamentsub_likes,
+            }
+            })
+          }
+        }
+      )
+      .subscribe()
+      
+      return () => {
+        mounted = false
+        supabase.removeChannel(channel)
+      }
+  }, []);
+
+  // These 3 functions will stay empty for now
+  const setIsGridMode = async () => {
+    
+  }
+  const setBooks = async () => {
+
+  }
+  const updateLikes = async () => {
+
+  }
+
+  return (
+    <BookContext.Provider
+      value={{
+        books: state.books,
+        status: state.status,
+        isGridMode: state.isGridMode,
+        setIsGridMode,
+        setBooks,
+        updateLikes,
+      }}
+    >
+      {children}
+    </BookContext.Provider>
+  );
 }
+
+export default BookState;

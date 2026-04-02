@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import GridViewPage from "./GridViewPage";
 import SwipeViewPage from "./SwipeViewPage";
-import { Button } from "@/components/ui/button";
 
 const SubmissionsPage = () => {
-  const [isGridMode, setIsGridMode] = useState<boolean>(true);
+  // const { setIsGridMode, isGridMode } = useContext(BookContext);
+  const [isGridMode, setIsGridMode] = useState<boolean>(true)
   const router = useRouter();
   return (
     <div className="flex w-full flex-col items-center font-bold">

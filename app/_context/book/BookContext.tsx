@@ -5,9 +5,9 @@ import { createContext } from "react";
 
 export type BookContextType = {
   books: Book[];
-  isLoading: boolean;
+  status: string;
   isGridMode: boolean;
-  setIsGrideMode: (mode:boolean) => void;
+  setIsGridMode: (mode:boolean) => void;
   setBooks: (books: Book[]) => void;
   updateLikes: (submissionId: string, newLikes: number) => void;
 }

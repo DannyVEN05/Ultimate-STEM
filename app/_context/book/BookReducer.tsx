@@ -4,13 +4,13 @@ import { Reducer } from "react";
 
 export interface BookReducerState {
   books: Book[];
-  isLoading: boolean;
+  status: string;
   isGridMode: boolean;
 }
 
 export type BookReducerAction = 
 | { type: BookActionKind.SET_BOOKS; payload: Book[] }
-| { type: BookActionKind.SET_LOADING; payload: boolean }
+| { type: BookActionKind.SET_STATUS; payload: string }
 | { type: BookActionKind.TOGGLE_MODE; payload: boolean }
 | { type: BookActionKind.UPDATE_LIKES; payload: {id:string; newLikes:number} };
 
@@ -19,14 +19,13 @@ const bookReducer: Reducer<BookReducerState, BookReducerAction> = (state, action
     case BookActionKind.SET_BOOKS:
       return {
         ...state,
-        books: action.payload,
-        isLoading: false,
+        books: action.payload ?? [],
       };
 
-    case BookActionKind.SET_LOADING:
+    case BookActionKind.SET_STATUS:
       return {
         ...state,
-        isLoading: action.payload,
+        status: action.payload,
       };
       
     case BookActionKind.TOGGLE_MODE:
@@ -39,7 +38,7 @@ const bookReducer: Reducer<BookReducerState, BookReducerAction> = (state, action
       return {
         ...state,
         books: state.books.map((book) => {
-          return book.tournamentsub.id === action.payload.id 
+          return book.tournamentsub.tournamentsub_id === action.payload.id 
           ? {...book, tournamentsub: { ...book.tournamentsub, likes: action.payload.newLikes }}
           : book
         })

@@ -64,17 +64,20 @@ const BookBuilderPage = () => {
       concept_genre: genre, 
       // cover: selectedCover,
     };
-    const { data, error } = await supabase.from("concept").insert(load).select(); //upload this to supbabase
+    const { data, error } = await supabase.from("concept").insert(load).select().single(); //upload this to supbabase
     console.log("data: ", data);
 
     if (error) {
       console.log("Error uploading concepts - ", error.message, "Code", error.code);
     }
+    else if (!data) {
+      console.log("Error uploading concepts - no concept returned from insert");
+    }
     else {
-      const { error } = await supabase.from("tournament_submission").insert({concept_id: data[0].concept_id, tournament_id: 4}); //upload to tournamant submission
+      const { error: submissionError } = await supabase.from("tournament_submission").insert({ concept_id: data.concept_id, tournament_id: 4 }); //upload to tournamant submission
 
-      if (error) {
-        console.log("Error uploading concepts - ", error.message, "Code", error.code);
+      if (submissionError) {
+        console.log("Error uploading concepts - ", submissionError.message, "Code", submissionError.code);
       } else {
         router.push("/");
       }

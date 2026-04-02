@@ -11,6 +11,8 @@ export async function proxy(request: NextRequest) {
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           )
@@ -19,7 +21,6 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // Refreshes the session if expired and writes updated cookies to the response
   const { data: { user } } = await supabase.auth.getUser()
 
   const isPrivateRoute =
@@ -27,7 +28,7 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/profile') ||
     request.nextUrl.pathname.startsWith('/dashboard/tournament/submissions/bookbuilder')
 
-  const isAuthRoute =
+  const isPublicRoute =
     request.nextUrl.pathname.startsWith('/login') ||
     request.nextUrl.pathname.startsWith('/signup')
 
@@ -39,7 +40,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Redirect authenticated users away from login/signup
-  if (user && isAuthRoute) {
+  if (user && isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)

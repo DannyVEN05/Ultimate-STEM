@@ -7,7 +7,6 @@ import { use, useContext, useEffect } from "react";
 const UsNavigationButtons = () => {
   const router = useRouter();
   const { user } = useContext(AuthContext);
-  useEffect(() => {console.log("User in UsNavigationButtons:", user);}, [user]);
 
   return (
     <div className="flex items-center space-x-6 text-sm font-medium">

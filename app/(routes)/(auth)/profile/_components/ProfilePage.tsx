@@ -12,7 +12,7 @@ const ProfilePage: React.FC = () => {
     return (
       <div className="relative flex h-full w-full bg-secondary/30 shadow-md border border-gray-200 rounded-lg p-4 gap-4 hover:shadow-xl transition-all hover:bg-secondary/50">
         <div className="absolute top-2 right-2">
-          <Button variant="outline" className="h-8 w-8 p-0 rounded-full">
+          <Button variant="outline">
             Edit
           </Button>
         </div>

@@ -11,11 +11,11 @@ const UsNavigationButtons = () => {
 
   return (
     <div className="flex items-center space-x-6 text-sm font-medium">
-      <button onClick={() => router.push("/dashboard")} className="hover:cursor-pointer hover:text-primary transition-colors">
+      {/* <button onClick={() => router.push("/dashboard")} className="hover:cursor-pointer hover:text-primary transition-colors">
         Active Battles
-      </button>
+      </button> */}
       <button onClick={() => router.push("")} className="hover:cursor-pointer hover:text-primary transition-colors">
-        Archives
+        Past Tournaments
       </button>
       {user?.user_role == "admin" && (
         <button onClick={() => router.push("/admin")} className="hover:cursor-pointer hover:text-primary transition-colors">

@@ -12,7 +12,7 @@ export type BookReducerAction =
 | { type: BookActionKind.SET_BOOKS; payload: Book[] }
 | { type: BookActionKind.SET_STATUS; payload: string }
 | { type: BookActionKind.TOGGLE_MODE; payload: boolean }
-| { type: BookActionKind.UPDATE_LIKES; payload: {id:string; newLikes:number} };
+| { type: BookActionKind.UPDATE_LIKES; payload: {tournamentsub_id:string; newLikes:number} };
 
 const bookReducer: Reducer<BookReducerState, BookReducerAction> = (state, action): BookReducerState => {
   switch (action.type){
@@ -38,7 +38,7 @@ const bookReducer: Reducer<BookReducerState, BookReducerAction> = (state, action
       return {
         ...state,
         books: state.books.map((book) => {
-          return book.tournamentsub.tournamentsub_id === action.payload.id 
+          return book.tournamentsub.tournamentsub_id === action.payload.tournamentsub_id
           ? {...book, tournamentsub: { ...book.tournamentsub, likes: action.payload.newLikes }}
           : book
         })

@@ -107,7 +107,7 @@ const BookState = ( {children}: Props ) => {
           console.log('Receiving data: ', payload)
           if(mounted && payload.eventType === 'UPDATE'){
             dispatch({ type:BookActionKind.UPDATE_LIKES, payload: {
-              id: payload.new.tournamentsub_id,
+              tournamentsub_id: payload.new.tournamentsub_id,
               newLikes: payload.new.tournamentsub_likes,
             }
             })

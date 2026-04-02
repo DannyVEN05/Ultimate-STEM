@@ -27,7 +27,7 @@ const UsMenuButton: React.FC = ({ }) => {
           className="relative h-12 w-12 rounded-full p-0 border-0 bg-gray-100 group cursor-pointer shadow-md hover:shadow-xl transition-shadow focus:outline-none"
         >
           <Avatar className="h-12 w-12">
-            <AvatarImage src="" alt="@username" />
+            <AvatarImage alt="@username" />
             <AvatarFallback style={{ backgroundColor: "transparent" }}>{user?.user_firstname?.charAt(0)}{user?.user_lastname?.charAt(0)}</AvatarFallback>
           </Avatar>
         </button>
@@ -43,7 +43,7 @@ const UsMenuButton: React.FC = ({ }) => {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/profile")}>
+          <DropdownMenuItem className="cursor-pointer" onSelect={() => router.push("/profile")}>
             Profile
           </DropdownMenuItem>
           <DropdownMenuItem disabled className="cursor-pointer">

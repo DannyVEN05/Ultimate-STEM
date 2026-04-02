@@ -7,14 +7,14 @@ interface UsInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   className?: string;
   textSize?: UsTextSizes;
   sizeOptions?: UsSizeOptions;
-  multiple?: boolean;
+  multiline?: boolean;
 }
 
 const UsInput: React.FC<UsInputProps> = ({
   className = "",
   textSize = "text-sm",
   sizeOptions = {},
-  multiple = false,
+  multiline = false,
   ...props
 }) => {
 
@@ -33,7 +33,7 @@ const UsInput: React.FC<UsInputProps> = ({
   /************************************************************
   * Render
   ************************************************************/
-  if (multiple) {
+  if (multiline) {
     return (
       <textarea
         {...(props as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}

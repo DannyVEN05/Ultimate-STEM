@@ -87,7 +87,7 @@ const BookBuilderPage = () => {
   const router = useRouter();
   return (
     <div className="text-4xl">
-      <Button variant="outline" onClick={() => {router.push("./")}}>
+      <Button variant="outline" onClick={() => router.back()}>
         Back
       </Button>
       
@@ -128,7 +128,7 @@ const BookBuilderPage = () => {
                         const stageWidth = 256;
                         const stageHeight = 384;
                         
-                        const boxWidth = (title).length * 15; 
+                        const boxWidth = (title || "Book Title").length * 15 + 20; 
                         // max width is based on the title length ig
                         const boxHeight = 40;
 
@@ -139,7 +139,7 @@ const BookBuilderPage = () => {
                       }}
                       >
                       {/* title */}
-                      <Rect width={title.length } height={35} cornerRadius={4} />
+                      <Rect width={(title || "Book Title").length * 15 + 20} height={40} cornerRadius={4} />
 
                       {/* was confusing konva text with our text so I change to KonvaText */}
                       <KonvaText text={title || "Book Title"} fontSize={30} fontFamily={titleFont} fill={titTextColor} padding={5}/>
@@ -151,7 +151,7 @@ const BookBuilderPage = () => {
                         const stageWidth = 256;
                         const stageHeight = 384;
                         
-                        const boxWidth = (author).length * 12; 
+                        const boxWidth = (author || "Author").length * 12; 
                         // max width is based on the title length ig
                         const boxHeight = 40;
 
@@ -161,7 +161,7 @@ const BookBuilderPage = () => {
                         };
                       }}
                       >
-                    <Rect width={author.length } height={35} cornerRadius={4} />
+                    <Rect width={(author || "Author").length * 12} height={40} cornerRadius={4} />
 
                     <KonvaText text={author || "Author"} fontSize={20} fontFamily={autFont} fill={autTextColor} padding={5}/>
                     </Group>
@@ -231,7 +231,7 @@ const BookBuilderPage = () => {
               
               Description 
 
-              <UsInput multiple={true} placeholder="Enter description..." sizeOptions={{ height: 200, width: 600 }} maxLength={535} value={description} onChange={(e: any) => setDescription(e.target.value)} />
+              <UsInput multiline={true} placeholder="Enter description..." sizeOptions={{ height: 200, width: 600 }} maxLength={535} value={description} onChange={(e: any) => setDescription(e.target.value)} />
               
               <div className="flex items-center justify-start gap-20 mb-2">
               Author
@@ -271,7 +271,7 @@ const BookBuilderPage = () => {
                   { value: "Mathematics", label: "Mathematics" },
                 ]} value ={genre} onChange={(e: any) => setGenre(e.target.value)}/>
 
-              <Button type="submit" onClick={handleSubmit}>Submit</Button>
+              <Button type="button" onClick={handleSubmit}>Submit</Button>
               
             </div>
           </div>

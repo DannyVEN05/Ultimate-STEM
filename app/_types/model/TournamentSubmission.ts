@@ -1,9 +1,9 @@
 export class TournamentSubmission {
-  id: string;
-  created_at: Date | null;
-  updated_at: Date | null;
-  likes: number;
-  status: string;
+  tournamentsub_id: string;
+  tournamentsub_created_at: Date | null;
+  tournamentsub_updated_at: Date | null;
+  tournamentsub_likes: number;
+  tournamentsub_status: string;
   tournament_id: string;
   concept_id: string;
 
@@ -16,11 +16,11 @@ export class TournamentSubmission {
     tournament_id: string = '',
     concept_id: string = ''
   ) {
-    this.id = id;
-    this.created_at = created_at;
-    this.updated_at = updated_at;
-    this.likes = likes;
-    this.status = status;
+    this.tournamentsub_id = id;
+    this.tournamentsub_created_at = created_at;
+    this.tournamentsub_updated_at = updated_at;
+    this.tournamentsub_likes = likes;
+    this.tournamentsub_status = status;
     this.tournament_id = tournament_id;
     this.concept_id = concept_id;
   }

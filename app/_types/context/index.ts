@@ -5,7 +5,7 @@ export enum AuthActionKind {
 
 export enum BookActionKind{
   SET_BOOKS = "SET_BOOKS",
-  SET_LOADING = "SET_LOADING",
+  SET_STATUS = "SET_STATUS",
   TOGGLE_MODE = "TOGGLE_MODE",
   UPDATE_LIKES = "UPDATE_LIKES",
 };

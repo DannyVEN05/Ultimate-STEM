@@ -7,9 +7,9 @@ export type BookContextType = {
   books: Book[];
   status: string;
   isGridMode: boolean;
-  setIsGridMode: (mode:boolean) => void;
-  setBooks: (books: Book[]) => void;
-  updateLikes: (submissionId: string, newLikes: number) => void;
+  setIsGridMode: (mode: boolean) => void;
+  setBooks: (books: Book[]) => Promise<void>;
+  updateLikes: (submissionId: string, newLikes: number) => Promise<() => void>;
 };
 
 const BookContext = createContext({} as BookContextType)

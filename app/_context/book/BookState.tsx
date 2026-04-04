@@ -36,7 +36,6 @@ const BookState = ( {children}: Props ) => {
       row.concept.concept_genre,
       row.concept.concept_user_id,
     )
-    console.log("Concept: ", concept)
 
     // Creating TournamentSubmission (Top-Level Object)
     const tournamentsub = new TournamentSubmission (
@@ -48,52 +47,57 @@ const BookState = ( {children}: Props ) => {
       row.tournament_id,
       row.concept_id
     )
-    console.log("Tournament Submission: ", tournamentsub)
 
     return new Book(concept, tournamentsub);
   }
 
-  /* Issue 1 - If a TournamentSubmission exists in your database but the Concept it points to was deleted (or has a broken foreign key),
-     Supabase will return null for the concept field.
-     NOTE: Updating Concept data in Book may be difficult as code need to tell supabase to target the concept table not the tournament sub table
+  /* 
+  If a TournamentSubmission exists in your database but the Concept it points to was deleted (or has a broken foreign key),
+  Supabase will return null for the concept field.
   */
   
-  useEffect(() => {
-    let mounted = true
-    const fetchBooks = async () => {
-      dispatch({ type:BookActionKind.SET_STATUS, payload: 'loading' })
+  const setIsGridMode = async (mode: boolean) => {
+    dispatch({ type:BookActionKind.TOGGLE_MODE, payload: mode})
+  }
+
+  // Depending on the tournament_id, filter books into groups for displaying
+  const setBooks = async (mounted: boolean) => {
+    dispatch({ type:BookActionKind.SET_STATUS, payload: 'loading' })
+    
+    console.log("Fetching books")
+
+    try {
+      const {data, error} = await supabase
+        .from('tournament_submission')
+        .select(`
+          *,
+          concept!inner(*)
+        `).filter('concept.concept_reviewed_at', 'not.is', null)
+
+      if (!data) {console.log("Data is empty or undefined")}
+      else {console.log("Data successfully received!")}
       
-      console.log("Started fetching books")
+      if (error) throw error
 
-      try {
-        const {data, error} = await supabase
-          .from('tournament_submission')
-          .select(`
-            *,
-            concept!inner(*)
-          `)
-
-        console.log('Data received: ',data)
-        
-        if (error) throw error
-
-        if (mounted) {
-          const mappedBooks = data.map(mapToBook)
-          dispatch({ type:BookActionKind.SET_BOOKS, payload: mappedBooks })
-          dispatch({ type:BookActionKind.SET_STATUS, payload: 'ready' })
-        }
-
-      } catch (err) {
-        console.warn('Error fetching tournament submissions', err)
-        if (mounted) dispatch({ type:BookActionKind.SET_STATUS, payload: 'error' })
+      if (mounted) {
+        console.log("Begin mapping books")
+        const mappedBooks = data.map(mapToBook)
+        dispatch({ type:BookActionKind.SET_BOOKS, payload: mappedBooks })
+        dispatch({ type:BookActionKind.SET_STATUS, payload: 'ready' })
+        console.log("Mapping complete, books should be displayed!")
       }
-    }
-    fetchBooks()
 
-   // Displaying is reliant on reviewing filter with .eq(confrimed_at, !null)
-   // Depending on the tournament_id, filter books into groups for displaying
-   // Below function is currently not working as a realtime EventListener
-   // Have to reload the page to refresh the grid
+    } catch (err) {
+      console.warn('Error fetching data', err)
+      if (mounted) dispatch({ type:BookActionKind.SET_STATUS, payload: 'error' })
+    }
+    return () => mounted = false 
+  }
+  
+
+  const updateLikes = async (mounted: boolean) => {
+    // Below function is currently not working as a realtime EventListener
+    // Under development
 
     const channel = supabase.channel('tounament_submission_changes')
       .on(
@@ -116,21 +120,10 @@ const BookState = ( {children}: Props ) => {
       )
       .subscribe()
       
-      return () => {
-        mounted = false
-        supabase.removeChannel(channel)
-      }
-  }, []);
-
-  // These 3 functions will stay empty for now
-  const setIsGridMode = async () => {
-    
-  }
-  const setBooks = async () => {
-
-  }
-  const updateLikes = async () => {
-
+    return () => {
+      mounted = false
+      supabase.removeChannel(channel)
+    }
   }
 
   return (

@@ -1,11 +1,16 @@
 "use client";
 
 import BookContext from "@/app/_context/book/BookContext";
-import { useContext } from "react";
+import { useContext, useEffect, useRef } from "react";
 
 const GridViewPage = () => {
-  const { books } = useContext(BookContext);
-  
+  const { books, setBooks } = useContext(BookContext);
+  const setBooksRef = useRef(setBooks);
+
+  useEffect(() => {
+    setBooksRef.current(true, books)
+  }, []);
+
   return (
     <div className="mt-3 grid w-full gap-4 sm:grid-cols-4 md:grid-cols-8">
       {books.map((book) => (

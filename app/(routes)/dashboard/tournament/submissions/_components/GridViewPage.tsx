@@ -8,15 +8,15 @@ const GridViewPage = () => {
   const setBooksRef = useRef(setBooks);
 
   useEffect(() => {
-    setBooksRef.current(books)
+    setBooksRef.current(books);
   }, []);
 
   return (
     <div className="mt-3 grid w-full gap-4 sm:grid-cols-4 md:grid-cols-8">
       {books.map((book) => (
-      <div key={book.concept.concept_id} className="flex flex-col items-center">
-        <p className="mt-2 font-bold">{book.concept.concept_title}</p>
-      </div>
+        <div key={book.tournamentsub_id} className="flex flex-col items-center">
+          <p className="mt-2 font-bold">{book.concept_title}</p>
+        </div>
       ))}
     </div>
   );

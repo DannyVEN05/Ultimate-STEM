@@ -9,10 +9,11 @@ export type BookContextType = {
   isGridMode: boolean;
   setIsGridMode: (mode: boolean) => void;
 
-  // This function sets the books array to contain all the tournament submissions that have been approved. It is a combination of Concept and TournamentSubmission data to create a complete Book object.
-  setBooks: (books: Book[]) => Promise<void>;
+  // This function fetches all approved tournament submissions from Supabase and populates the books array. It is a combination of Concept and TournamentSubmission data to create a complete Book object.
+  setBooks: () => Promise<void>;
 
-  updateLikes: (submissionId: string, newLikes: number) => Promise<() => void>;
+  // This function subscribes to realtime changes on tournament_submission and updates likes in state. Returns a cleanup function to unsubscribe.
+  updateLikes: () => Promise<() => void>;
 };
 
 const BookContext = createContext({} as BookContextType)

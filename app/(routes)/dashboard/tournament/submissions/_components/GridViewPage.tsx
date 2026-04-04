@@ -8,7 +8,7 @@ const GridViewPage = () => {
   const setBooksRef = useRef(setBooks);
 
   useEffect(() => {
-    setBooksRef.current(books);
+    setBooksRef.current();
   }, []);
 
   return (

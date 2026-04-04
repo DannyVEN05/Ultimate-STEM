@@ -92,7 +92,6 @@ const BookState = ( {children}: Props ) => {
       console.warn('Error fetching data', err)
       if (mounted) dispatch({ type:BookActionKind.SET_STATUS, payload: 'error' })
     }
-    return () => mounted = false 
   }
   
 

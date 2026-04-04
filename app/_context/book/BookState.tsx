@@ -61,7 +61,8 @@ const BookState = ( {children}: Props ) => {
   }
 
   // Depending on the tournament_id, filter books into groups for displaying
-  const setBooks = async (mounted: boolean) => {
+  const setBooks = async () => {
+    let mounted = true
     dispatch({ type:BookActionKind.SET_STATUS, payload: 'loading' })
     
     console.log("Fetching books")
@@ -95,9 +96,10 @@ const BookState = ( {children}: Props ) => {
   }
   
 
-  const updateLikes = async (mounted: boolean) => {
+  const updateLikes = async () => {
     // Below function is currently not working as a realtime EventListener
     // Under development
+    let mounted = true
 
     const channel = supabase.channel('tournament_submission_changes')
       .on(

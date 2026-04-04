@@ -60,14 +60,14 @@ const BookState = ({ children }: Props) => {
           concept!inner(*)
         `).filter("concept.concept_reviewed_at", "not.is", null)
 
-      if (!data) {
-        if (mounted) dispatch({ type: BookActionKind.SET_STATUS, payload: "ready" })
-        return;
-      }
-
       if (error) {
         console.warn("Error fetching data: ", error);
         if (mounted) dispatch({ type: BookActionKind.SET_STATUS, payload: "error" })
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        if (mounted) dispatch({ type: BookActionKind.SET_STATUS, payload: "ready" })
         return;
       };
 

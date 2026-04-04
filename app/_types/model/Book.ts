@@ -3,7 +3,7 @@ import { BookCover } from "./Concept";
 export class Book {
   tournamentsub_id: string;
   tournamentsub_created_at: Date | null;
-  tournamentsub_updated_at: Date | null
+  tournamentsub_updated_at: Date | null;
   tournament_id: number;
   tournamentsub_status: string;
   tournamentsub_likes: number;

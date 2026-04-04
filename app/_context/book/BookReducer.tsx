@@ -39,7 +39,7 @@ const bookReducer: Reducer<BookReducerState, BookReducerAction> = (state, action
         ...state,
         books: state.books.map((book) => {
           return book.tournamentSubmission.tournamentsub_id === action.payload.tournamentsub_id 
-          ? {...book, tournamentsub: { ...book.tournamentSubmission, likes: action.payload.newLikes }}
+          ? {...book, tournamentsub: { ...book.tournamentSubmission, tournamentsub_likes: action.payload.newLikes }}
           : book
         })
       };

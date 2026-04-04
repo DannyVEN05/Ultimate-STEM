@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useReducer, useEffect } from "react";
+import React, { useReducer } from "react";
 import bookReducer, { BookReducerState } from "./BookReducer";
 import { Concept } from "@/app/_types/model/Concept";
 import { Book } from "@/app/_types/model/Book";
@@ -34,14 +34,14 @@ const BookState = ( {children}: Props ) => {
       row.concept.concept_status,
       row.concept.concept_styling,
       row.concept.concept_genre,
-      row.concept.concept_user_id,
+      row.concept.user_id,
     )
 
     // Creating TournamentSubmission (Top-Level Object)
     const tournamentsub = new TournamentSubmission (
       row.tournamentsub_id,
-      row.tournamentsub_created_at ? new Date(row.created_at) : null,
-      row.tournamentsub_updated_at ? new Date(row.created_at) : null,
+      row.tournamentsub_created_at ? new Date(row.tournamentsub_created_at) : null,
+      row.tournamentsub_updated_at ? new Date(row.tournamentsub_updated_at) : null,
       row.tournamentsub_likes,
       row.tournamentsub_status,    
       row.tournament_id,
@@ -56,7 +56,7 @@ const BookState = ( {children}: Props ) => {
   Supabase will return null for the concept field.
   */
   
-  const setIsGridMode = async (mode: boolean) => {
+  const setIsGridMode = (mode: boolean) => {
     dispatch({ type:BookActionKind.TOGGLE_MODE, payload: mode})
   }
 
@@ -99,7 +99,7 @@ const BookState = ( {children}: Props ) => {
     // Below function is currently not working as a realtime EventListener
     // Under development
 
-    const channel = supabase.channel('tounament_submission_changes')
+    const channel = supabase.channel('tournament_submission_changes')
       .on(
         'postgres_changes', 
         {

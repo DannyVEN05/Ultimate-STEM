@@ -20,6 +20,7 @@ interface TournamentToEdit {
   title: string;
   category: string;
   startDate: string;
+  stage2StartDate: string;
   endDate: string;
   participantLimit: number;
   status?: string;
@@ -31,7 +32,7 @@ interface CreateTournamentModalProps {
   tournament?: TournamentToEdit;
 }
 
-const emptyForm = { title: "", category: "", startDate: "", endDate: "", participantLimit: "" };
+const emptyForm = { title: "", category: "", startDate: "", stage2StartDate: "", endDate: "", participantLimit: "" };
 
 const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournamentModalProps) => {
   const isEdit = !!tournament;
@@ -40,6 +41,7 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
   const [submitState, setSubmitState] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
+  const stage2StartDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
 
   // Sync form when tournament prop changes (opening in edit mode)
@@ -49,6 +51,7 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
         title: tournament.title,
         category: tournament.category,
         startDate: tournament.startDate.slice(0, 10),
+        stage2StartDate: tournament.stage2StartDate ? tournament.stage2StartDate.slice(0, 10) : "",
         endDate: tournament.endDate.slice(0, 10),
         participantLimit: String(tournament.participantLimit),
       });
@@ -72,11 +75,29 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
       setSubmitState("error");
       return;
     }
+    if (formData.stage2StartDate) {
+      if (formData.stage2StartDate < formData.startDate) {
+        setSubmitError("Stage 2 start date must be on or after Stage 1 start date.");
+        setSubmitState("error");
+        return;
+      }
+      if (formData.stage2StartDate > formData.endDate) {
+        setSubmitError("Stage 2 start date must be on or before the end date.");
+        setSubmitState("error");
+        return;
+      }
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const start = new Date(formData.startDate);
-    const newStatus = start > today ? "upcoming" : "active";
+    const stage1Start = new Date(formData.startDate);
+    const stage2Start = formData.stage2StartDate ? new Date(formData.stage2StartDate) : null;
+    const end = new Date(formData.endDate);
+    let newStatus: string;
+    if (today >= end) newStatus = "concluded";
+    else if (stage2Start && today >= stage2Start) newStatus = "stage2";
+    else if (today >= stage1Start) newStatus = "stage1";
+    else newStatus = "upcoming";
 
     if (isEdit && tournament) {
       const { error } = await supabase
@@ -85,9 +106,10 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
           tournament_title: formData.title,
           tournament_genre: formData.category,
           tournament_start_date: formData.startDate,
+          tournament_s2_start_date: formData.stage2StartDate || null,
           tournament_end_date: formData.endDate,
           tournament_user_limit: Number(formData.participantLimit),
-          tournament_status: ["completed", "cancelled"].includes(tournament.status as string)
+          tournament_status: ["concluded", "cancelled"].includes(tournament.status as string)
             ? tournament.status
             : newStatus,
           tournament_updated_at: new Date().toISOString(),
@@ -104,6 +126,7 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
         tournament_title: formData.title,
         tournament_genre: formData.category,
         tournament_start_date: formData.startDate,
+        tournament_s2_start_date: formData.stage2StartDate || null,
         tournament_end_date: formData.endDate,
         tournament_user_limit: Number(formData.participantLimit),
         tournament_participants: 0,
@@ -169,49 +192,73 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
               </label>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-[#48506b]">Start Date</span>
-                <div className="relative">
-                  <input
-                    ref={startDateRef}
-                    className="h-9 w-full rounded-sm border border-[#e5e7f2] bg-white px-3 pr-10 text-[15px] text-[#2a3148] outline-none [&::-webkit-calendar-picker-indicator]:opacity-0"
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => handleChange("startDate", e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    className="absolute top-1/2 right-3 -translate-y-1/2"
-                    onClick={() => (startDateRef.current as any)?.showPicker?.()}
-                  >
-                    <CalendarDays className="h-4 w-4 text-[#9aa3b8]" />
-                  </button>
-                </div>
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-[#48506b]">End Date</span>
-                <div className="relative">
-                  <input
-                    ref={endDateRef}
-                    className="h-9 w-full rounded-sm border border-[#e5e7f2] bg-white px-3 pr-10 text-[15px] text-[#2a3148] outline-none [&::-webkit-calendar-picker-indicator]:opacity-0"
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => handleChange("endDate", e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    className="absolute top-1/2 right-3 -translate-y-1/2"
-                    onClick={() => (endDateRef.current as any)?.showPicker?.()}
-                  >
-                    <CalendarDays className="h-4 w-4 text-[#9aa3b8]" />
-                  </button>
-                </div>
-              </label>
+            <div>
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-[#9aa0b8]">Stage Dates</p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-[#48506b]">Stage 1 Start</span>
+                  <div className="relative">
+                    <input
+                      ref={startDateRef}
+                      className="h-9 w-full rounded-sm border border-[#e5e7f2] bg-white px-3 pr-10 text-[15px] text-[#2a3148] outline-none [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => handleChange("startDate", e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      className="absolute top-1/2 right-3 -translate-y-1/2"
+                      onClick={() => (startDateRef.current as any)?.showPicker?.()}
+                    >
+                      <CalendarDays className="h-4 w-4 text-[#9aa3b8]" />
+                    </button>
+                  </div>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-[#48506b]">Stage 2 Start</span>
+                  <div className="relative">
+                    <input
+                      ref={stage2StartDateRef}
+                      className="h-9 w-full rounded-sm border border-[#e5e7f2] bg-white px-3 pr-10 text-[15px] text-[#2a3148] outline-none [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      type="date"
+                      value={formData.stage2StartDate}
+                      onChange={(e) => handleChange("stage2StartDate", e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      className="absolute top-1/2 right-3 -translate-y-1/2"
+                      onClick={() => (stage2StartDateRef.current as any)?.showPicker?.()}
+                    >
+                      <CalendarDays className="h-4 w-4 text-[#9aa3b8]" />
+                    </button>
+                  </div>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-[#48506b]">End Date</span>
+                  <div className="relative">
+                    <input
+                      ref={endDateRef}
+                      className="h-9 w-full rounded-sm border border-[#e5e7f2] bg-white px-3 pr-10 text-[15px] text-[#2a3148] outline-none [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => handleChange("endDate", e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      className="absolute top-1/2 right-3 -translate-y-1/2"
+                      onClick={() => (endDateRef.current as any)?.showPicker?.()}
+                    >
+                      <CalendarDays className="h-4 w-4 text-[#9aa3b8]" />
+                    </button>
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Clock, CheckCircle2, XCircle, Search, ChevronDown, Plus, Pencil } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Search, ChevronDown, Plus, Pencil, ChevronsRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -16,13 +16,14 @@ import {
 } from "@/components/ui/card";
 import CreateTournamentModal from "./CreateTournamentModal";
 
-type TournamentStatus = "active" | "completed" | "upcoming" | "cancelled";
+type TournamentStatus = "upcoming" | "stage1" | "stage2" | "concluded" | "cancelled";
 
 interface Tournament {
   id: string;
   title: string;
   category: string;
   startDate: string;
+  stage2StartDate: string;
   endDate: string;
   participants: number;
   participantLimit: number;
@@ -34,7 +35,7 @@ interface Tournament {
 async function getTournaments(): Promise<Tournament[]> {
   const { data, error } = await supabase
     .from("tournament")
-    .select("tournament_id, tournament_title, tournament_genre, tournament_start_date, tournament_end_date, tournament_participants, tournament_user_limit, tournament_status")
+    .select("tournament_id, tournament_title, tournament_genre, tournament_start_date, tournament_s2_start_date, tournament_end_date, tournament_participants, tournament_user_limit, tournament_status")
     .order("tournament_start_date", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -43,6 +44,7 @@ async function getTournaments(): Promise<Tournament[]> {
     title: row.tournament_title,
     category: row.tournament_genre,
     startDate: row.tournament_start_date,
+    stage2StartDate: row.tournament_s2_start_date ?? "",
     endDate: row.tournament_end_date,
     participants: row.tournament_participants,
     participantLimit: row.tournament_user_limit,
@@ -61,20 +63,25 @@ function formatDate(value: string): string {
 }
 
 const statusConfig: Record<TournamentStatus, { label: string; className: string; icon: React.ReactNode }> = {
-  active: {
-    label: "Active",
-    className: "bg-[#e6f9f0] text-[#1a8a55]",
-    icon: <Clock className="h-3.5 w-3.5" />,
-  },
-  completed: {
-    label: "Completed",
-    className: "bg-[#ede9fe] text-[#6d3ef0]",
-    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-  },
   upcoming: {
     label: "Upcoming",
     className: "bg-[#fff7e6] text-[#b97805]",
     icon: <Clock className="h-3.5 w-3.5" />,
+  },
+  stage1: {
+    label: "Stage 1",
+    className: "bg-[#e0f0ff] text-[#1565c0]",
+    icon: <ChevronsRight className="h-3.5 w-3.5" />,
+  },
+  stage2: {
+    label: "Stage 2",
+    className: "bg-[#ede9fe] text-[#6d3ef0]",
+    icon: <ChevronsRight className="h-3.5 w-3.5" />,
+  },
+  concluded: {
+    label: "Concluded",
+    className: "bg-[#e6f9f0] text-[#1a8a55]",
+    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
   },
   cancelled: {
     label: "Cancelled",
@@ -82,6 +89,23 @@ const statusConfig: Record<TournamentStatus, { label: string; className: string;
     icon: <XCircle className="h-3.5 w-3.5" />,
   },
 };
+
+const STATUS_ORDER: TournamentStatus[] = ["upcoming", "stage1", "stage2", "concluded"];
+
+function getNextStatus(status: TournamentStatus): TournamentStatus | null {
+  const idx = STATUS_ORDER.indexOf(status);
+  if (idx === -1 || idx === STATUS_ORDER.length - 1) return null;
+  return STATUS_ORDER[idx + 1];
+}
+
+function canAdvanceStatus(t: Tournament): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (t.status === "upcoming") return t.startDate ? today >= new Date(t.startDate) : false;
+  if (t.status === "stage1") return t.stage2StartDate ? today >= new Date(t.stage2StartDate) : false;
+  if (t.status === "stage2") return t.endDate ? today >= new Date(t.endDate) : false;
+  return false;
+}
 
 interface QueueItem {
   id: string;
@@ -138,6 +162,17 @@ const AdminTournamentsPage = () => {
   const openCreate = () => { setEditingTournament(null); setModalOpen(true); };
   const openEdit = (t: Tournament) => { setEditingTournament(t); setModalOpen(true); };
 
+  const handleAdvanceStatus = async (t: Tournament) => {
+    const next = getNextStatus(t.status);
+    if (!next) return;
+    const { error } = await supabase
+      .from("tournament")
+      .update({ tournament_status: next, tournament_updated_at: new Date().toISOString() })
+      .eq("tournament_id", t.id);
+    if (error) { setError(error.message); return; }
+    setTournaments((prev) => prev.map((x) => x.id === t.id ? { ...x, status: next } : x));
+  };
+
   useEffect(() => {
     setError(null);
     Promise.all([getTournaments(), getQueueItems()])
@@ -186,15 +221,15 @@ const AdminTournamentsPage = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 shrink-0">
-          {(["all", "active", "completed", "upcoming"] as const).map((s) => {
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 shrink-0">
+          {(["all", "upcoming", "stage1", "stage2", "concluded"] as const).map((s) => {
             const count = s === "all" ? tournaments.length : tournaments.filter((t) => t.status === s).length;
             const cfg = s === "all" ? null : statusConfig[s];
             return (
               <Card
                 key={s}
                 className={`cursor-pointer rounded-2xl border-[#ececf6] transition hover:shadow-md ${filterStatus === s ? "ring-2 ring-[#8b5cf6]" : ""}`}
-                onClick={() => setFilterStatus(s)}
+                onClick={() => setFilterStatus(s as TournamentStatus | "all")}
               >
                 <CardContent className="flex items-center justify-between p-4">
                   <div>
@@ -236,9 +271,10 @@ const AdminTournamentsPage = () => {
                   onChange={(e) => setFilterStatus(e.target.value as TournamentStatus | "all")}
                 >
                   <option value="all">All statuses</option>
-                  <option value="active">Active</option>
-                  <option value="completed">Completed</option>
                   <option value="upcoming">Upcoming</option>
+                  <option value="stage1">Stage 1</option>
+                  <option value="stage2">Stage 2</option>
+                  <option value="concluded">Concluded</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 text-[#9aa3b8]" />
@@ -267,7 +303,7 @@ const AdminTournamentsPage = () => {
                       </tr>
                     ) : (
                       filtered.map((t, i) => {
-                        const cfg = statusConfig[t.status];
+                        const cfg = statusConfig[t.status] ?? { label: t.status, className: "bg-[#f0f1f7] text-[#6b7490]", icon: null };
                         return (
                           <tr
                             key={t.id}
@@ -283,15 +319,28 @@ const AdminTournamentsPage = () => {
                               </span>
                             </td>
                             <td className="px-4 py-4">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="rounded-full border-[#e5e7f2] text-[#6b7490] hover:border-[#8b5cf6] hover:text-[#8b5cf6]"
-                                onClick={() => openEdit(t)}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                                Edit
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                {canAdvanceStatus(t) && (
+                                  <Button
+                                    size="sm"
+                                    className="rounded-full bg-[linear-gradient(135deg,#8b5cf6_0%,#6d3ef0_100%)] text-white"
+                                    onClick={() => handleAdvanceStatus(t)}
+                                    title={`Advance to ${statusConfig[getNextStatus(t.status)!]?.label}`}
+                                  >
+                                    <ChevronsRight className="h-3.5 w-3.5" />
+                                    {statusConfig[getNextStatus(t.status)!]?.label}
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="rounded-full border-[#e5e7f2] text-[#6b7490] hover:border-[#8b5cf6] hover:text-[#8b5cf6]"
+                                  onClick={() => openEdit(t)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  Edit
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -375,6 +424,7 @@ const AdminTournamentsPage = () => {
           title: editingTournament.title,
           category: editingTournament.category,
           startDate: editingTournament.startDate,
+          stage2StartDate: editingTournament.stage2StartDate,
           endDate: editingTournament.endDate,
           participantLimit: editingTournament.participantLimit,
           status: editingTournament.status,

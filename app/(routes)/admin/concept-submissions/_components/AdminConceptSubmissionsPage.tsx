@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CheckCircle2,
   XCircle,
@@ -17,109 +17,118 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardAction,
 } from "@/components/ui/card";
+import { supabase } from "@/lib/supabase";
+import ReviewModal, {
+  type Submission,
+  type SubmissionStatus,
+  statusConfig,
+  detectBadWords,
+} from "./ReviewModal";
 
-// Simple bad-word list — extend as needed
-const BAD_WORDS = ["badword1", "badword2", "offensive", "inappropriate", "hate", "stupid", "dumb", "idiot"];
+async function fetchSubmissions(): Promise<Submission[]> {
+  const { data: subs, error: subsError } = await supabase
+    .from("tournament_submission")
+    .select("tournamentsub_id, tournamentsub_status, tournamentsub_likes, tournamentsub_created_at, concept_id, tournament_id")
+    .order("tournamentsub_created_at", { ascending: false });
 
-function detectBadWords(text: string): string[] {
-  const lower = text.toLowerCase();
-  return BAD_WORDS.filter((w) => lower.includes(w));
+  if (subsError) throw new Error(subsError.message);
+  if (!subs || subs.length === 0) return [];
+
+  const conceptIds = [...new Set(subs.map((s: any) => s.concept_id))];
+  const tournamentIds = [...new Set(subs.map((s: any) => s.tournament_id))];
+
+  const [{ data: concepts, error: conceptsError }, { data: tournaments, error: tournamentsError }] = await Promise.all([
+    supabase
+      .from("concept")
+      .select("concept_id, concept_title, concept_description, concept_genre, user_id")
+      .in("concept_id", conceptIds),
+    supabase
+      .from("tournament")
+      .select("tournament_id, tournament_title")
+      .in("tournament_id", tournamentIds),
+  ]);
+
+  if (conceptsError) throw new Error(conceptsError.message);
+  if (tournamentsError) throw new Error(tournamentsError.message);
+
+  const userIds = [...new Set((concepts ?? []).map((c: any) => c.user_id).filter(Boolean))];
+  let usersMap = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: users } = await supabase
+      .from("users")
+      .select("user_id, user_firstname, user_lastname")
+      .in("user_id", userIds);
+    if (users) {
+      usersMap = new Map(users.map((u: any) => [u.user_id, `${u.user_firstname} ${u.user_lastname}`.trim()]));
+    }
+  }
+
+  const conceptMap = new Map((concepts ?? []).map((c: any) => [c.concept_id, c]));
+  const tournamentMap = new Map((tournaments ?? []).map((t: any) => [t.tournament_id, t]));
+
+  return subs.map((row: any) => {
+    const concept = conceptMap.get(row.concept_id);
+    const tournament = tournamentMap.get(row.tournament_id);
+    return {
+      submissionId: row.tournamentsub_id,
+      conceptId: row.concept_id,
+      author: usersMap.get(concept?.user_id) ?? "Unknown",
+      tournament: tournament?.tournament_title ?? "Unknown Tournament",
+      title: concept?.concept_title ?? "Untitled",
+      category: concept?.concept_genre ?? "—",
+      description: concept?.concept_description ?? "",
+      submittedAt: row.tournamentsub_created_at?.slice(0, 10) ?? "",
+      status: row.tournamentsub_status as SubmissionStatus,
+      likes: row.tournamentsub_likes ?? 0,
+    };
+  });
 }
 
-type SubmissionStatus = "pending" | "approved" | "rejected";
-
-interface Submission {
-  id: string;
-  author: string;
-  tournament: string;
-  title: string;
-  category: string;
-  description: string;
-  submittedAt: string;
-  status: SubmissionStatus;
-}
-
-const initialSubmissions: Submission[] = [
-  {
-    id: "1",
-    author: "Jordan Lee",
-    tournament: "Origami Geometry Sprint",
-    title: "Neon Reactions: Safe at Home",
-    category: "Chemistry",
-    description: "A tactile approach to learning chemical changes and safety through simple experiments.",
-    submittedAt: "2026-04-11",
-    status: "pending",
-  },
-  {
-    id: "2",
-    author: "Mia Torres",
-    tournament: "Origami Geometry Sprint",
-    title: "The Kinetic Engine: A Visual Guide",
-    category: "Physics",
-    description: "Visualizing movement through friction, force, and balance using everyday objects.",
-    submittedAt: "2026-04-11",
-    status: "approved",
-  },
-  {
-    id: "3",
-    author: "Alex Kim",
-    tournament: "Origami Geometry Sprint",
-    title: "Proving Theorems Through Folds",
-    category: "Mathematics",
-    description: "Proving geometry theorems through the art of folds, symmetry, and proof.",
-    submittedAt: "2026-04-12",
-    status: "pending",
-  },
-  {
-    id: "4",
-    author: "Sam Reyes",
-    tournament: "Origami Geometry Sprint",
-    title: "This is a stupid and inappropriate idea",
-    category: "Biology",
-    description: "Some offensive content that includes hate speech and dumb arguments.",
-    submittedAt: "2026-04-12",
-    status: "pending",
-  },
-  {
-    id: "5",
-    author: "Taylor Brown",
-    tournament: "Kinetic Forces Challenge",
-    title: "Applied Forces in Everyday Life",
-    category: "Physics",
-    description: "Exploring how Newton's laws manifest in sports, vehicles, and household items.",
-    submittedAt: "2026-03-11",
-    status: "rejected",
-  },
-];
-
-const statusConfig: Record<SubmissionStatus, { label: string; className: string; icon: React.ReactNode }> = {
-  pending: {
-    label: "Pending",
-    className: "bg-[#fff7e6] text-[#b97805]",
-    icon: <AlertTriangle className="h-3.5 w-3.5" />,
-  },
-  approved: {
-    label: "Approved",
-    className: "bg-[#e6f9f0] text-[#1a8a55]",
-    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-  },
-  rejected: {
-    label: "Rejected",
-    className: "bg-[#fde8ec] text-[#c0314e]",
-    icon: <XCircle className="h-3.5 w-3.5" />,
-  },
-};
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 const AdminConceptSubmissionsPage = () => {
-  const [submissions, setSubmissions] = useState<Submission[]>(initialSubmissions);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<SubmissionStatus | "all" | "flagged">("all");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState<Submission | null>(null);
 
-  const setStatus = (id: string, status: SubmissionStatus) => {
-    setSubmissions((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+  useEffect(() => {
+    setError(null);
+    fetchSubmissions()
+      .then(setSubmissions)
+      .catch((err: Error) => setError(err.message));
+  }, []);
+
+  const handleAction = async (submissionId: string, status: "approved" | "rejected") => {
+    const submission = submissions.find((s) => s.submissionId === submissionId);
+
+    const { error: subError } = await supabase
+      .from("tournament_submission")
+      .update({ tournamentsub_status: status, tournamentsub_updated_at: new Date().toISOString() })
+      .eq("tournamentsub_id", submissionId);
+    if (subError) { setError(subError.message); return; }
+
+    if (submission) {
+      if (status === "approved") {
+        const { error: conceptError } = await supabase
+          .from("concept")
+          .update({ concept_reviewed_at: new Date().toISOString(), concept_status: "active" })
+          .eq("concept_id", submission.conceptId);
+        if (conceptError) { setError(conceptError.message); return; }
+      } else {
+        const { error: conceptError } = await supabase
+          .from("concept")
+          .update({ concept_status: "inactive" })
+          .eq("concept_id", submission.conceptId);
+        if (conceptError) { setError(conceptError.message); return; }
+      }
+    }
+
+    setSubmissions((prev) =>
+      prev.map((s) => (s.submissionId === submissionId ? { ...s, status } : s))
+    );
   };
 
   const filtered = submissions.filter((s) => {
@@ -147,6 +156,7 @@ const AdminConceptSubmissionsPage = () => {
           <p className="mt-3 text-base leading-7 text-[#8088a0]">
             Review, approve, or reject submitted concepts. Flagged content is automatically highlighted.
           </p>
+          {error && <p className="mt-1 text-sm text-[#c0314e]">Failed to load: {error}</p>}
         </div>
 
         {/* Stats */}
@@ -221,11 +231,9 @@ const AdminConceptSubmissionsPage = () => {
             filtered.map((s) => {
               const flags = detectBadWords(s.title + " " + s.description);
               const cfg = statusConfig[s.status];
-              const isExpanded = expandedId === s.id;
-
               return (
                 <Card
-                  key={s.id}
+                  key={s.submissionId}
                   className={`rounded-2xl border-[#ececf6] gap-0 py-0 transition ${flags.length > 0 ? "border-[#f5b8c4] bg-[#fffbfb]" : ""}`}
                 >
                   <CardHeader className="p-5 pb-0">
@@ -237,9 +245,8 @@ const AdminConceptSubmissionsPage = () => {
                             Flagged: {flags.join(", ")}
                           </span>
                         )}
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-bold ${cfg.className}`}>
-                          {cfg.icon}
-                          {cfg.label}
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-bold ${cfg?.className}`}>
+                          {cfg?.icon}{cfg?.label}
                         </span>
                       </div>
                       <CardTitle className="text-lg font-black tracking-[-0.02em] text-[#1d2436]">
@@ -250,40 +257,36 @@ const AdminConceptSubmissionsPage = () => {
                       </CardDescription>
                     </div>
                   </CardHeader>
-
                   <CardContent className="p-5">
-                    {isExpanded && (
-                      <p className="mb-4 text-sm leading-6 text-[#5a637a]">{s.description}</p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-3">
-                      <button
-                        onClick={() => setExpandedId(isExpanded ? null : s.id)}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-[#8b5cf6] hover:opacity-75"
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full border-[#e5e7f2] text-[#6b7490] hover:border-[#8b5cf6] hover:text-[#8b5cf6]"
+                        onClick={() => setReviewing(s)}
                       >
                         <Eye className="h-3.5 w-3.5" />
-                        {isExpanded ? "Hide description" : "View description"}
-                      </button>
-                      <div className="ml-auto flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-full border-[#f5b8c4] text-[#c0314e] hover:bg-[#fde8ec]"
-                          onClick={() => setStatus(s.id, "rejected")}
-                          disabled={s.status === "rejected"}
-                        >
-                          <XCircle className="h-3.5 w-3.5" />
-                          Reject
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="rounded-full bg-[#1a8a55] text-white hover:bg-[#156e44]"
-                          onClick={() => setStatus(s.id, "approved")}
-                          disabled={s.status === "approved"}
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Approve
-                        </Button>
-                      </div>
+                        Review
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full border-[#f5b8c4] text-[#c0314e] hover:bg-[#fde8ec]"
+                        onClick={() => handleAction(s.submissionId, "rejected")}
+                        disabled={s.status === "rejected"}
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        Reject
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="rounded-full bg-[#1a8a55] text-white hover:bg-[#156e44]"
+                        onClick={() => handleAction(s.submissionId, "approved")}
+                        disabled={s.status === "approved"}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Approve
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -292,6 +295,14 @@ const AdminConceptSubmissionsPage = () => {
           )}
         </div>
       </div>
+
+      {reviewing && (
+        <ReviewModal
+          submission={reviewing}
+          onClose={() => setReviewing(null)}
+          onAction={handleAction}
+        />
+      )}
     </div>
   );
 };

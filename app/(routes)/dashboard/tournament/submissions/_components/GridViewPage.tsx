@@ -22,12 +22,19 @@ const GridViewPage = () => {
 
   const BookCard = (props:BookCardProps) => {
     const [ isLiked, setIsLiked ] = useState(false);
+    const [ isProcessing, setisProcessing ] = useState(false);
 
-    function handleClickLike(e: React.MouseEvent) {
+    async function handleClickLike(e: React.MouseEvent) {
       e.stopPropagation();
+
+      if(isProcessing) return;
+
+      setisProcessing(true);
       const nextLiked = !isLiked;
       setIsLiked(nextLiked);
-      {nextLiked ? updateLikes(props.tournamentsub_id, true) : updateLikes(props.tournamentsub_id, false)}
+
+      await updateLikes(props.tournamentsub_id, nextLiked);
+      setisProcessing(false);
     }
 
     return (

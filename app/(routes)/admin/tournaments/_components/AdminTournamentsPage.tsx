@@ -107,16 +107,26 @@ async function autoAdvanceTournaments(tournaments: Tournament[]): Promise<Tourna
 
   if (toUpdate.length === 0) return tournaments;
 
-  await Promise.all(
+  const results = await Promise.all(
     toUpdate.map(({ t, correct }) =>
       supabase
         .from("tournament")
         .update({ tournament_status: correct, tournament_updated_at: new Date().toISOString() })
         .eq("tournament_id", t.id)
+        .then(({ error }) => ({ id: t.id, correct, error }))
     )
   );
 
+  const failed = results.filter((r) => r.error);
+  if (failed.length > 0) {
+    throw new Error(
+      `Failed to sync ${failed.length} tournament(s): ${failed.map((r) => r.error!.message).join("; ")}`
+    );
+  }
+
+  const succeededIds = new Set(results.map((r) => r.id));
   return tournaments.map((t) => {
+    if (!succeededIds.has(t.id)) return t;
     const found = toUpdate.find(({ t: u }) => u.id === t.id);
     return found ? { ...t, status: found.correct } : t;
   });
@@ -173,6 +183,7 @@ const AdminTournamentsPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [syncing, setSyncing] = useState(false);
 
   const openCreate = () => { setEditingTournament(null); setModalOpen(true); };
   const openEdit = (t: Tournament) => { setEditingTournament(t); setModalOpen(true); };
@@ -180,13 +191,25 @@ const AdminTournamentsPage = () => {
   useEffect(() => {
     setError(null);
     Promise.all([getTournaments(), getQueueItems()])
-      .then(async ([t, q]) => {
-        const updated = await autoAdvanceTournaments(t);
-        setTournaments(updated);
+      .then(([t, q]) => {
+        setTournaments(t);
         setQueue(q);
       })
       .catch((err: Error) => setError(err.message));
   }, [modalOpen]);
+
+  const handleSyncStatuses = async () => {
+    setSyncing(true);
+    setError(null);
+    try {
+      const updated = await autoAdvanceTournaments(tournaments);
+      setTournaments(updated);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to sync statuses.");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleQueueAction = async (item: QueueItem, action: "approved" | "rejected") => {
     const { error } = await supabase
@@ -219,13 +242,23 @@ const AdminTournamentsPage = () => {
               <p className="mt-1 text-sm text-[#c0314e]">Failed to load: {error}</p>
             )}
           </div>
-          <Button
-            className="shrink-0 rounded-sm bg-[linear-gradient(135deg,#8b5cf6_0%,#6d3ef0_100%)] px-6 text-white"
-            onClick={() => openCreate()}
-          >
-            <Plus className="h-4 w-4" />
-            Create Tournament
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              className="rounded-sm border-[#ececf6] text-[#48506b]"
+              onClick={handleSyncStatuses}
+              disabled={syncing}
+            >
+              {syncing ? "Syncing…" : "Sync Statuses"}
+            </Button>
+            <Button
+              className="rounded-sm bg-[linear-gradient(135deg,#8b5cf6_0%,#6d3ef0_100%)] px-6 text-white"
+              onClick={() => openCreate()}
+            >
+              <Plus className="h-4 w-4" />
+              Create Tournament
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}

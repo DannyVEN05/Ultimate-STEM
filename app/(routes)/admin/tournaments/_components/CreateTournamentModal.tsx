@@ -5,6 +5,7 @@ import { CalendarDays, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
+import { profanity } from "@2toad/profanity";
 import {
   Dialog,
   DialogContent,
@@ -69,6 +70,17 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
     e.preventDefault();
     setSubmitState("submitting");
     setSubmitError(null);
+
+    if (profanity.exists(formData.title)) {
+      setSubmitError("Tournament title contains inappropriate language.");
+      setSubmitState("error");
+      return;
+    }
+    if (profanity.exists(formData.category)) {
+      setSubmitError("Category contains inappropriate language.");
+      setSubmitState("error");
+      return;
+    }
 
     if (formData.endDate && formData.startDate && formData.endDate < formData.startDate) {
       setSubmitError("End date must be on or after the start date.");

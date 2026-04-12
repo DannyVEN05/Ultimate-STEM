@@ -17,7 +17,6 @@
     "konva": "^10.2.3",
     "lucide-react": "^0.577.0",
     "next": "^16.2.1",
-    "profane-words": "^2.1.0",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",

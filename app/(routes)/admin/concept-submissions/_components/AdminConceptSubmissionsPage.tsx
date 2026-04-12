@@ -56,7 +56,7 @@ async function fetchSubmissions(): Promise<Submission[]> {
   let usersMap = new Map<string, string>();
   if (userIds.length > 0) {
     const { data: users } = await supabase
-      .from("users")
+      .from("user")
       .select("user_id, user_firstname, user_lastname")
       .in("user_id", userIds);
     if (users) {
@@ -111,18 +111,23 @@ const AdminConceptSubmissionsPage = () => {
     if (subError) { setError(subError.message); return; }
 
     if (submission) {
-      if (status === "approved") {
-        const { error: conceptError } = await supabase
-          .from("concept")
-          .update({ concept_reviewed_at: new Date().toISOString(), concept_status: "active" })
-          .eq("concept_id", submission.conceptId);
-        if (conceptError) { setError(conceptError.message); return; }
-      } else {
-        const { error: conceptError } = await supabase
-          .from("concept")
-          .update({ concept_status: "inactive" })
-          .eq("concept_id", submission.conceptId);
-        if (conceptError) { setError(conceptError.message); return; }
+      const conceptUpdate = status === "approved"
+        ? { concept_reviewed_at: new Date().toISOString(), concept_status: "active" }
+        : { concept_status: "inactive" };
+
+      const { error: conceptError } = await supabase
+        .from("concept")
+        .update(conceptUpdate)
+        .eq("concept_id", submission.conceptId);
+
+      if (conceptError) {
+        // Roll back the submission status update to keep both records consistent
+        await supabase
+          .from("tournament_submission")
+          .update({ tournamentsub_status: submission.status, tournamentsub_updated_at: new Date().toISOString() })
+          .eq("tournamentsub_id", submissionId);
+        setError(`Concept update failed (submission rolled back): ${conceptError.message}`);
+        return;
       }
     }
 

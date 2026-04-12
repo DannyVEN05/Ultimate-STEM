@@ -109,7 +109,7 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
           tournament_s2_start_date: formData.stage2StartDate || null,
           tournament_end_date: formData.endDate,
           tournament_user_limit: Number(formData.participantLimit),
-          tournament_status: ["concluded", "cancelled"].includes(tournament.status as string)
+          tournament_status: ["concluded", "cancelled", "terminated"].includes(tournament.status as string)
             ? tournament.status
             : newStatus,
           tournament_updated_at: new Date().toISOString(),

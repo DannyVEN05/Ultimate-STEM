@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Clock, CheckCircle2, XCircle, Search, ChevronDown, Plus, Pencil, ChevronsRight } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Search, ChevronDown, Plus, Pencil, ChevronsRight, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -14,9 +14,17 @@ import {
   CardDescription,
   CardFooter,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import CreateTournamentModal from "./CreateTournamentModal";
 
-type TournamentStatus = "upcoming" | "stage1" | "stage2" | "concluded" | "cancelled";
+type TournamentStatus = "upcoming" | "stage1" | "stage2" | "concluded" | "cancelled" | "terminated";
 
 interface Tournament {
   id: string;
@@ -88,6 +96,11 @@ const statusConfig: Record<TournamentStatus, { label: string; className: string;
     className: "bg-[#fde8ec] text-[#c0314e]",
     icon: <XCircle className="h-3.5 w-3.5" />,
   },
+  terminated: {
+    label: "Terminated",
+    className: "bg-[#f0f1f7] text-[#4b5563]",
+    icon: <Ban className="h-3.5 w-3.5" />,
+  },
 };
 
 const STATUS_ORDER: TournamentStatus[] = ["upcoming", "stage1", "stage2", "concluded"];
@@ -99,6 +112,7 @@ function getNextStatus(status: TournamentStatus): TournamentStatus | null {
 }
 
 function canAdvanceStatus(t: Tournament): boolean {
+  if (t.status === "cancelled" || t.status === "terminated") return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   if (t.status === "upcoming") return t.startDate ? today >= new Date(t.startDate) : false;
@@ -158,9 +172,39 @@ const AdminTournamentsPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [terminatingId, setTerminatingId] = useState<string | null>(null);
 
   const openCreate = () => { setEditingTournament(null); setModalOpen(true); };
   const openEdit = (t: Tournament) => { setEditingTournament(t); setModalOpen(true); };
+
+  const handleTerminate = async (t: Tournament) => {
+    setError(null);
+    // 1. Terminate the tournament
+    const { error: tErr } = await supabase
+      .from("tournament")
+      .update({ tournament_status: "terminated", tournament_updated_at: new Date().toISOString() })
+      .eq("tournament_id", t.id);
+    if (tErr) { setError(tErr.message); setTerminatingId(null); return; }
+
+    // 2. Terminate all submissions for this tournament
+    const { error: sErr } = await supabase
+      .from("tournament_submission")
+      .update({ tournamentsub_status: "terminated", tournamentsub_updated_at: new Date().toISOString() })
+      .eq("tournament_id", t.id);
+    if (sErr) {
+      // Roll back tournament status
+      await supabase
+        .from("tournament")
+        .update({ tournament_status: t.status, tournament_updated_at: new Date().toISOString() })
+        .eq("tournament_id", t.id);
+      setError(`Failed to terminate submissions (tournament rolled back): ${sErr.message}`);
+      setTerminatingId(null);
+      return;
+    }
+
+    setTournaments((prev) => prev.map((x) => x.id === t.id ? { ...x, status: "terminated" } : x));
+    setTerminatingId(null);
+  };
 
   const handleAdvanceStatus = async (t: Tournament) => {
     const next = getNextStatus(t.status);
@@ -276,6 +320,7 @@ const AdminTournamentsPage = () => {
                   <option value="stage2">Stage 2</option>
                   <option value="concluded">Concluded</option>
                   <option value="cancelled">Cancelled</option>
+                  <option value="terminated">Terminated</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 text-[#9aa3b8]" />
               </div>
@@ -336,10 +381,22 @@ const AdminTournamentsPage = () => {
                                   variant="outline"
                                   className="rounded-full border-[#e5e7f2] text-[#6b7490] hover:border-[#8b5cf6] hover:text-[#8b5cf6]"
                                   onClick={() => openEdit(t)}
+                                  disabled={t.status === "terminated"}
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                   Edit
                                 </Button>
+                                {t.status !== "terminated" && t.status !== "concluded" && t.status !== "cancelled" && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="rounded-full border-[#e5e7f2] text-[#6b7490] hover:border-[#4b5563] hover:text-[#4b5563]"
+                                    onClick={() => setTerminatingId(t.id)}
+                                  >
+                                    <Ban className="h-3.5 w-3.5" />
+                                    Terminate
+                                  </Button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -430,6 +487,41 @@ const AdminTournamentsPage = () => {
           status: editingTournament.status,
         } : undefined}
       />
+
+      {/* Terminate confirmation dialog */}
+      <Dialog open={!!terminatingId} onOpenChange={(open) => { if (!open) setTerminatingId(null); }}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#1d2436]">Terminate Tournament?</DialogTitle>
+            <DialogDescription className="text-[#8088a0]">
+              This will permanently terminate{" "}
+              <span className="font-semibold text-[#1d2436]">
+                {tournaments.find((t) => t.id === terminatingId)?.title ?? "this tournament"}
+              </span>{" "}
+              and all its submissions. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              className="rounded-full border-[#e5e7f2] text-[#6b7490]"
+              onClick={() => setTerminatingId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="rounded-full bg-[#4b5563] text-white hover:bg-[#374151]"
+              onClick={() => {
+                const t = tournaments.find((x) => x.id === terminatingId);
+                if (t) handleTerminate(t);
+              }}
+            >
+              <Ban className="h-3.5 w-3.5" />
+              Yes, Terminate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

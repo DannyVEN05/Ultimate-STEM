@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import CreateTournamentModal from "./CreateTournamentModal";
 
-type TournamentStatus = "upcoming" | "stage1" | "stage2" | "concluded" | "cancelled" | "terminated";
+type TournamentStatus = "upcoming" | "stage1" | "stage2" | "concluded" | "terminated";
 
 interface Tournament {
   id: string;
@@ -91,11 +91,6 @@ const statusConfig: Record<TournamentStatus, { label: string; className: string;
     className: "bg-[#e6f9f0] text-[#1a8a55]",
     icon: <CheckCircle2 className="h-3.5 w-3.5" />,
   },
-  cancelled: {
-    label: "Cancelled",
-    className: "bg-[#fde8ec] text-[#c0314e]",
-    icon: <XCircle className="h-3.5 w-3.5" />,
-  },
   terminated: {
     label: "Terminated",
     className: "bg-[#f0f1f7] text-[#4b5563]",
@@ -112,7 +107,7 @@ function getNextStatus(status: TournamentStatus): TournamentStatus | null {
 }
 
 function canAdvanceStatus(t: Tournament): boolean {
-  if (t.status === "cancelled" || t.status === "terminated") return false;
+  if (t.status === "terminated") return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   if (t.status === "upcoming") return t.startDate ? today >= new Date(t.startDate) : false;
@@ -173,18 +168,21 @@ const AdminTournamentsPage = () => {
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [terminatingId, setTerminatingId] = useState<string | null>(null);
+  const [isTerminating, setIsTerminating] = useState(false);
 
   const openCreate = () => { setEditingTournament(null); setModalOpen(true); };
   const openEdit = (t: Tournament) => { setEditingTournament(t); setModalOpen(true); };
 
   const handleTerminate = async (t: Tournament) => {
     setError(null);
+    setIsTerminating(true);
+    setTerminatingId(null); // close dialog immediately
     // 1. Terminate the tournament
     const { error: tErr } = await supabase
       .from("tournament")
       .update({ tournament_status: "terminated", tournament_updated_at: new Date().toISOString() })
       .eq("tournament_id", t.id);
-    if (tErr) { setError(tErr.message); setTerminatingId(null); return; }
+    if (tErr) { setError(tErr.message); setIsTerminating(false); return; }
 
     // 2. Terminate all submissions for this tournament
     const { error: sErr } = await supabase
@@ -198,12 +196,16 @@ const AdminTournamentsPage = () => {
         .update({ tournament_status: t.status, tournament_updated_at: new Date().toISOString() })
         .eq("tournament_id", t.id);
       setError(`Failed to terminate submissions (tournament rolled back): ${sErr.message}`);
-      setTerminatingId(null);
+      setIsTerminating(false);
       return;
     }
 
     setTournaments((prev) => prev.map((x) => x.id === t.id ? { ...x, status: "terminated" } : x));
-    setTerminatingId(null);
+    // Refetch queue so terminated submissions are no longer shown
+    getQueueItems()
+      .then(setQueue)
+      .catch(() => { /* non-critical; queue will refresh on next page interaction */ });
+    setIsTerminating(false);
   };
 
   const handleAdvanceStatus = async (t: Tournament) => {
@@ -319,7 +321,6 @@ const AdminTournamentsPage = () => {
                   <option value="stage1">Stage 1</option>
                   <option value="stage2">Stage 2</option>
                   <option value="concluded">Concluded</option>
-                  <option value="cancelled">Cancelled</option>
                   <option value="terminated">Terminated</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 text-[#9aa3b8]" />
@@ -386,7 +387,7 @@ const AdminTournamentsPage = () => {
                                   <Pencil className="h-3.5 w-3.5" />
                                   Edit
                                 </Button>
-                                {t.status !== "terminated" && t.status !== "concluded" && t.status !== "cancelled" && (
+                                {t.status !== "terminated" && t.status !== "concluded" && (
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -489,7 +490,7 @@ const AdminTournamentsPage = () => {
       />
 
       {/* Terminate confirmation dialog */}
-      <Dialog open={!!terminatingId} onOpenChange={(open) => { if (!open) setTerminatingId(null); }}>
+      <Dialog open={!!terminatingId} onOpenChange={(open) => { if (!open && !isTerminating) setTerminatingId(null); }}>
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-[#1d2436]">Terminate Tournament?</DialogTitle>
@@ -506,11 +507,13 @@ const AdminTournamentsPage = () => {
               variant="outline"
               className="rounded-full border-[#e5e7f2] text-[#6b7490]"
               onClick={() => setTerminatingId(null)}
+              disabled={isTerminating}
             >
               Cancel
             </Button>
             <Button
               className="rounded-full bg-[#4b5563] text-white hover:bg-[#374151]"
+              disabled={isTerminating}
               onClick={() => {
                 const t = tournaments.find((x) => x.id === terminatingId);
                 if (t) handleTerminate(t);

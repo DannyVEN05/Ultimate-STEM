@@ -20,7 +20,7 @@ const AppLayout: React.FC<Props> = ({
   const { isLoading } = useContext(AuthContext);
 
   return (
-    <div className="h-dvh flex flex-col overflow-hidden">
+    <div className="h-dvh flex flex-col overflow-hidden cursor-default">
 
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">

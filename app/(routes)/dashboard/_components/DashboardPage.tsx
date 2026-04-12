@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import AuthContext from "@/app/_context/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { Bell, FlaskConical, Zap, BookOpen, Mail } from "lucide-react";
+import { getCategoryEmoji, getCategoryBg } from "@/app/_utilities/categoryUtils";
 
 type TournamentStatus = "upcoming" | "stage1" | "stage2" | "concluded" | "cancelled";
 
@@ -19,46 +20,13 @@ interface Tournament {
   status: TournamentStatus;
 }
 
-function useCountdown(targetDate: string | null) {
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0 });
-  useEffect(() => {
-    if (!targetDate) return;
-    const calc = () => {
-      const diff = new Date(targetDate).getTime() - Date.now();
-      if (diff <= 0) { setTimeLeft({ days: 0, hours: 0 }); return; }
-      setTimeLeft({
-        days: Math.floor(diff / 86400000),
-        hours: Math.floor((diff % 86400000) / 3600000),
-      });
-    };
-    calc();
-    const id = setInterval(calc, 60000);
-    return () => clearInterval(id);
-  }, [targetDate]);
-  return timeLeft;
-}
-
-function getCategoryIcon(category: string): string {
-  const c = category.toLowerCase();
-  if (c.includes("hydro") || c.includes("water") || c.includes("fluid")) return "💧";
-  if (c.includes("bot") || c.includes("robot") || c.includes("code")) return "🤖";
-  if (c.includes("chem")) return "⚗️";
-  if (c.includes("phys") || c.includes("solar") || c.includes("light")) return "⚡";
-  if (c.includes("math")) return "📐";
-  if (c.includes("geo") || c.includes("earth")) return "🌍";
-  if (c.includes("bio")) return "🧬";
-  return "🔬";
-}
-
-function getCategoryBg(category: string): string {
-  const c = category.toLowerCase();
-  if (c.includes("hydro") || c.includes("water")) return "bg-blue-500";
-  if (c.includes("bot") || c.includes("robot") || c.includes("code")) return "bg-orange-500";
-  if (c.includes("chem")) return "bg-green-500";
-  if (c.includes("phys") || c.includes("solar")) return "bg-yellow-500";
-  if (c.includes("math")) return "bg-pink-500";
-  if (c.includes("geo")) return "bg-teal-500";
-  return "bg-purple-600";
+function getCountdown(targetDate: string, now: number): { days: number; hours: number } {
+  const diff = new Date(targetDate).getTime() - now;
+  if (diff <= 0) return { days: 0, hours: 0 };
+  return {
+    days: Math.floor(diff / 86400000),
+    hours: Math.floor((diff % 86400000) / 3600000),
+  };
 }
 
 function capacityPct(t: Tournament) {
@@ -78,13 +46,14 @@ const CHAMPION_EMOJIS = ["🏗️", "🤖", "🔍", "⚗️", "🌿", "⚡"];
 
 interface UpcomingCardProps {
   t: Tournament;
+  now: number;
   isNotified: boolean;
   isNotifying: boolean;
   onNotify: (id: string) => void;
 }
 
-function UpcomingCard({ t, isNotified, isNotifying, onNotify }: UpcomingCardProps) {
-  const countdown = useCountdown(t.startDate);
+function UpcomingCard({ t, now, isNotified, isNotifying, onNotify }: UpcomingCardProps) {
+  const countdown = getCountdown(t.startDate, now);
   return (
     <div className="rounded-xl bg-green-50 border border-green-100 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
       <div className="flex-1 space-y-1 min-w-0">
@@ -132,8 +101,15 @@ const DashboardPage = () => {
   const { user } = useContext(AuthContext);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [notifiedIds, setNotifiedIds] = useState<Set<string>>(new Set());
   const [notifyingId, setNotifyingId] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   const active = tournaments.filter(t => t.status === "stage1" || t.status === "stage2");
   const upcoming = tournaments.filter(t => t.status === "upcoming");
@@ -145,8 +121,10 @@ const DashboardPage = () => {
       .select("tournament_id, tournament_title, tournament_genre, tournament_start_date, tournament_end_date, tournament_user_limit, tournament_status, tournament_submission(count)")
       .in("tournament_status", ["stage1", "stage2", "upcoming", "concluded"])
       .order("tournament_start_date", { ascending: false })
-      .then(({ data }) => {
-        if (data) {
+      .then(({ data, error: err }) => {
+        if (err) {
+          setError(err.message);
+        } else if (data) {
           setTournaments(data.map((row: any) => ({
             id: String(row.tournament_id),
             title: row.tournament_title,
@@ -168,8 +146,12 @@ const DashboardPage = () => {
       .from("expression_of_interest")
       .select("tournament_id")
       .eq("user_id", user.user_id)
-      .then(({ data }) => {
-        if (data) setNotifiedIds(new Set(data.map((r: any) => String(r.tournament_id))));
+      .then(({ data, error: err }) => {
+        if (err) {
+          console.error("expression_of_interest fetch failed:", err.message);
+        } else if (data) {
+          setNotifiedIds(new Set(data.map((r: any) => String(r.tournament_id))));
+        }
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -195,6 +177,11 @@ const DashboardPage = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10 space-y-16">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       {/* ── HERO ─────────────────────────────────────────────────── */}
       <section className="flex flex-col lg:flex-row gap-10 items-center">
@@ -295,7 +282,7 @@ const DashboardPage = () => {
               {active.slice(1, 3).map(t => (
                 <div key={t.id} className="rounded-xl border border-gray-100 bg-white p-4 flex flex-col gap-3 shadow-sm">
                   <div className={`h-9 w-9 rounded-xl ${getCategoryBg(t.category)} flex items-center justify-center text-lg`}>
-                    {getCategoryIcon(t.category)}
+                    {getCategoryEmoji(t.category)}
                   </div>
                   <div>
                     <p className="font-bold text-gray-800 text-sm">{t.title}</p>
@@ -334,6 +321,7 @@ const DashboardPage = () => {
               <UpcomingCard
                 key={t.id}
                 t={t}
+                now={now}
                 isNotified={notifiedIds.has(t.id)}
                 isNotifying={notifyingId === t.id}
                 onNotify={handleNotifyMe}
@@ -375,8 +363,9 @@ const DashboardPage = () => {
             ))}
 
             {/* Discover More */}
-            <div
-              className="rounded-xl border-2 border-dashed border-gray-200 p-6 flex flex-col items-center justify-center gap-3 text-center cursor-pointer hover:border-primary/40 transition-colors min-h-[200px]"
+            <button
+              type="button"
+              className="rounded-xl border-2 border-dashed border-gray-200 p-6 flex flex-col items-center justify-center gap-3 text-center cursor-pointer hover:border-primary/40 transition-colors min-h-[200px] w-full bg-transparent"
               onClick={() => router.push("/past-tournaments")}
             >
               <BookOpen className="h-10 w-10 text-primary/50" />
@@ -385,7 +374,7 @@ const DashboardPage = () => {
                 <p className="text-xs text-gray-500 mt-0.5">Explore all archived student projects.</p>
               </div>
               <span className="text-sm font-semibold text-primary hover:underline">Open Archives</span>
-            </div>
+            </button>
           </div>
         )}
       </section>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Trophy, Calendar, Users } from "lucide-react";
+import { getCategoryEmoji } from "@/app/_utilities/categoryUtils";
 
 interface Tournament {
   id: string;
@@ -16,23 +17,6 @@ function formatDate(value: string): string {
   return value.slice(0, 10);
 }
 
-const EMOJI_MAP: Record<string, string> = {
-  hydro: "💧", water: "💧", fluid: "💧",
-  bot: "🤖", robot: "🤖", code: "🤖",
-  chem: "⚗️",
-  phys: "⚡", solar: "⚡", light: "⚡",
-  math: "📐",
-  geo: "🌍", earth: "🌍",
-  bio: "🧬",
-};
-
-function getCategoryEmoji(category: string): string {
-  const c = category.toLowerCase();
-  for (const [key, emoji] of Object.entries(EMOJI_MAP)) {
-    if (c.includes(key)) return emoji;
-  }
-  return "🔬";
-}
 
 const PastTournamentsPage = () => {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);

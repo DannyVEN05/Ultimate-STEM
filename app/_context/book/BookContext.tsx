@@ -12,8 +12,8 @@ export type BookContextType = {
   // This function fetches all approved tournament submissions from Supabase and populates the books array. It is a combination of Concept and TournamentSubmission data to create a complete Book object.
   setBooks: () => Promise<void>;
 
-  // This function subscribes to realtime changes on tournament_submission and updates likes in state. Returns a cleanup function to unsubscribe.
-  updateLikes: () => Promise<() => void>;
+  // This function updates the likes count for a specific tournament submission in the database. It takes the tournamentsub_id and a boolean indicating whether to increment or decrement the likes.
+  updateLikes: (tournamentsub_id: string, isLiked: boolean) => Promise<void>;
 };
 
 const BookContext = createContext({} as BookContextType)

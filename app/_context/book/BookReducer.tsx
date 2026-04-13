@@ -33,7 +33,8 @@ const bookReducer: Reducer<BookReducerState, BookReducerAction> = (state, action
         ...state,
         isGridMode: action.payload,
       };
-
+    
+    // Currently not being used as likes are updated directly in the database without worrying about errors.
     case BookActionKind.UPDATE_LIKES:
       return {
         ...state,

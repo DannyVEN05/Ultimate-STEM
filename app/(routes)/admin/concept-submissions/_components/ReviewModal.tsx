@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 
 
-export type SubmissionStatus = "pending" | "approved" | "rejected";
+export type SubmissionStatus = "pending" | "approved" | "rejected" | "terminated";
 
 export interface Submission {
   submissionId: string;
@@ -63,6 +63,11 @@ export const statusConfig: Record<SubmissionStatus, { label: string; className: 
   rejected: {
     label: "Rejected",
     className: "bg-[#fde8ec] text-[#c0314e]",
+    icon: <XCircle className="h-3.5 w-3.5" />,
+  },
+  terminated: {
+    label: "Terminated",
+    className: "bg-[#f0f1f7] text-[#4b5563]",
     icon: <XCircle className="h-3.5 w-3.5" />,
   },
 };

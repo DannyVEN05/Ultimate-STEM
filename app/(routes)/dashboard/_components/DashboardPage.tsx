@@ -114,6 +114,7 @@ const DashboardPage = () => {
   const active = tournaments.filter(t => t.status === "stage1" || t.status === "stage2");
   const upcoming = tournaments.filter(t => t.status === "upcoming");
   const concluded = tournaments.filter(t => t.status === "concluded");
+  const sidebar = active.slice(1);
 
   useEffect(() => {
     supabase
@@ -226,7 +227,7 @@ const DashboardPage = () => {
             No active battles right now — check upcoming tournaments below.
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
             {/* Featured card */}
             <div className="lg:col-span-2 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm flex flex-col gap-4">
               <div className="flex items-start justify-between">
@@ -278,29 +279,31 @@ const DashboardPage = () => {
             </div>
 
             {/* Sidebar cards */}
-            <div className="flex flex-col gap-4">
-              {active.slice(1, 3).map(t => (
-                <div key={t.id} className="rounded-xl border border-gray-100 bg-white p-4 flex flex-col gap-3 shadow-sm">
-                  <div className={`h-9 w-9 rounded-xl ${getCategoryBg(t.category)} flex items-center justify-center text-lg`}>
-                    {getCategoryEmoji(t.category)}
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-800 text-sm">{t.title}</p>
-                    {t.category && <p className="text-xs text-gray-500 mt-0.5">{t.category}</p>}
-                  </div>
-                  <button
-                    onClick={() => router.push("/dashboard/tournament")}
-                    className={`w-full rounded-lg py-2 text-xs font-semibold text-white ${getCategoryBg(t.category)} hover:opacity-90 transition-opacity cursor-pointer`}
-                  >
-                    Join Now
-                  </button>
-                </div>
-              ))}
-
-              {active.length === 1 && (
-                <div className="rounded-xl border border-dashed border-gray-200 p-4 flex flex-col items-center justify-center gap-2 text-gray-400 flex-1 min-h-[100px]">
+            <div className="flex flex-col h-full min-h-0">
+              {sidebar.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-gray-200 p-4 flex flex-col items-center justify-center gap-2 text-gray-400 flex-1">
                   <Zap className="h-5 w-5 opacity-30" />
                   <p className="text-xs text-center">More battles coming soon</p>
+                </div>
+              ) : (
+                <div className={`flex flex-col gap-4 overflow-y-auto overscroll-contain snap-y snap-mandatory pr-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 ${sidebar.length > 2 ? "max-h-[336px]" : "flex-1 min-h-0"}`}>
+                  {sidebar.map(t => (
+                    <div key={t.id} className={`rounded-xl border border-gray-100 bg-white p-4 flex flex-col gap-3 shadow-sm snap-start ${active.slice(1).length <= 2 ? "flex-1" : "shrink-0"}`}>
+                      <div className={`h-9 w-9 rounded-xl ${getCategoryBg(t.category)} flex items-center justify-center text-lg`}>
+                        {getCategoryEmoji(t.category)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-800 text-sm">{t.title}</p>
+                        {t.category && <p className="text-xs text-gray-500 mt-0.5">{t.category}</p>}
+                      </div>
+                      <button
+                        onClick={() => router.push("/dashboard/tournament")}
+                        className={`mt-auto w-full rounded-lg py-2 text-xs font-semibold text-white ${getCategoryBg(t.category)} hover:opacity-90 transition-opacity cursor-pointer`}
+                      >
+                        Join Now
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

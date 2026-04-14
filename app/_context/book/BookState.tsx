@@ -15,7 +15,7 @@ const BookState = ({ children }: Props) => {
   const initialState: BookReducerState = {
     books: [],
     status: "",
-    isGridMode: true
+    isGridMode: true,
   }
 
   const [state, dispatch] = useReducer(bookReducer, initialState);
@@ -84,36 +84,13 @@ const BookState = ({ children }: Props) => {
   }
 
 
-  const updateLikes = async () => {
-    // Below function is currently not working as a realtime EventListener
-    // Under development
-    let mounted = true
-
-    const channel = supabase.channel("tournament_submission_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "tournament_submission"
-        },
-        (payload) => {
-          console.log("Receiving data: ", payload)
-          if (mounted && payload.eventType === "UPDATE") {
-            dispatch({
-              type: BookActionKind.UPDATE_LIKES, payload: {
-                tournamentsub_id: payload.new.tournamentsub_id,
-                newLikes: payload.new.tournamentsub_likes,
-              }
-            })
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      mounted = false
-      supabase.removeChannel(channel)
+  const updateLikes = async (tournamentsub_id: string, isLiked: boolean) => {
+    const { error } = await supabase
+      .rpc(isLiked ? "increment_tournamentsub_likes" : "decrement_tournamentsub_likes", {id: tournamentsub_id}
+      );
+    
+    if (error) {
+      console.warn(`Error: ${isLiked ? "incrementing" : "decrementing"}, Likes`, error)
     }
   }
 

@@ -90,21 +90,46 @@ const statusConfig: Record<TournamentStatus, { label: string; className: string;
   },
 };
 
-const STATUS_ORDER: TournamentStatus[] = ["upcoming", "stage1", "stage2", "concluded"];
-
-function getNextStatus(status: TournamentStatus): TournamentStatus | null {
-  const idx = STATUS_ORDER.indexOf(status);
-  if (idx === -1 || idx === STATUS_ORDER.length - 1) return null;
-  return STATUS_ORDER[idx + 1];
-}
-
-function canAdvanceStatus(t: Tournament): boolean {
+function computeCorrectStatus(t: Tournament): TournamentStatus {
+  if (t.status === "cancelled") return "cancelled";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (t.status === "upcoming") return t.startDate ? today >= new Date(t.startDate) : false;
-  if (t.status === "stage1") return t.stage2StartDate ? today >= new Date(t.stage2StartDate) : false;
-  if (t.status === "stage2") return t.endDate ? today >= new Date(t.endDate) : false;
-  return false;
+  if (t.endDate && today >= new Date(t.endDate)) return "concluded";
+  if (t.stage2StartDate && today >= new Date(t.stage2StartDate)) return "stage2";
+  if (t.startDate && today >= new Date(t.startDate)) return "stage1";
+  return "upcoming";
+}
+
+async function autoAdvanceTournaments(tournaments: Tournament[]): Promise<Tournament[]> {
+  const toUpdate = tournaments
+    .map((t) => ({ t, correct: computeCorrectStatus(t) }))
+    .filter(({ t, correct }) => correct !== t.status);
+
+  if (toUpdate.length === 0) return tournaments;
+
+  const results = await Promise.all(
+    toUpdate.map(({ t, correct }) =>
+      supabase
+        .from("tournament")
+        .update({ tournament_status: correct, tournament_updated_at: new Date().toISOString() })
+        .eq("tournament_id", t.id)
+        .then(({ error }) => ({ id: t.id, correct, error }))
+    )
+  );
+
+  const failed = results.filter((r) => r.error);
+  if (failed.length > 0) {
+    throw new Error(
+      `Failed to sync ${failed.length} tournament(s): ${failed.map((r) => r.error!.message).join("; ")}`
+    );
+  }
+
+  const succeededIds = new Set(results.map((r) => r.id));
+  return tournaments.map((t) => {
+    if (!succeededIds.has(t.id)) return t;
+    const found = toUpdate.find(({ t: u }) => u.id === t.id);
+    return found ? { ...t, status: found.correct } : t;
+  });
 }
 
 interface QueueItem {
@@ -129,7 +154,7 @@ async function getQueueItems(): Promise<QueueItem[]> {
   const conceptIds = subs.map((s: any) => s.concept_id);
 
   const { data: concepts, error: conceptsError } = await supabase
-    .from("concepts")
+    .from("concept")
     .select("concept_id, concept_title, concept_genre")
     .in("concept_id", conceptIds);
 
@@ -158,27 +183,33 @@ const AdminTournamentsPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [syncing, setSyncing] = useState(false);
 
   const openCreate = () => { setEditingTournament(null); setModalOpen(true); };
   const openEdit = (t: Tournament) => { setEditingTournament(t); setModalOpen(true); };
 
-  const handleAdvanceStatus = async (t: Tournament) => {
-    const next = getNextStatus(t.status);
-    if (!next) return;
-    const { error } = await supabase
-      .from("tournament")
-      .update({ tournament_status: next, tournament_updated_at: new Date().toISOString() })
-      .eq("tournament_id", t.id);
-    if (error) { setError(error.message); return; }
-    setTournaments((prev) => prev.map((x) => x.id === t.id ? { ...x, status: next } : x));
-  };
-
   useEffect(() => {
     setError(null);
     Promise.all([getTournaments(), getQueueItems()])
-      .then(([t, q]) => { setTournaments(t); setQueue(q); })
+      .then(([t, q]) => {
+        setTournaments(t);
+        setQueue(q);
+      })
       .catch((err: Error) => setError(err.message));
   }, [modalOpen]);
+
+  const handleSyncStatuses = async () => {
+    setSyncing(true);
+    setError(null);
+    try {
+      const updated = await autoAdvanceTournaments(tournaments);
+      setTournaments(updated);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to sync statuses.");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleQueueAction = async (item: QueueItem, action: "approved" | "rejected") => {
     const { error } = await supabase
@@ -211,13 +242,23 @@ const AdminTournamentsPage = () => {
               <p className="mt-1 text-sm text-[#c0314e]">Failed to load: {error}</p>
             )}
           </div>
-          <Button
-            className="shrink-0 rounded-sm bg-[linear-gradient(135deg,#8b5cf6_0%,#6d3ef0_100%)] px-6 text-white"
-            onClick={() => openCreate()}
-          >
-            <Plus className="h-4 w-4" />
-            Create Tournament
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              className="rounded-sm border-[#ececf6] text-[#48506b]"
+              onClick={handleSyncStatuses}
+              disabled={syncing}
+            >
+              {syncing ? "Syncing…" : "Sync Statuses"}
+            </Button>
+            <Button
+              className="rounded-sm bg-[linear-gradient(135deg,#8b5cf6_0%,#6d3ef0_100%)] px-6 text-white"
+              onClick={() => openCreate()}
+            >
+              <Plus className="h-4 w-4" />
+              Create Tournament
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -239,8 +280,8 @@ const AdminTournamentsPage = () => {
                     <p className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#1d2436]">{count}</p>
                   </div>
                   {s !== "all" && (
-                    <span className={`flex h-10 w-10 items-center justify-center rounded-full ${cfg!.className}`}>
-                      {cfg!.icon}
+                    <span className={`flex h-10 w-10 items-center justify-center rounded-full ${cfg?.className}`}>
+                      {cfg?.icon}
                     </span>
                   )}
                 </CardContent>
@@ -314,23 +355,12 @@ const AdminTournamentsPage = () => {
                             <td className="px-6 py-4 text-[#6b7490]">{formatDate(t.startDate)} → {formatDate(t.endDate)}</td>
                             <td className="px-6 py-4 text-[#6b7490]">{t.participants} / {t.participantLimit}</td>
                             <td className="px-6 py-4">
-                              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${cfg.className}`}>
-                                {cfg.icon}{cfg.label}
+                              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${cfg?.className}`}>
+                                {cfg?.icon}{cfg?.label}
                               </span>
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex items-center gap-2">
-                                {canAdvanceStatus(t) && (
-                                  <Button
-                                    size="sm"
-                                    className="rounded-full bg-[linear-gradient(135deg,#8b5cf6_0%,#6d3ef0_100%)] text-white"
-                                    onClick={() => handleAdvanceStatus(t)}
-                                    title={`Advance to ${statusConfig[getNextStatus(t.status)!]?.label}`}
-                                  >
-                                    <ChevronsRight className="h-3.5 w-3.5" />
-                                    {statusConfig[getNextStatus(t.status)!]?.label}
-                                  </Button>
-                                )}
                                 <Button
                                   size="sm"
                                   variant="outline"

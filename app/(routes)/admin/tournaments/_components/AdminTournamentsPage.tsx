@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Clock, CheckCircle2, XCircle, Search, ChevronDown, Plus, Pencil, ChevronsRight, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,14 +97,6 @@ const statusConfig: Record<TournamentStatus, { label: string; className: string;
     icon: <Ban className="h-3.5 w-3.5" />,
   },
 };
-
-const STATUS_ORDER: TournamentStatus[] = ["upcoming", "stage1", "stage2", "concluded"];
-
-function getNextStatus(status: TournamentStatus): TournamentStatus | null {
-  const idx = STATUS_ORDER.indexOf(status);
-  if (idx === -1 || idx === STATUS_ORDER.length - 1) return null;
-  return STATUS_ORDER[idx + 1];
-}
 
 function computeCorrectStatus(t: Tournament): TournamentStatus {
   if (t.status === "terminated") return "terminated";
@@ -203,52 +195,34 @@ const AdminTournamentsPage = () => {
   const [isTerminating, setIsTerminating] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     setError(null);
     Promise.all([getTournaments(), getQueueItems()])
       .then(([t, q]) => { setTournaments(t); setQueue(q); })
       .catch((err: Error) => setError(err.message));
-  };
+  }, []);
 
   const openCreate = () => { setEditingTournament(null); setModalOpen(true); };
   const openEdit = (t: Tournament) => { setEditingTournament(t); setModalOpen(true); };
 
   const handleTerminate = async (t: Tournament) => {
+    if (isTerminating) return;
     setError(null);
     setIsTerminating(true);
     setTerminatingId(null); // close dialog immediately
-    // 1. Terminate the tournament
-    const { error: tErr } = await supabase
-      .from("tournament")
-      .update({ tournament_status: "terminated", tournament_updated_at: new Date().toISOString() })
-      .eq("tournament_id", t.id);
-    if (tErr) { setError(tErr.message); setIsTerminating(false); return; }
-
-    // 2. Terminate all submissions for this tournament
-    const { error: sErr } = await supabase
-      .from("tournament_submission")
-      .update({ tournamentsub_status: "terminated", tournamentsub_updated_at: new Date().toISOString() })
-      .eq("tournament_id", t.id);
-    if (sErr) {
-      // Roll back tournament status
-      await supabase
-        .from("tournament")
-        .update({ tournament_status: t.status, tournament_updated_at: new Date().toISOString() })
-        .eq("tournament_id", t.id);
-      setError(`Failed to terminate submissions (tournament rolled back): ${sErr.message}`);
-      setIsTerminating(false);
-      return;
+    const { error: rpcErr } = await supabase.rpc("terminate_tournament", { p_tournament_id: Number(t.id) });
+    if (rpcErr) {
+      setError(rpcErr.message);
+    } else {
+      fetchData();
     }
-
-    fetchData();
     setIsTerminating(false);
   };
 
 
   useEffect(() => {
     fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modalOpen]);
+  }, [fetchData, modalOpen]);
 
   const handleSyncStatuses = async () => {
     setSyncing(true);
@@ -314,8 +288,8 @@ const AdminTournamentsPage = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 shrink-0">
-          {(["all", "upcoming", "stage1", "stage2", "concluded"] as const).map((s) => {
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6 shrink-0">
+          {(["all", "upcoming", "stage1", "stage2", "concluded", "terminated"] as const).map((s) => {
             const count = s === "all" ? tournaments.length : tournaments.filter((t) => t.status === s).length;
             const cfg = s === "all" ? null : statusConfig[s];
             return (
@@ -429,6 +403,7 @@ const AdminTournamentsPage = () => {
                                     variant="outline"
                                     className="rounded-full border-[#e5e7f2] text-[#6b7490] hover:border-[#4b5563] hover:text-[#4b5563]"
                                     onClick={() => setTerminatingId(t.id)}
+                                    disabled={isTerminating}
                                   >
                                     <Ban className="h-3.5 w-3.5" />
                                     Terminate

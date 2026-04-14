@@ -114,6 +114,7 @@ const DashboardPage = () => {
   const active = tournaments.filter(t => t.status === "stage1" || t.status === "stage2");
   const upcoming = tournaments.filter(t => t.status === "upcoming");
   const concluded = tournaments.filter(t => t.status === "concluded");
+  const sidebar = active.slice(1);
 
   useEffect(() => {
     supabase
@@ -279,14 +280,14 @@ const DashboardPage = () => {
 
             {/* Sidebar cards */}
             <div className="flex flex-col h-full min-h-0">
-              {active.length === 1 ? (
+              {sidebar.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-200 p-4 flex flex-col items-center justify-center gap-2 text-gray-400 flex-1">
                   <Zap className="h-5 w-5 opacity-30" />
                   <p className="text-xs text-center">More battles coming soon</p>
                 </div>
               ) : (
-                <div className={`flex flex-col gap-4 overflow-y-auto overscroll-contain snap-y snap-mandatory pr-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 ${active.slice(1).length > 2 ? "max-h-[336px]" : "flex-1 min-h-0"}`}>
-                  {active.slice(1).map(t => (
+                <div className={`flex flex-col gap-4 overflow-y-auto overscroll-contain snap-y snap-mandatory pr-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 ${sidebar.length > 2 ? "max-h-[336px]" : "flex-1 min-h-0"}`}>
+                  {sidebar.map(t => (
                     <div key={t.id} className={`rounded-xl border border-gray-100 bg-white p-4 flex flex-col gap-3 shadow-sm snap-start ${active.slice(1).length <= 2 ? "flex-1" : "shrink-0"}`}>
                       <div className={`h-9 w-9 rounded-xl ${getCategoryBg(t.category)} flex items-center justify-center text-lg`}>
                         {getCategoryEmoji(t.category)}

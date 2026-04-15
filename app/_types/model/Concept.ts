@@ -1,5 +1,19 @@
-// JSON attributes mapped out (potentially)
-export type BookCover = Record<string, unknown>;
+export type BookCover = {
+  spine_color: string,        // "#000000" <- e.g hex code for spine color
+  book_cover: string,         // Path to supabase storage (potentially)
+  title: string,
+  author: string,
+  title_color: string,
+  title_bg_color: string,
+  author_color: string,
+  author_bg_color: string,
+  title_font: string,
+  author_font: string,
+  title_x: number,            // Positioning attributes for title and author
+  title_y: number,
+  author_x: number,
+  author_y: number; 
+}
 
 
 export class Concept {
@@ -22,7 +36,22 @@ export class Concept {
     title: string = '',
     description: string = '',
     status: string = '',
-    styling: BookCover = {},
+    styling: BookCover = {
+      spine_color: '',
+      book_cover: '',
+      title: '',
+      author: '',
+      title_color: '',
+      title_bg_color: '',
+      author_color: '',
+      author_bg_color: '',
+      title_font: '',
+      author_font: '',
+      title_x: 20,
+      title_y: 40,
+      author_x: 20,
+      author_y: 100,
+    },
     genre: string = '',
     user_id: string = ''
   ) {

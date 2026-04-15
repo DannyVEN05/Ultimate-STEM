@@ -6,6 +6,7 @@ import { Book } from "@/app/_types/model/Book";
 import { supabase } from "@/lib/supabase";
 import { BookActionKind } from "@/app/_types/context";
 import BookContext from "./BookContext";
+import { BookCover } from "@/app/_types/model/Concept";
 
 type Props = {
   children?: React.ReactNode | React.ReactNode[];
@@ -19,6 +20,40 @@ const BookState = ({ children }: Props) => {
   }
 
   const [state, dispatch] = useReducer(bookReducer, initialState);
+
+  const mapToBookCover = (styling: string | BookCover | any): BookCover => {
+    
+    const stageWidth = 256;
+    const stageHeight = 384;
+
+    let data = styling
+    if (typeof styling === 'string'){
+      try {
+        data = JSON.parse(styling)
+      } catch (err) {
+        console.warn("Error parsing styling JSON: ", err)
+        data = {}
+      }
+    }
+    
+    return {
+      spine_color: data?.spine_color ?? '#000000',
+      book_cover: data?.book_cover ?? '/covers/engineering_cover.png',
+      title: data?.title ?? 'Untitled',
+      author: data?.author ?? 'Unknown Author',
+      title_color: data?.title_color ?? '#FFFFFF',
+      title_bg_color: data?.title_bg_color ?? 'transparent',
+      author_color: data?.author_color ?? '#FFFFFF',
+      author_bg_color: data?.author_bg_color ?? 'transparent',
+      title_font: data?.title_font ?? 'sans-serif',
+      author_font: data?.author_font ?? 'sans-serif',
+      title_x: (data?.title_x * stageWidth),
+      title_y: (data?.title_y * stageHeight),
+      author_x: (data?.author_x * stageWidth),
+      author_y: (data?.author_y * stageHeight),
+  
+    }
+  }  
 
   const mapToBook = (row: any): Book => {
     const book = new Book(
@@ -35,7 +70,7 @@ const BookState = ({ children }: Props) => {
       row.concept.concept_title,
       row.concept.concept_description,
       row.concept.concept_status,
-      row.concept.concept_styling,
+      mapToBookCover(row.concept.concept_styling),
       row.concept.concept_genre,
       row.concept.user_id,
     )

@@ -5,6 +5,7 @@ import { CalendarDays, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
+import { profanity } from "@2toad/profanity";
 import {
   Dialog,
   DialogContent,
@@ -70,6 +71,17 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
     setSubmitState("submitting");
     setSubmitError(null);
 
+    if (profanity.exists(formData.title)) {
+      setSubmitError("Tournament title contains inappropriate language.");
+      setSubmitState("error");
+      return;
+    }
+    if (profanity.exists(formData.category)) {
+      setSubmitError("Category contains inappropriate language.");
+      setSubmitState("error");
+      return;
+    }
+
     if (formData.endDate && formData.startDate && formData.endDate < formData.startDate) {
       setSubmitError("End date must be on or after the start date.");
       setSubmitState("error");
@@ -109,7 +121,7 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
           tournament_s2_start_date: formData.stage2StartDate || null,
           tournament_end_date: formData.endDate,
           tournament_user_limit: Number(formData.participantLimit),
-          tournament_status: ["concluded", "cancelled"].includes(tournament.status as string)
+          tournament_status: tournament.status === "terminated"
             ? tournament.status
             : newStatus,
           tournament_updated_at: new Date().toISOString(),

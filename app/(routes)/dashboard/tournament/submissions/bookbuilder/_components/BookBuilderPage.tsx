@@ -5,12 +5,14 @@ import UsInput from "@/app/_common/ui/inputs/UsInput";
 import AuthContext from "@/app/_context/auth/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useContext, useState } from "react";
+import { useContext, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { Profanity } from '@2toad/profanity';
-import { Stage, Layer, Text as KonvaText, Rect, Group} from 'react-konva';
+import { Stage, Layer, Text as KonvaText, Rect, Group, Image as KonvaImage} from 'react-konva';
+import useImage from 'use-image'
 
 const BookBuilderPage = () => {
+  const [isProcessing, setIsProcessing] = useState(false);
   const [selectedCover, setSelectedCover] = useState("/covers/space.jpg");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -25,6 +27,9 @@ const BookBuilderPage = () => {
   const [authorPos, setAuthorPos] = useState({ x: 20, y: 100 });
   const [titleFont, setTitleFont] = useState("sans-serif");
   const [autFont, setAutFont] = useState("serif");
+  const stageRef = useRef<any>(null);
+
+  const [image] = useImage(selectedCover, 'anonymous');
 
   const fontOptions = ["sans-serif", "serif", "monospace", "cursive", "fantasy"];
 
@@ -33,55 +38,83 @@ const BookBuilderPage = () => {
   const profanity = new Profanity();
 
   const handleSubmit = async () => {
+    if (isProcessing) return; // Prevents multiple submissions
     if (profanity.exists(title)|| profanity.exists(description) || profanity.exists(author)) {
       alert("Please remove profanity.");
       return; //stop the submission
     }
+  
+    setIsProcessing(true);
+    try {  
+      const stage = stageRef.current;
 
-    const load = {
-      concept_title: title, 
-      // created_at: new Date().toISOString(),
-      // updated_at: new Date().toISOString(),
-      concept_description: description, 
-      user_id: user?.user_id,
-      concept_styling: {
-        spine_color: spineColor,
-        book_cover: selectedCover,
-        title: title,
-        author: author,
-        title_color: titTextColor,
-        title_bg_color: titBackColor,
-        author_color: autTextColor,
-        author_bg_color: autBackColor,
-        title_font: titleFont,
-        author_font: autFont, 
-
-        title_x: titlePos.x,
-        title_y: titlePos.y,
-        author_x: authorPos.x,
-        author_y: authorPos.y
-      },
-      concept_genre: genre, 
-      // cover: selectedCover,
-    };
-    const { data, error } = await supabase.from("concept").insert(load).select().single(); //upload this to supbabase
-    console.log("data: ", data);
-
-    if (error) {
-      console.log("Error uploading concepts - ", error.message, "Code", error.code);
-    }
-    else if (!data) {
-      console.log("Error uploading concepts - no concept returned from insert");
-    }
-    else {
-      const { error: submissionError } = await supabase.from("tournament_submission").insert({ concept_id: data.concept_id, tournament_id: 4 }); //upload to tournamant submission
-
-      if (submissionError) {
-        console.log("Error uploading concepts - ", submissionError.message, "Code", submissionError.code);
-      } else {
-        router.push("/");
+      if (!stage || typeof stage.toDataURL !== 'function') {
+        alert("Book preview is not ready yet. Please wait a moment and try again.");
+        setIsProcessing(false);
       }
+      
+      // Captures the current state of the Konva stage as a data URL (base64-encoded image)
+      const dataUrl = stage.toDataURL({ pixelRatio: 2 }); 
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], "temp_cover.png", { type: "image/png" });
 
+      // Upload png to supabase storage book-covers bucket
+      const fileName = `${user?.user_id}/${Date.now()}.png`;
+      const { data: storageData, error: storageError } = await supabase.storage
+        .from("book-covers")
+        .upload(fileName, file);
+
+      if (storageError) throw storageError;
+
+      const load = {
+        concept_title: title, 
+        // created_at: new Date().toISOString(),
+        // updated_at: new Date().toISOString(),
+        concept_description: description, 
+        user_id: user?.user_id,
+        concept_styling: {
+          spine_color: spineColor,
+          book_cover: storageData?.path,
+          title: title,
+          author: author,
+          title_color: titTextColor,
+          title_bg_color: titBackColor,
+          author_color: autTextColor,
+          author_bg_color: autBackColor,
+          title_font: titleFont,
+          author_font: autFont, 
+
+          title_x: titlePos.x,
+          title_y: titlePos.y,
+          author_x: authorPos.x,
+          author_y: authorPos.y,
+        },
+        concept_genre: genre, 
+        // cover: selectedCover,
+      };
+      const { data, error } = await supabase.from("concept").insert(load).select().single(); //upload this to supbabase
+      console.log("data: ", data);
+
+      if (error) {
+        console.log("Error uploading concepts - ", error.message, "Code", error.code);
+      }
+      else if (!data) {
+        console.log("Error uploading concepts - no concept returned from insert");
+      }
+      else {
+        const { error: submissionError } = await supabase.from("tournament_submission").insert({ concept_id: data.concept_id, tournament_id: 4 }); //upload to tournamant submission
+
+        if (submissionError) {
+          console.log("Error uploading concepts - ", submissionError.message, "Code", submissionError.code);
+        } else {
+          router.push("/");
+        }
+
+      }
+    } catch (err) {
+      console.error("Error submitting concept: ", err);
+    } finally {
+      setIsProcessing(false);
     }
     // console.log("debug: sumbitting", load)
   };
@@ -116,14 +149,17 @@ const BookBuilderPage = () => {
                   {/* for later */}
                   {/*To use images in Konva, use - useImage hook, layer the Stage over the img tag for now */}
                 {/* image */}
-                <img
+                {/* <img
                 src={selectedCover}
                 className="absolute top-0 left-0 w-full h-full object-cover -z-10"
-                />
-
+                /> */}
                 {/* konva stage */}
                   {/* background */}
-                <Stage width={256} height={384} className="absolute top-0 left-0">
+                <Stage ref={stageRef} width={256} height={384} className="absolute top-0 left-0">
+                  <Layer listening={false}>
+                    {image && <KonvaImage image={image} width={256} height={384} />}
+                  </Layer>
+                  
                   <Layer>
                     <Group x={titlePos.x} y={titlePos.y} draggable onDragEnd={(e) => setTitlePos({ x: e.target.x(), y: e.target.y() })}
                       dragBoundFunc={(pos) => {

@@ -3,6 +3,17 @@
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
+
 const OneVsOnePage = () => {
   const router = useRouter();
   
@@ -15,6 +26,8 @@ const OneVsOnePage = () => {
 const [selectedBook, setSelectedBook] = useState<string | null>(null);
 const [book1flipped,setbook1Flipped] = useState(false);
 const [book2flipped,setbook2Flipped] = useState(false);
+const [isVoting, setIsVoting] = useState(false);
+const [hasVoted, setHasVoted] = useState<string | null>(null);
 
   const book1 = {
     title: "Book One",
@@ -37,6 +50,8 @@ const [book2flipped,setbook2Flipped] = useState(false);
   return (
 
   <div className="mx-auto max-w-7xl ">
+    <div className="pointer-events-none absolute top-16 left-0 h-[400px] w-[500px] bg-[radial-gradient(circle_at_top_left,_rgba(0,255,0,0.2),_transparent_50%)]" />
+    
 
     
     <div className="min-h-screen bg-white-50 px-4 py-5 pt-1">
@@ -70,8 +85,12 @@ const [book2flipped,setbook2Flipped] = useState(false);
 
     {/* Front */}
     <div
-      onClick={() => setbook1Flipped(!book1flipped)}
-      className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-blue-100 cursor-pointer hover:bg-blue-200 shadow-md flex flex-col [backface-visibility:hidden]"
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest("button")) return;
+        setbook1Flipped(!book1flipped)
+      }}
+      className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
     >
       <img
         src={book1.cover}
@@ -79,22 +98,21 @@ const [book2flipped,setbook2Flipped] = useState(false);
         className="w-90 h-100 object-cover overflow-hidden rounded-[1.75rem] mx-auto shadow-md"
       />
 
+
       <h2 className="text-xl text-gray-600 font-semibold text-left mt-3 mx-auto">
         By: {book1.author}
       </h2>
+
       
       <div className="mt-auto flex justify-center">
         <Button
           className="bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
           onClick={(e) => {
             e.stopPropagation();
-            const confirmed = window.confirm(
-              `Confirm your vote for ${book1.title}. This cannot be changed.`
-            );
-            if (confirmed) {
-              setSelectedBook(book1.title);
-              router.push("./");
-            }
+            setIsVoting(true);
+            setHasVoted(book1.title);
+            setSelectedBook(book1.title);
+            router.push("");
           }}
         >
           Vote
@@ -102,10 +120,10 @@ const [book2flipped,setbook2Flipped] = useState(false);
       </div>
     </div>
 
-/* Back */
+{/* /* Back */}
     <div
       onClick={() => setbook1Flipped(!book1flipped)}
-      className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-blue-100 cursor-pointer hover:bg-blue-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
+      className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
     >
       <h2 className="text-2xl font-bold text-gray-800 mb-3">
         {book1.title}
@@ -123,6 +141,7 @@ const [book2flipped,setbook2Flipped] = useState(false);
   </div>
 </div>
 
+{/* end of book1 item */}
 
 
       <div className="flex items-center justify-center">
@@ -142,7 +161,7 @@ const [book2flipped,setbook2Flipped] = useState(false);
 
     <div
       onClick={() => setbook2Flipped(!book2flipped)}
-      className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-blue-100 cursor-pointer hover:bg-blue-200 shadow-md flex flex-col [backface-visibility:hidden]"
+      className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
     >
       <img
         src={book2.cover}
@@ -160,13 +179,10 @@ const [book2flipped,setbook2Flipped] = useState(false);
           className="bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
           onClick={(e) => {
             e.stopPropagation();
-            const confirmed = window.confirm(
-              `Confirm your vote for ${book2.title}. This cannot be changed.`
-            );
-            if (confirmed) {
-              setSelectedBook(book2.title);
-              router.push("./");
-            }
+            setIsVoting(true);
+            setHasVoted(book1.title);
+            setSelectedBook(book1.title);
+            router.push("");
           }}
         >
           Vote
@@ -178,7 +194,7 @@ const [book2flipped,setbook2Flipped] = useState(false);
     {/* Back */}
     <div
       onClick={() => setbook2Flipped(!book2flipped)}
-      className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-blue-100 cursor-pointer hover:bg-blue-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
+      className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
     >
     
     <h2 className="text-2xl font-bold text-gray-800 mb-3">
@@ -196,9 +212,36 @@ const [book2flipped,setbook2Flipped] = useState(false);
     </div>
   </div>
 </div>
-     
-   
 
+{/* dialog for voting */}
+    <Dialog open={isVoting} onOpenChange={setIsVoting}>
+      <DialogContent className="max-w-sm rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-[#1d2436]">Confirm Your Vote</DialogTitle>
+          <DialogDescription className="text-[#8088a0]">
+            Are you sure you want to vote for {selectedBook}?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button
+            onClick={() => {
+              setIsVoting(false);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              setIsVoting(false);
+              setHasVoted(selectedBook);
+              router.push("");
+            }}
+          >
+            Confirm
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     </div>
   </div>

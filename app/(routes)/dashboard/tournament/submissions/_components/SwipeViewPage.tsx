@@ -1,10 +1,10 @@
 "use client";
 
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-const SwipeviewPage = () => {
+const SwipeViewPage = () => {
   const [concepts, setConcepts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -128,4 +128,4 @@ const SwipeviewPage = () => {
   );
 };
 
-export default SwipeviewPage
+export default SwipeViewPage

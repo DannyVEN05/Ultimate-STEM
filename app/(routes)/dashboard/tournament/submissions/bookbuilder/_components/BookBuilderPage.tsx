@@ -46,8 +46,15 @@ const BookBuilderPage = () => {
   
     setIsProcessing(true);
     try {  
+      const stage = stageRef.current;
+
+      if (!stage || typeof stage.toDataURL !== 'function') {
+        alert("Book preview is not ready yet. Please wait a moment and try again.");
+        setIsProcessing(false);
+      }
+      
       // Captures the current state of the Konva stage as a data URL (base64-encoded image)
-      const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 }); 
+      const dataUrl = stage.toDataURL({ pixelRatio: 2 }); 
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], "temp_cover.png", { type: "image/png" });
 
@@ -58,9 +65,6 @@ const BookBuilderPage = () => {
         .upload(fileName, file);
 
       if (storageError) throw storageError;
-
-      const stageWidth = 256;
-      const stageHeight = 384;
 
       const load = {
         concept_title: title, 
@@ -80,10 +84,10 @@ const BookBuilderPage = () => {
           title_font: titleFont,
           author_font: autFont, 
 
-          title_x: (titlePos.x / stageWidth) * 100,
-          title_y: (titlePos.y / stageHeight) * 100,
-          author_x: (authorPos.x / stageWidth) * 100,
-          author_y: (authorPos.y / stageHeight) * 100
+          title_x: titlePos.x,
+          title_y: titlePos.y,
+          author_x: authorPos.x,
+          author_y: authorPos.y,
         },
         concept_genre: genre, 
         // cover: selectedCover,

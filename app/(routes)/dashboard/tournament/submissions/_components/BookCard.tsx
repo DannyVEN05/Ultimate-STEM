@@ -19,7 +19,7 @@ const BookCard = (props: BookCardProps) => {
   const { updateLikes } = useContext(BookContext);
 
   const { data } = supabase.storage.from('book-covers').getPublicUrl(props.styling.book_cover);
-  const coverUrl = data?.publicUrl || '/covers/engineering_cover.png';
+  const coverUrl = data?.publicUrl || '/covers/engineering.png';
 
   async function handleClickLike(e: MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
@@ -42,7 +42,7 @@ const BookCard = (props: BookCardProps) => {
         </Button>
       </div>
       <div className="items-center">
-        <img src={coverUrl} className="aspect-[210/297] w-full bg-white shadow-md rounded-lg hover:shadow-xl transform transition hover:-translate-y-1"
+        <img src={coverUrl} alt={`${props.title} cover`} className="aspect-[210/297] w-full bg-white shadow-md rounded-lg hover:shadow-xl transform transition hover:-translate-y-1"
         ></img>
         <div className="flex flex-col pt-3">
           <h3 className="text-md font-bold">{props.title}</h3>

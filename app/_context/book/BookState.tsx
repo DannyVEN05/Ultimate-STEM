@@ -22,10 +22,6 @@ const BookState = ({ children }: Props) => {
   const [state, dispatch] = useReducer(bookReducer, initialState);
 
   const mapToBookCover = (styling: string | BookCover | any): BookCover => {
-    
-    const stageWidth = 256;
-    const stageHeight = 384;
-
     let data = styling
     if (typeof styling === 'string'){
       try {
@@ -38,7 +34,7 @@ const BookState = ({ children }: Props) => {
     
     return {
       spine_color: data?.spine_color ?? '#000000',
-      book_cover: data?.book_cover ?? '/covers/engineering_cover.png',
+      book_cover: data?.book_cover ?? '/covers/engineering.png',
       title: data?.title ?? 'Untitled',
       author: data?.author ?? 'Unknown Author',
       title_color: data?.title_color ?? '#FFFFFF',
@@ -47,10 +43,10 @@ const BookState = ({ children }: Props) => {
       author_bg_color: data?.author_bg_color ?? 'transparent',
       title_font: data?.title_font ?? 'sans-serif',
       author_font: data?.author_font ?? 'sans-serif',
-      title_x: (data?.title_x * stageWidth),
-      title_y: (data?.title_y * stageHeight),
-      author_x: (data?.author_x * stageWidth),
-      author_y: (data?.author_y * stageHeight),
+      title_x: data?.title_x,
+      title_y: data?.title_y ,
+      author_x: data?.author_x,
+      author_y: data?.author_y,
   
     }
   }  

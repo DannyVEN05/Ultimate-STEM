@@ -13,7 +13,7 @@ const UsNavigationButtons = () => {
       {/* <button onClick={() => router.push("/dashboard")} className="hover:cursor-pointer hover:text-primary transition-colors">
         Active Battles
       </button> */}
-      <button onClick={() => router.push("")} className="hover:cursor-pointer hover:text-primary transition-colors">
+      <button onClick={() => router.push("/past-tournaments")} className="hover:cursor-pointer hover:text-primary transition-colors">
         Past Tournaments
       </button>
       {user?.user_role == "admin" && (

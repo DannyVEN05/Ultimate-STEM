@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Clock, CheckCircle2, XCircle, Search, ChevronDown, Plus, Pencil, ChevronsRight } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Clock, CheckCircle2, XCircle, Search, ChevronDown, Plus, Pencil, ChevronsRight, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -14,9 +14,17 @@ import {
   CardDescription,
   CardFooter,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import CreateTournamentModal from "./CreateTournamentModal";
 
-type TournamentStatus = "upcoming" | "stage1" | "stage2" | "concluded" | "cancelled";
+type TournamentStatus = "upcoming" | "stage1" | "stage2" | "concluded" | "terminated";
 
 interface Tournament {
   id: string;
@@ -83,28 +91,53 @@ const statusConfig: Record<TournamentStatus, { label: string; className: string;
     className: "bg-[#e6f9f0] text-[#1a8a55]",
     icon: <CheckCircle2 className="h-3.5 w-3.5" />,
   },
-  cancelled: {
-    label: "Cancelled",
-    className: "bg-[#fde8ec] text-[#c0314e]",
-    icon: <XCircle className="h-3.5 w-3.5" />,
+  terminated: {
+    label: "Terminated",
+    className: "bg-[#f0f1f7] text-[#4b5563]",
+    icon: <Ban className="h-3.5 w-3.5" />,
   },
 };
 
-const STATUS_ORDER: TournamentStatus[] = ["upcoming", "stage1", "stage2", "concluded"];
-
-function getNextStatus(status: TournamentStatus): TournamentStatus | null {
-  const idx = STATUS_ORDER.indexOf(status);
-  if (idx === -1 || idx === STATUS_ORDER.length - 1) return null;
-  return STATUS_ORDER[idx + 1];
-}
-
-function canAdvanceStatus(t: Tournament): boolean {
+function computeCorrectStatus(t: Tournament): TournamentStatus {
+  if (t.status === "terminated") return "terminated";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (t.status === "upcoming") return t.startDate ? today >= new Date(t.startDate) : false;
-  if (t.status === "stage1") return t.stage2StartDate ? today >= new Date(t.stage2StartDate) : false;
-  if (t.status === "stage2") return t.endDate ? today >= new Date(t.endDate) : false;
-  return false;
+  if (t.endDate && today >= new Date(t.endDate)) return "concluded";
+  if (t.stage2StartDate && today >= new Date(t.stage2StartDate)) return "stage2";
+  if (t.startDate && today >= new Date(t.startDate)) return "stage1";
+  return "upcoming";
+}
+
+async function autoAdvanceTournaments(tournaments: Tournament[]): Promise<Tournament[]> {
+  const toUpdate = tournaments
+    .map((t) => ({ t, correct: computeCorrectStatus(t) }))
+    .filter(({ t, correct }) => correct !== t.status);
+
+  if (toUpdate.length === 0) return tournaments;
+
+  const results = await Promise.all(
+    toUpdate.map(({ t, correct }) =>
+      supabase
+        .from("tournament")
+        .update({ tournament_status: correct, tournament_updated_at: new Date().toISOString() })
+        .eq("tournament_id", t.id)
+        .then(({ error }) => ({ id: t.id, correct, error }))
+    )
+  );
+
+  const failed = results.filter((r) => r.error);
+  if (failed.length > 0) {
+    throw new Error(
+      `Failed to sync ${failed.length} tournament(s): ${failed.map((r) => r.error!.message).join("; ")}`
+    );
+  }
+
+  const succeededIds = new Set(results.map((r) => r.id));
+  return tournaments.map((t) => {
+    if (!succeededIds.has(t.id)) return t;
+    const found = toUpdate.find(({ t: u }) => u.id === t.id);
+    return found ? { ...t, status: found.correct } : t;
+  });
 }
 
 interface QueueItem {
@@ -129,7 +162,7 @@ async function getQueueItems(): Promise<QueueItem[]> {
   const conceptIds = subs.map((s: any) => s.concept_id);
 
   const { data: concepts, error: conceptsError } = await supabase
-    .from("concepts")
+    .from("concept")
     .select("concept_id, concept_title, concept_genre")
     .in("concept_id", conceptIds);
 
@@ -158,27 +191,51 @@ const AdminTournamentsPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [terminatingId, setTerminatingId] = useState<string | null>(null);
+  const [isTerminating, setIsTerminating] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
-  const openCreate = () => { setEditingTournament(null); setModalOpen(true); };
-  const openEdit = (t: Tournament) => { setEditingTournament(t); setModalOpen(true); };
-
-  const handleAdvanceStatus = async (t: Tournament) => {
-    const next = getNextStatus(t.status);
-    if (!next) return;
-    const { error } = await supabase
-      .from("tournament")
-      .update({ tournament_status: next, tournament_updated_at: new Date().toISOString() })
-      .eq("tournament_id", t.id);
-    if (error) { setError(error.message); return; }
-    setTournaments((prev) => prev.map((x) => x.id === t.id ? { ...x, status: next } : x));
-  };
-
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     setError(null);
     Promise.all([getTournaments(), getQueueItems()])
       .then(([t, q]) => { setTournaments(t); setQueue(q); })
       .catch((err: Error) => setError(err.message));
-  }, [modalOpen]);
+  }, []);
+
+  const openCreate = () => { setEditingTournament(null); setModalOpen(true); };
+  const openEdit = (t: Tournament) => { setEditingTournament(t); setModalOpen(true); };
+
+  const handleTerminate = async (t: Tournament) => {
+    if (isTerminating) return;
+    setError(null);
+    setIsTerminating(true);
+    setTerminatingId(null); // close dialog immediately
+    const { error: rpcErr } = await supabase.rpc("terminate_tournament", { p_tournament_id: Number(t.id) });
+    if (rpcErr) {
+      setError(rpcErr.message);
+    } else {
+      fetchData();
+    }
+    setIsTerminating(false);
+  };
+
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData, modalOpen]);
+
+  const handleSyncStatuses = async () => {
+    setSyncing(true);
+    setError(null);
+    try {
+      await autoAdvanceTournaments(tournaments);
+      fetchData();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to sync statuses.");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleQueueAction = async (item: QueueItem, action: "approved" | "rejected") => {
     const { error } = await supabase
@@ -211,18 +268,28 @@ const AdminTournamentsPage = () => {
               <p className="mt-1 text-sm text-[#c0314e]">Failed to load: {error}</p>
             )}
           </div>
-          <Button
-            className="shrink-0 rounded-sm bg-[linear-gradient(135deg,#8b5cf6_0%,#6d3ef0_100%)] px-6 text-white"
-            onClick={() => openCreate()}
-          >
-            <Plus className="h-4 w-4" />
-            Create Tournament
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              className="rounded-sm border-[#ececf6] text-[#48506b]"
+              onClick={handleSyncStatuses}
+              disabled={syncing}
+            >
+              {syncing ? "Syncing…" : "Sync Statuses"}
+            </Button>
+            <Button
+              className="rounded-sm bg-[linear-gradient(135deg,#8b5cf6_0%,#6d3ef0_100%)] px-6 text-white"
+              onClick={() => openCreate()}
+            >
+              <Plus className="h-4 w-4" />
+              Create Tournament
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 shrink-0">
-          {(["all", "upcoming", "stage1", "stage2", "concluded"] as const).map((s) => {
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6 shrink-0">
+          {(["all", "upcoming", "stage1", "stage2", "concluded", "terminated"] as const).map((s) => {
             const count = s === "all" ? tournaments.length : tournaments.filter((t) => t.status === s).length;
             const cfg = s === "all" ? null : statusConfig[s];
             return (
@@ -239,8 +306,8 @@ const AdminTournamentsPage = () => {
                     <p className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#1d2436]">{count}</p>
                   </div>
                   {s !== "all" && (
-                    <span className={`flex h-10 w-10 items-center justify-center rounded-full ${cfg!.className}`}>
-                      {cfg!.icon}
+                    <span className={`flex h-10 w-10 items-center justify-center rounded-full ${cfg?.className}`}>
+                      {cfg?.icon}
                     </span>
                   )}
                 </CardContent>
@@ -275,7 +342,7 @@ const AdminTournamentsPage = () => {
                   <option value="stage1">Stage 1</option>
                   <option value="stage2">Stage 2</option>
                   <option value="concluded">Concluded</option>
-                  <option value="cancelled">Cancelled</option>
+                  <option value="terminated">Terminated</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 text-[#9aa3b8]" />
               </div>
@@ -314,32 +381,34 @@ const AdminTournamentsPage = () => {
                             <td className="px-6 py-4 text-[#6b7490]">{formatDate(t.startDate)} → {formatDate(t.endDate)}</td>
                             <td className="px-6 py-4 text-[#6b7490]">{t.participants} / {t.participantLimit}</td>
                             <td className="px-6 py-4">
-                              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${cfg.className}`}>
-                                {cfg.icon}{cfg.label}
+                              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${cfg?.className}`}>
+                                {cfg?.icon}{cfg?.label}
                               </span>
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex items-center gap-2">
-                                {canAdvanceStatus(t) && (
-                                  <Button
-                                    size="sm"
-                                    className="rounded-full bg-[linear-gradient(135deg,#8b5cf6_0%,#6d3ef0_100%)] text-white"
-                                    onClick={() => handleAdvanceStatus(t)}
-                                    title={`Advance to ${statusConfig[getNextStatus(t.status)!]?.label}`}
-                                  >
-                                    <ChevronsRight className="h-3.5 w-3.5" />
-                                    {statusConfig[getNextStatus(t.status)!]?.label}
-                                  </Button>
-                                )}
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   className="rounded-full border-[#e5e7f2] text-[#6b7490] hover:border-[#8b5cf6] hover:text-[#8b5cf6]"
                                   onClick={() => openEdit(t)}
+                                  disabled={t.status === "terminated"}
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                   Edit
                                 </Button>
+                                {t.status !== "terminated" && t.status !== "concluded" && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="rounded-full border-[#e5e7f2] text-[#6b7490] hover:border-[#4b5563] hover:text-[#4b5563]"
+                                    onClick={() => setTerminatingId(t.id)}
+                                    disabled={isTerminating}
+                                  >
+                                    <Ban className="h-3.5 w-3.5" />
+                                    Terminate
+                                  </Button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -430,6 +499,43 @@ const AdminTournamentsPage = () => {
           status: editingTournament.status,
         } : undefined}
       />
+
+      {/* Terminate confirmation dialog */}
+      <Dialog open={!!terminatingId} onOpenChange={(open) => { if (!open && !isTerminating) setTerminatingId(null); }}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#1d2436]">Terminate Tournament?</DialogTitle>
+            <DialogDescription className="text-[#8088a0]">
+              This will permanently terminate{" "}
+              <span className="font-semibold text-[#1d2436]">
+                {tournaments.find((t) => t.id === terminatingId)?.title ?? "this tournament"}
+              </span>{" "}
+              and all its submissions. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              className="rounded-full border-[#e5e7f2] text-[#6b7490]"
+              onClick={() => setTerminatingId(null)}
+              disabled={isTerminating}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="rounded-full bg-[#4b5563] text-white hover:bg-[#374151]"
+              disabled={isTerminating}
+              onClick={() => {
+                const t = tournaments.find((x) => x.id === terminatingId);
+                if (t) handleTerminate(t);
+              }}
+            >
+              <Ban className="h-3.5 w-3.5" />
+              Yes, Terminate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

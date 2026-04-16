@@ -7,15 +7,14 @@ import { use, useContext, useEffect } from "react";
 const UsNavigationButtons = () => {
   const router = useRouter();
   const { user } = useContext(AuthContext);
-  useEffect(() => {console.log("User in UsNavigationButtons:", user);}, [user]);
 
   return (
     <div className="flex items-center space-x-6 text-sm font-medium">
-      <button onClick={() => router.push("/dashboard")} className="hover:cursor-pointer hover:text-primary transition-colors">
+      {/* <button onClick={() => router.push("/dashboard")} className="hover:cursor-pointer hover:text-primary transition-colors">
         Active Battles
-      </button>
-      <button onClick={() => router.push("")} className="hover:cursor-pointer hover:text-primary transition-colors">
-        Archives
+      </button> */}
+      <button onClick={() => router.push("/past-tournaments")} className="hover:cursor-pointer hover:text-primary transition-colors">
+        Past Tournaments
       </button>
       {user?.user_role == "admin" && (
         <button onClick={() => router.push("/admin")} className="hover:cursor-pointer hover:text-primary transition-colors">

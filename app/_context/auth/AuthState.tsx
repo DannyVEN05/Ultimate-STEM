@@ -182,6 +182,45 @@ const AuthState = ({ children }: Props) => {
     }
   };
 
+  const updateUser = async (user: User) => {
+    try {
+      const profilePayload = {
+        user_firstname: user.user_firstname.trim(),
+        user_lastname: user.user_lastname.trim(),
+        user_email: user.user_email.trim(),
+        user_phone_number: user.user_phone_number.trim(),
+        user_dob: user.user_dob ? user.user_dob.toISOString().slice(0, 10) : null,
+      };
+
+      const { error: authError } = await supabase.auth.updateUser({
+        email: profilePayload.user_email,
+        data: {
+          user_firstname: profilePayload.user_firstname,
+          user_lastname: profilePayload.user_lastname,
+          user_phone_number: profilePayload.user_phone_number,
+          user_dob: profilePayload.user_dob,
+        },
+      });
+
+      if (authError) return authError.message ?? String(authError);
+
+      const { data: updatedProfile, error: profileError } = await supabase
+        .from("user")
+        .update(profilePayload)
+        .eq("user_id", user.user_id)
+        .select("*")
+        .single();
+
+      if (profileError) return profileError.message ?? String(profileError);
+
+      dispatch({ type: AuthActionKind.SET_USER, payload: mapToAppUser(updatedProfile) });
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -190,6 +229,7 @@ const AuthState = ({ children }: Props) => {
         signUp,
         logIn,
         logOut,
+        updateUser,
       }}
     >
       {children}

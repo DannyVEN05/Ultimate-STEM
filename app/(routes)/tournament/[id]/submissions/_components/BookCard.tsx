@@ -35,14 +35,14 @@ const BookCard = (props: BookCardProps) => {
   }
   return (
     <div className="p-4 h-full rounded-xl border border-gray-200">
-      <div className="absolute -top-3 -right-3">
-        <Button variant="default" className="group min-h-8 min-w-8 rounded-full hover:-translate-y-1" onClick={handleClickLike}>
-          <Heart className={`size-6 cursor-pointer transition-all ${isLiked ? " text-red-500 fill-red-500" : "fill-transparent group-hover:fill-red-500 group-hover:text-red-500"} `}>
+      <div className="absolute -top-3 -right-3 z-1">
+        <Button variant="default" className="group min-h-12 min-w-12 rounded-full hover:-translate-y-1" onClick={handleClickLike}>
+          <Heart className={`size-7 cursor-pointer transition-all ${isLiked ? " text-red-500 fill-red-500" : "fill-transparent group-hover:fill-red-500 group-hover:text-red-500"} `}>
           </Heart>
         </Button>
       </div>
       <div className="items-center">
-        <img src={coverUrl} alt={`${props.title} cover`} className="aspect-[210/297] w-full bg-white shadow-md rounded-lg hover:shadow-xl transform transition hover:-translate-y-1"
+        <img src={coverUrl} alt={`${props.title} cover`} className="aspect-[210/297] w-full bg-white shadow-md rounded-lg hover:shadow-xl transform transition"
         ></img>
         <div className="flex flex-col pt-3">
           <h3 className="text-md font-bold">{props.title}</h3>

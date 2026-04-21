@@ -79,7 +79,7 @@ const BookState = ({ children }: Props) => {
   }
 
   // Depending on the tournament_id, filter books into groups for displaying
-  const setBooks = async () => {
+  const setBooks = async (tournament_id: string) => {
     let mounted = true
     dispatch({ type: BookActionKind.SET_STATUS, payload: "loading" })
 
@@ -89,7 +89,9 @@ const BookState = ({ children }: Props) => {
         .select(`
           *,
           concept!inner(*)
-        `).filter("concept.concept_reviewed_at", "not.is", null)
+        `)
+        .eq("tournament_id", tournament_id)
+        .eq("tournamentsub_status", "approved")
 
       if (error) {
         console.warn("Error fetching data: ", error);
@@ -98,7 +100,10 @@ const BookState = ({ children }: Props) => {
       }
 
       if (!data || data.length === 0) {
-        if (mounted) dispatch({ type: BookActionKind.SET_STATUS, payload: "ready" })
+        if (mounted) {
+          dispatch({ type: BookActionKind.SET_BOOKS, payload: [] })
+          dispatch({ type: BookActionKind.SET_STATUS, payload: "ready" })
+        }
         return;
       };
 

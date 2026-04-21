@@ -6,8 +6,9 @@ export const metadata: Metadata = {
   description: "Ultimate STEM",
 };
 
-const Tournament: NextPage = () => {
-  return <TournamentPage />;
+const Tournament = async ({ params }: { params: Promise<{ id: string }> }) => {
+  const { id } = await params;
+  return <TournamentPage id={id} />;
 };
 
 export default Tournament;

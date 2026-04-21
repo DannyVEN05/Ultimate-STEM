@@ -32,7 +32,22 @@ export class Book {
     concept_title: string = '',
     concept_description: string = '',
     concept_status: string = '',
-    concept_styling: BookCover = {},
+    concept_styling: BookCover = {
+      spine_color: '',
+      book_cover: '',
+      title: '',
+      author: '',
+      title_color: '',
+      title_bg_color: '',
+      author_color: '',
+      author_bg_color: '',
+      title_font: '',
+      author_font: '',
+      title_x: 20,
+      title_y: 40,
+      author_x: 20,
+      author_y: 100,
+    },
     concept_genre: string = '',
     user_id: string = ''
   ) {

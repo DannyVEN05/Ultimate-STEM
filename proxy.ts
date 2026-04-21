@@ -7,7 +7,7 @@ export async function proxy(request: NextRequest) {
   const isPrivateRoute =
     pathname.startsWith('/admin') ||
     pathname.startsWith('/profile') ||
-    pathname.startsWith('/dashboard/tournament/submissions/bookbuilder')
+    pathname.startsWith('/bookbuilder')
 
   const isPublicRoute =
     pathname.startsWith('/login') ||

@@ -3,13 +3,16 @@
 import BookContext from "@/app/_context/book/BookContext";
 import { useContext, useEffect, useRef } from "react";
 import BookCard from "./BookCard";
+import { useParams } from "next/navigation";
 
 const GridViewPage = () => {
   const { books, setBooks } = useContext(BookContext);
+  const params = useParams();
+  const id = params.id;
   const setBooksRef = useRef(setBooks);
   
   useEffect(() => {
-    setBooksRef.current();
+    setBooksRef.current(id as string);
   }, []);
 
   return (

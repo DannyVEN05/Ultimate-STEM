@@ -110,7 +110,7 @@ const ProfilePage: React.FC = () => {
   return (
     <div className="mx-36 h-full flex flex-col min-h-0">
 
-      <div className="flex gap-38 justify-center items-center mb-2">
+      <div className="flex gap-[152px] justify-center items-center mb-2">
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-center pl-4 pr-1">My Profile</h1>
         </div>
@@ -122,7 +122,7 @@ const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex gap-38 h-full min-h-0">
+      <div className="flex gap-[152px] h-full min-h-0">
         <div className="flex flex-col flex-1 pl-2">
 
           <div className="flex-[5] my-2 mr-2 ml-2 border border-gray-200 shadow-xs rounded-xl justify-between items-center flex flex-col p-4 bg-gradient-to-b from-secondary/50 to-white hover:from-secondary/70 hover:to-secondary/10 transition-colors hover:shadow-md">

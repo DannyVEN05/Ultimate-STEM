@@ -219,7 +219,7 @@ const AuthState = ({ children }: Props) => {
       return err instanceof Error ? err.message : String(err);
 
     }
-  }
+  };
 
   return (
     <AuthContext.Provider

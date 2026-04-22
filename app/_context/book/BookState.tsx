@@ -78,7 +78,6 @@ const BookState = ({ children }: Props) => {
     dispatch({ type: BookActionKind.TOGGLE_MODE, payload: mode })
   }
 
-  // Depending on the tournament_id, filter books into groups for displaying
   const setBooks = async (tournament_id: string) => {
     let mounted = true
     dispatch({ type: BookActionKind.SET_STATUS, payload: "loading" })

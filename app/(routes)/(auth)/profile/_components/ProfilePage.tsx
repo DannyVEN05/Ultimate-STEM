@@ -134,8 +134,11 @@ const ProfilePage: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-2 w-full">
               <div className="col-span-2 flex flex-col">
-                <p className="ml-1 text-sm font-semibold">First Name:</p>
+                <label htmlFor="user_firstname" className="ml-1 text-sm font-semibold">
+                  First Name:
+                </label>
                 <Input
+                  id="user_firstname"
                   className="bg-white text-sm"
                   value={formState.user_firstname}
                   onChange={(event) => updateFormField("user_firstname", event.target.value)}
@@ -143,8 +146,11 @@ const ProfilePage: React.FC = () => {
                 />
               </div>
               <div className="col-span-2 flex flex-col">
-                <p className="ml-1 text-sm font-semibold">Last Name:</p>
+                <label htmlFor="user_lastname" className="ml-1 text-sm font-semibold">
+                  Last Name:
+                </label>
                 <Input
+                  id="user_lastname"
                   className="bg-white text-sm"
                   value={formState.user_lastname}
                   onChange={(event) => updateFormField("user_lastname", event.target.value)}
@@ -152,8 +158,11 @@ const ProfilePage: React.FC = () => {
                 />
               </div>
               <div className="col-span-2 flex flex-col">
-                <p className="ml-1 text-sm font-semibold">Email:</p>
+                <label htmlFor="user_email" className="ml-1 text-sm font-semibold">
+                  Email:
+                </label>
                 <Input
+                  id="user_email"
                   className="bg-white text-sm"
                   value={formState.user_email}
                   onChange={(event) => updateFormField("user_email", event.target.value)}
@@ -162,8 +171,11 @@ const ProfilePage: React.FC = () => {
                 />
               </div>
               <div className="col-span-2 flex flex-col">
-                <p className="ml-1 text-sm font-semibold">Phone Number:</p>
+                <label htmlFor="user_phone_number" className="ml-1 text-sm font-semibold">
+                  Phone Number:
+                </label>
                 <Input
+                  id="user_phone_number"
                   className="bg-white text-sm"
                   value={formState.user_phone_number}
                   onChange={(event) => updateFormField("user_phone_number", event.target.value)}
@@ -172,8 +184,11 @@ const ProfilePage: React.FC = () => {
                 />
               </div>
               <div className="col-span-2 flex flex-col">
-                <p className="ml-1 text-sm font-semibold">Date of Birth:</p>
+                <label htmlFor="user_dob" className="ml-1 text-sm font-semibold">
+                  Date of Birth:
+                </label>
                 <Input
+                  id="user_dob"
                   className="bg-white text-sm"
                   type="date"
                   value={formState.user_dob}

@@ -11,7 +11,7 @@ const TournamentPage = ({ id }: { id: string }) => {
 
   useEffect(() => {
     setTournament(Number(id));
-  }, [id]);
+  }, [id, setTournament]);
 
   return (
     <div className="flex w-full flex-col items-center mt-10 font-bold">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useReducer } from "react";
+import React, { useReducer, useCallback } from "react";
 import tournamentReducer, { TournamentReducerState } from "./TournamentReducer";
 import { Tournament, TournamentStatus } from "@/app/_types/model/Tournament";
 import { supabase } from "@/lib/supabase";
@@ -34,7 +34,8 @@ const TournamentState = ({ children }: Props) => {
     );
   };
 
-  const setTournaments = async () => {
+  const setTournaments = useCallback(async () => {
+    let mounted = true;
     dispatch({ type: TournamentActionKind.SET_STATUS, payload: "loading" });
     try {
       const { data, error } = await supabase
@@ -46,16 +47,21 @@ const TournamentState = ({ children }: Props) => {
 
       if (error) throw error;
 
-      dispatch({ type: TournamentActionKind.SET_TOURNAMENTS, payload: (data ?? []).map(mapToTournament) });
-      dispatch({ type: TournamentActionKind.SET_STATUS, payload: "success" });
+      if (mounted) {
+        dispatch({ type: TournamentActionKind.SET_TOURNAMENTS, payload: (data ?? []).map(mapToTournament) });
+        dispatch({ type: TournamentActionKind.SET_STATUS, payload: "success" });
+      }
     } catch (err) {
       console.warn("Error fetching tournaments:", err);
-      dispatch({ type: TournamentActionKind.SET_TOURNAMENTS, payload: [] });
-      dispatch({ type: TournamentActionKind.SET_STATUS, payload: "error" });
+      if (mounted) {
+        dispatch({ type: TournamentActionKind.SET_TOURNAMENTS, payload: [] });
+        dispatch({ type: TournamentActionKind.SET_STATUS, payload: "error" });
+      }
     }
-  };
+  }, []);
 
-  const setTournament = async (id: number) => {
+  const setTournament = useCallback(async (id: number) => {
+    let mounted = true;
     dispatch({ type: TournamentActionKind.SET_STATUS, payload: "loading" });
     try {
       const { data, error } = await supabase
@@ -68,14 +74,18 @@ const TournamentState = ({ children }: Props) => {
 
       if (error) throw error;
 
-      dispatch({ type: TournamentActionKind.SET_TOURNAMENT, payload: mapToTournament(data) });
-      dispatch({ type: TournamentActionKind.SET_STATUS, payload: "success" });
+      if (mounted) {
+        dispatch({ type: TournamentActionKind.SET_TOURNAMENT, payload: mapToTournament(data) });
+        dispatch({ type: TournamentActionKind.SET_STATUS, payload: "success" });
+      }
     } catch (err) {
       console.warn("Error fetching tournament:", err);
-      dispatch({ type: TournamentActionKind.SET_TOURNAMENT, payload: null });
-      dispatch({ type: TournamentActionKind.SET_STATUS, payload: "error" });
+      if (mounted) {
+        dispatch({ type: TournamentActionKind.SET_TOURNAMENT, payload: null });
+        dispatch({ type: TournamentActionKind.SET_STATUS, payload: "error" });
+      }
     }
-  };
+  }, []);
 
   return (
     <TournamentContext.Provider

@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useReducer } from "react";
+import React, { useContext, useReducer } from "react";
 import bookReducer, { BookReducerState } from "./BookReducer";
 import { Book } from "@/app/_types/model/Book";
 import { supabase } from "@/lib/supabase";
 import { BookActionKind } from "@/app/_types/context";
 import BookContext from "./BookContext";
 import { BookCover } from "@/app/_types/model/Concept";
+import AuthContext from "../auth/AuthContext";
 
 type Props = {
   children?: React.ReactNode | React.ReactNode[];
@@ -17,13 +18,15 @@ const BookState = ({ children }: Props) => {
     books: [],
     status: "",
     isGridMode: true,
+    userConcepts: [],
   }
 
   const [state, dispatch] = useReducer(bookReducer, initialState);
+  const { user } = useContext(AuthContext);
 
   const mapToBookCover = (styling: string | BookCover | any): BookCover => {
     let data = styling
-    if (typeof styling === 'string'){
+    if (typeof styling === 'string') {
       try {
         data = JSON.parse(styling)
       } catch (err) {
@@ -31,7 +34,7 @@ const BookState = ({ children }: Props) => {
         data = {}
       }
     }
-    
+
     return {
       spine_color: data?.spine_color ?? '#000000',
       book_cover: data?.book_cover ?? '/covers/engineering.png',
@@ -44,12 +47,12 @@ const BookState = ({ children }: Props) => {
       title_font: data?.title_font ?? 'sans-serif',
       author_font: data?.author_font ?? 'sans-serif',
       title_x: data?.title_x,
-      title_y: data?.title_y ,
+      title_y: data?.title_y,
       author_x: data?.author_x,
       author_y: data?.author_y,
-  
+
     }
-  }  
+  }
 
   const mapToBook = (row: any): Book => {
     const book = new Book(
@@ -116,11 +119,38 @@ const BookState = ({ children }: Props) => {
 
   const updateLikes = async (tournamentsub_id: string, isLiked: boolean) => {
     const { error } = await supabase
-      .rpc(isLiked ? "increment_tournamentsub_likes" : "decrement_tournamentsub_likes", {id: tournamentsub_id}
+      .rpc(isLiked ? "increment_tournamentsub_likes" : "decrement_tournamentsub_likes", { id: tournamentsub_id }
       );
-    
+
     if (error) {
       console.warn(`Error: ${isLiked ? "incrementing" : "decrementing"}, Likes`, error)
+    }
+  }
+
+  const setUserConcepts = async () => {
+    try {
+      if (!user) {
+        console.warn("Error fetching user concepts: No user found.");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("concept")
+        .select("*")
+        .eq("user_id", user.user_id);
+
+      if (error) {
+        console.warn("Error fetching user concepts: ", error);
+        return;
+      }
+
+      const mappedConcepts = (data ?? []).map((concept) => ({
+        ...concept,
+        concept_styling: mapToBookCover(concept?.concept_styling),
+      }));
+      dispatch({ type: BookActionKind.SET_USER_CONCEPTS, payload: mappedConcepts });
+    } catch (err) {
+      console.warn("Unexpected error occurred: ", err);
     }
   }
 
@@ -130,9 +160,11 @@ const BookState = ({ children }: Props) => {
         books: state.books,
         status: state.status,
         isGridMode: state.isGridMode,
+        userConcepts: state.userConcepts,
         setIsGridMode,
         setBooks,
         updateLikes,
+        setUserConcepts,
       }}
     >
       {children}

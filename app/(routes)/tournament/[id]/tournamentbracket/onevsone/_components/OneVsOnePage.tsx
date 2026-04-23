@@ -117,7 +117,7 @@ const OneVsOnePage = () => {
       
       <div className="mt-auto flex justify-center">
         <Button
-          className="bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
+          className="bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-[22px] text-lg rounded-[1.75rem] shadow-lg"
           onClick={(e) => {
             e.stopPropagation();
             setSelectedBook(book1.title);

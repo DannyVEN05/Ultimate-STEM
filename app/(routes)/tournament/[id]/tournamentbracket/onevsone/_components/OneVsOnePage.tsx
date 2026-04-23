@@ -18,8 +18,8 @@ const OneVsOnePage = () => {
   const router = useRouter();
   
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
-  const [book1flipped,setbook1Flipped] = useState(false);
-  const [book2flipped,setbook2Flipped] = useState(false);
+  const [book1Flipped, setBook1Flipped] = useState(false);
+  const [book2Flipped, setBook2Flipped] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
   const [hasVoted, setHasVoted] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(45900); // 12 hours 45 minutes in seconds

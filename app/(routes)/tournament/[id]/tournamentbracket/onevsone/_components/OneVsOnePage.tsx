@@ -191,8 +191,8 @@ const OneVsOnePage = () => {
           onClick={(e) => {
             e.stopPropagation();
             setIsVoting(true);
-            setHasVoted(book1.title);
-            setSelectedBook(book1.title);
+            setHasVoted(book2.title);
+            setSelectedBook(book2.title);
             router.push("");
           }}
         >

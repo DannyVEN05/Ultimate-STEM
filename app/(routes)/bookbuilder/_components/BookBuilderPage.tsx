@@ -239,18 +239,23 @@ const BookBuilderPage = () => {
 
           {/* <form>  cant have form has it refresh the page and cancels handlesubmit*/} 
           <div className="w-full max-w-2xl border-2 border-gray-300 rounded-lg shadow-sm p-10 space-y-6 ">
-            <h2 className="mb-25 text-base text-left text-black">
-            
-            <label htmlFor="book-title-input">Title</label>
-              
+            <div className="mb-25 text-base text-left text-black">
             <div className="flex items-center justify-start gap-20 mb-2">
-              <UsInput id="book-title-input" placeholder="Enter title..." sizeOptions={{ width: 300 }} maxLength={30} value={title} onChange={(e: any) => setTitle(e.target.value)}/>
-              
-              {/* title colour */}
+            Title
+            {/* title colour */}
+            <div className="flex items-center gap-3">
+              <label htmlFor="colour-picker" className"text-sm font-bold">Colour</label>
+              <input id="colour-picker" type="color" value={titTextColor} onChange={(e) => setTitColor(e.target.value)}
+              className="w-16 h-10 cursor-pointer" />
+            </div>
+            
+
               <div className="flex items-center gap-3">
-                <label className="text-sm font-bold">Colour</label>
-                <input type="color" value={titTextColor} onChange={(e) => setTitColor(e.target.value)}
-                className="w-16 h-10 cursor-pointer rounded-full" />
+                {/* add a form option for font styles */}
+                <label htmlFor="font-select" className="text-sm font-bold">Font</label>
+                <select id="font-select" value={titleFont} onChange={(e) => setTitleFont(e.target.value)} className="text-sm border border-gray-300 rounded h-8"> 
+                  {fontOptions.map(font => <option key={font} value={font}>{font}</option>)}
+                </select>
               </div>
             
                 <div className="flex items-center gap-3">
@@ -266,20 +271,25 @@ const BookBuilderPage = () => {
               <div className="flex items-center justify-start gap-20 mb-2">
                 <UsInput placeholder="Enter author..." sizeOptions={{ width: 300 }} maxLength={30} value={author} onChange={(e: any) => setAuthor(e.target.value)}/>
 
-                  {/* font colour */}
-                <div className="flex items-center gap-3">
-                <label className="text-sm font-bold">Colour</label>
-                  <input type="color" value={autTextColor} onChange={(e) => setAutTextColor(e.target.value)}
-                  className="w-16 h-10 cursor-pointer rounded-full" />
+              {/* font colour */}
+              <div className="flex items-center gap-3">
+              <label htmlFor="colour-picker" className="text-sm font-bold">Colour</label>
+                <input id="colour-picker" type="color" value={autTextColor} onChange={(e) => setAutTextColor(e.target.value)}
+                className="w-16 h-10 cursor-pointer" />
               </div>
 
               <div className="flex items-center gap-3">
-                  {/* add a form option for font styles */}
-                  <label className="text-sm font-bold">Font</label>
-                  <select value={autFont} onChange={(e) => setAutFont(e.target.value)} className="text-sm border border-gray-300 rounded h-8"> 
-                    {fontOptions.map(font => <option key={font} value={font}>{font}</option>)}
-                  </select>
-                </div>
+              <label htmlFor="font-select" className="text-sm font-bold">Font</label>
+              <select id="font-select" value={autFont} onChange={(e) => setAutFont(e.target.value)} className="text-sm border border-gray-300 rounded h-8">
+                  {fontOptions.map(font => <option key={font} value={font}>{font}</option>)}
+                </select>
+              </div>
+              
+              </div>
+              <UsInput placeholder="Enter author..." sizeOptions={{ width: 600 }} value={author} onChange={(e: any) => setAuthor(e.target.value)}/>
+            </div>
+            <div className="flex w-full flex-col items-center font-medium text-base space-y-4">
+              Genres
 
               </div>
               Genres  

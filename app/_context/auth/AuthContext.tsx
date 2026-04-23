@@ -10,6 +10,7 @@ export type AuthContextType = {
   signUp: (signUpData: SignUpData) => Promise<null | string>;
   logIn: (logInData: LogInData) => Promise<null | string>;
   logOut: () => Promise<null | string>;
+  updateUser: (user: User) => Promise<null | string>;
 };
 
 const AuthContext = createContext({} as AuthContextType);

@@ -181,7 +181,7 @@ const OneVsOnePage = () => {
       />
 
       <h2 className="text-xl text-gray-600 font-semibold text-left mt-3 mx-auto">
-        By: {book1.author}
+        By: {book2.author}
       </h2>
 
       <div className="mt-auto flex justify-center">

@@ -37,7 +37,7 @@ const BookCard = (props: BookCardProps) => {
     setIsProcessing(false)
   }
   return (
-    <div className={`perspective-[1200px] transition-all duration-500 ${isFlipped ? "z-50" : "z-10"}`}>
+    <div className={`perspective-[1200px] transition-all duration-700 ${isFlipped ? "z-50" : "z-10"}`}>
       <div
         className={`relative w-full transition-all duration-700 [transform-style:preserve-3d] ${
           isFlipped 
@@ -47,10 +47,11 @@ const BookCard = (props: BookCardProps) => {
       >
         <div 
           onClick={() => setIsFlipped(true)}
-          className="absolute-inset-0 rounded-xl shadow-sm hover:shadow-md cursor-pointer [backface-visibility:hidden]"
+          role="button"
+          className="rounded-xl shadow-sm hover:shadow-md cursor-pointer [backface-visibility:hidden]"
         >
           <div className={`relative w-full bg-secondary/50 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 hover:bg-secondary/50`}>
-            <div className="p-4 h-full rounded-xl border border-gray-200 z-8">
+            <div className="p-4 h-full rounded-xl border border-gray-200 z-[8]">
               <div className="absolute -top-3 -right-3 z-10">
                 <Button variant="default" className="group min-h-12 min-w-12 rounded-full hover:-translate-y-1" onClick={handleClickLike}>
                   <Heart className={`size-7 cursor-pointer transition-all ${isLiked ? " text-red-500 fill-red-500" : "fill-transparent group-hover:fill-red-500 group-hover:text-red-500"} `}>
@@ -70,6 +71,7 @@ const BookCard = (props: BookCardProps) => {
         </div>
         <div
           onClick={() => setIsFlipped(false)}
+          role="button"
           className="absolute inset-0 p-6 rounded-xl border border-gray-200 bg-secondary/90 shadow-2xl flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden] cursor-pointer"
         >
           <div className="flex flex-col h-full">

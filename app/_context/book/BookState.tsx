@@ -79,7 +79,6 @@ const BookState = ({ children }: Props) => {
   }
 
   const setBooks = async (tournament_id: string) => {
-    let mounted = true
     dispatch({ type: BookActionKind.SET_STATUS, payload: "loading" })
 
     try {
@@ -94,27 +93,23 @@ const BookState = ({ children }: Props) => {
 
       if (error) {
         console.warn("Error fetching data: ", error);
-        if (mounted) dispatch({ type: BookActionKind.SET_STATUS, payload: "error" })
+        dispatch({ type: BookActionKind.SET_STATUS, payload: "error" })
         return;
       }
 
       if (!data || data.length === 0) {
-        if (mounted) {
-          dispatch({ type: BookActionKind.SET_BOOKS, payload: [] })
-          dispatch({ type: BookActionKind.SET_STATUS, payload: "ready" })
-        }
+        dispatch({ type: BookActionKind.SET_BOOKS, payload: [] })
+        dispatch({ type: BookActionKind.SET_STATUS, payload: "ready" })
         return;
       };
 
-      if (mounted) {
-        const mappedBooks = data.map(mapToBook)
-        dispatch({ type: BookActionKind.SET_BOOKS, payload: mappedBooks })
-        dispatch({ type: BookActionKind.SET_STATUS, payload: "ready" })
-      }
+      const mappedBooks = data.map(mapToBook)
+      dispatch({ type: BookActionKind.SET_BOOKS, payload: mappedBooks })
+      dispatch({ type: BookActionKind.SET_STATUS, payload: "ready" })
 
     } catch (err) {
       console.warn("Error fetching data: ", err)
-      if (mounted) dispatch({ type: BookActionKind.SET_STATUS, payload: "error" })
+      dispatch({ type: BookActionKind.SET_STATUS, payload: "error" })
     }
   }
 

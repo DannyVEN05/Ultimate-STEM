@@ -12,7 +12,7 @@ const SubmissionsPage = () => {
   const { isGridMode, setIsGridMode } = useContext(BookContext);
   const router = useRouter();
   const [ title, setTitle ] = useState("");
-  const params = useParams();
+  const params = useParams<{ id:string}>();
   const id = params.id;
 
   useEffect(() => {

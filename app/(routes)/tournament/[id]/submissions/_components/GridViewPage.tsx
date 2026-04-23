@@ -8,14 +8,12 @@ import { supabase } from "@/lib/supabase";
 
 const GridViewPage = () => {
   const { books, setBooks } = useContext(BookContext);
-  const params = useParams();
+  const params = useParams<{ id: string }>();
   const id = params.id;
   const setBooksRef = useRef(setBooks);
   
   useEffect(() => {
-    setBooksRef.current(id as string);
-    
-    // Testing channel for BookContext's setBooks function
+    setBooksRef.current(id);
     const channel = supabase
       .channel(`tournament-${id}`)
       .on(
@@ -25,9 +23,8 @@ const GridViewPage = () => {
           schema: 'public', 
           table: 'tournament_submission'
         }, 
-        (payload) => {
-          console.log(`Change received`, payload);
-          setBooksRef.current(id as string);
+        () => {
+          setBooksRef.current(id);
           }
       ).subscribe();
       
@@ -42,7 +39,7 @@ const GridViewPage = () => {
         <BookCard 
           key={book.tournamentsub_id} 
           title={book.concept_title} 
-          author= {"Loading..."} 
+          author= {book.concept_styling.author}
           description={book.concept_description} 
           genre={book.concept_genre} 
           tournamentsub_id={book.tournamentsub_id} 

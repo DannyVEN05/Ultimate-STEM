@@ -9,3 +9,9 @@ export enum BookActionKind{
   TOGGLE_MODE = "TOGGLE_MODE",
   UPDATE_LIKES = "UPDATE_LIKES",
 };
+
+export enum TournamentActionKind {
+  SET_TOURNAMENTS = "SET_TOURNAMENTS",
+  SET_TOURNAMENT = "SET_TOURNAMENT",
+  SET_STATUS = "SET_STATUS",
+};

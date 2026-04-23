@@ -3,6 +3,7 @@
 import { useEffect, useState, useContext } from "react";
 import { supabase } from "@/lib/supabase";
 import AuthContext from "@/app/_context/auth/AuthContext";
+import TournamentContext from "@/app/_context/tournament/TournamentContext";
 import { useRouter } from "next/navigation";
 import { Bell, FlaskConical, Zap, BookOpen, Mail } from "lucide-react";
 import { getCategoryEmoji, getCategoryBg } from "@/app/_utilities/categoryUtils";
@@ -99,7 +100,8 @@ function UpcomingCard({ t, now, isNotified, isNotifying, onNotify }: UpcomingCar
 const DashboardPage = () => {
   const router = useRouter();
   const { user } = useContext(AuthContext);
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const { setTournament } = useContext(TournamentContext);
+  const [allTournaments, setAllTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notifiedIds, setNotifiedIds] = useState<Set<string>>(new Set());
@@ -112,9 +114,9 @@ const DashboardPage = () => {
     return () => clearInterval(id);
   }, []);
 
-  const active = tournaments.filter(t => t.status === "stage1" || t.status === "stage2");
-  const upcoming = tournaments.filter(t => t.status === "upcoming");
-  const concluded = tournaments.filter(t => t.status === "concluded");
+  const active = allTournaments.filter(t => t.status === "stage1" || t.status === "stage2");
+  const upcoming = allTournaments.filter(t => t.status === "upcoming");
+  const concluded = allTournaments.filter(t => t.status === "concluded");
   const sidebar = active.slice(1);
 
   useEffect(() => {
@@ -127,7 +129,7 @@ const DashboardPage = () => {
         if (err) {
           setError(err.message);
         } else if (data) {
-          setTournaments(data.map((row: any) => ({
+          setAllTournaments(data.map((row: any) => ({
             id: String(row.tournament_id),
             title: row.tournament_title,
             category: row.tournament_genre ?? "",
@@ -272,7 +274,7 @@ const DashboardPage = () => {
               </div>
 
               <button
-                onClick={() => router.push(`/tournament/${active[0].id}`)}
+                onClick={async () => { await setTournament(active[0].id); router.push(`/tournament/${active[0].id}`); }}
                 className="mt-1 w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white hover:bg-primary/90 transition-colors cursor-pointer"
               >
                 Join Now
@@ -298,7 +300,7 @@ const DashboardPage = () => {
                         {t.category && <p className="text-xs text-gray-500 mt-0.5">{t.category}</p>}
                       </div>
                       <button
-                        onClick={() => router.push(`/tournament/${t.id}`)}
+                        onClick={async () => { await setTournament(t.id); router.push(`/tournament/${t.id}`); }}
                         className={`mt-auto w-full rounded-lg py-2 text-xs font-semibold text-white ${getCategoryBg(t.category)} hover:opacity-90 transition-opacity cursor-pointer`}
                       >
                         Join Now

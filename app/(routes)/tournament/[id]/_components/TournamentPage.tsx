@@ -1,10 +1,14 @@
 "use client";
 
 import UsButton from "@/app/_common/ui/buttons/UsButton";
+// import TournamentContext from "@/app/_context/tournament/TournamentContext";
 import { useRouter } from "next/navigation";
+// import { useContext, useEffect } from "react";
 
 const TournamentPage = ({ id }: { id: string }) => {
   const router = useRouter();
+  // const { tournament } = useContext(TournamentContext);
+
   return (
     <div className="flex w-full flex-col items-center mt-10 font-bold">
       <h1 className="mb-25 text-4xl">{'{tournament name}'}</h1>

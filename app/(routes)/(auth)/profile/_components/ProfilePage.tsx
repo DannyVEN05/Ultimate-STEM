@@ -62,7 +62,8 @@ const ProfilePage: React.FC = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'concept'
+          table: 'concept',
+          filter: `user_id=eq.${user.user_id}`
         },
         () => {
           setUserConceptsRef.current();
@@ -74,6 +75,10 @@ const ProfilePage: React.FC = () => {
       supabase.removeChannel(channel);
     };
   }, [user]);
+
+  useEffect(() => {
+    setUserConceptsRef.current = setUserConcepts;
+  }, [setUserConcepts]);
 
   const updateFormField = (field: keyof ProfileFormState, value: string) => {
     setFormState((prev) => ({ ...prev, [field]: value }));

@@ -14,7 +14,7 @@ const SubmissionsPage = () => {
     <div className="flex w-full flex-col items-center font-bold">
       <h1 className="mb-5 text-4xl">{'{tournament name}'}</h1>
       <div className="flex w-full justify-center">
-        <UsButton variant="blue" onClick={() => {router.push("/dashboard/tournament/submissions/bookbuilder")}}>
+        <UsButton variant="blue" onClick={() => {router.push("/bookbuilder")}}>
           Submit a Book
         </UsButton>
         <UsButton className="ml-auto" variant="blue" onClick={() => {setIsGridMode(!isGridMode)}}>

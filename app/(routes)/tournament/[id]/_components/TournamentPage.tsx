@@ -3,7 +3,7 @@
 import UsButton from "@/app/_common/ui/buttons/UsButton";
 import { useRouter } from "next/navigation";
 
-const TournamentPage = () => {
+const TournamentPage = ({ id }: { id: string }) => {
   const router = useRouter();
   return (
     <div className="flex w-full flex-col items-center mt-10 font-bold">
@@ -11,14 +11,13 @@ const TournamentPage = () => {
       <div className="flex w-full justify-center gap-25 text-center font-bold text-2xl">
         <div className="w-full max-w-md border-2 border-gray-700 p-12">
           <h2 className="my-10">Submissions</h2>
-          <UsButton variant="blue" onClick={() => {router.push("/dashboard/tournament/submissions")}}>
+          <UsButton variant="blue" onClick={() => {router.push(`/tournament/${id}/submissions`)}}>
             Submissions
           </UsButton>
         </div>
         <div className="w-full max-w-md border-2 border-gray-700 p-12">
           <h2 className="my-10">Tournament Bracket</h2>
-          <UsButton variant="blue" onClick={() => {router
-            .push("./tournament/tournamentbracket")}}>
+          <UsButton variant="blue" onClick={() => {router.push(`/tournament/${id}/tournamentbracket`)}}>
             Tournament Bracket
           </UsButton>
         </div>

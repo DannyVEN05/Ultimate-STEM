@@ -137,7 +137,7 @@ const BookBuilderPage = () => {
             <div className="flex items-center justify-center">
               
               <div
-                className="h-96 w-10 flex items-center justify-center text-white text-xs font-bold"
+                className="h-96 w-5 flex items-center justify-center text-white text-xs font-bold"
                 style={{ backgroundColor: spineColor }}>
                 <span className="rotate-90 ">
                   {title || "Book Title"}
@@ -240,78 +240,68 @@ const BookBuilderPage = () => {
           {/* <form>  cant have form has it refresh the page and cancels handlesubmit*/} 
           <div className="w-full max-w-2xl border-2 border-gray-300 rounded-lg shadow-sm p-10 space-y-6 ">
             <h2 className="mb-25 text-base text-left text-black">
-            <div className="flex items-center justify-start gap-20 mb-2">
-            Title
-            {/* title colour */}
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-bold">Colour</label>
-              <input type="color" value={titTextColor} onChange={(e) => setTitColor(e.target.value)}
-              className="w-16 h-10 cursor-pointer" />
-            </div>
             
-            {/* backgroundColor */}
-            {/* <div className="flex items-center gap-3">
-              <label className="text-sm font-bold">Background</label>
-              <input type="color" value={titBackColor} onChange={(e) => setTitBackColor(e.target.value)}
-              className="w-16 h-10 cursor-pointer" />
-            </div> */}
-
+            Title
+              
+            <div className="flex items-center justify-start gap-20 mb-2">
+              <UsInput placeholder="Enter title..." sizeOptions={{ width: 300 }} maxLength={30} value={title} onChange={(e: any) => setTitle(e.target.value)}/>
+              
+              {/* title colour */}
               <div className="flex items-center gap-3">
-                {/* add a form option for font styles */}
-                <label className="text-sm font-bold">Font</label>
-                <select value={titleFont} onChange={(e) => setTitleFont(e.target.value)} className="text-sm border border-gray-300 rounded h-8"> 
-                  {fontOptions.map(font => <option key={font} value={font}>{font}</option>)}
-                </select>
+                <label className="text-sm font-bold">Colour</label>
+                <input type="color" value={titTextColor} onChange={(e) => setTitColor(e.target.value)}
+                className="w-16 h-10 cursor-pointer rounded-full" />
               </div>
-              
+            
+                <div className="flex items-center gap-3">
+                  {/* add a form option for font styles */}
+                  <label className="text-sm font-bold">Font</label>
+                  <select value={titleFont} onChange={(e) => setTitleFont(e.target.value)} className="text-sm border border-gray-300 rounded h-8"> 
+                    {fontOptions.map(font => <option key={font} value={font}>{font}</option>)}
+                  </select>
+                </div>
               </div>
-              <UsInput placeholder="Enter title..." sizeOptions={{ width: 600 }} value={title} onChange={(e: any) => setTitle(e.target.value)}/>
-              
-              Description 
-
-              <UsInput multiline={true} placeholder="Enter description..." sizeOptions={{ height: 200, width: 600 }} maxLength={535} value={description} onChange={(e: any) => setDescription(e.target.value)} />
-              
-              <div className="flex items-center justify-start gap-20 mb-2">
               Author
 
-              {/* font colour */}
-              <div className="flex items-center gap-3">
-              <label className="text-sm font-bold">Colour</label>
-                <input type="color" value={autTextColor} onChange={(e) => setAutTextColor(e.target.value)}
-                className="w-16 h-10 cursor-pointer" />
-              </div>
+              <div className="flex items-center justify-start gap-20 mb-2">
+                <UsInput placeholder="Enter author..." sizeOptions={{ width: 300 }} maxLength={30} value={author} onChange={(e: any) => setAuthor(e.target.value)}/>
 
-              {/* backgroundColor */}
-              {/* <div className="flex items-center gap-3">
-              <label className="text-sm font-bold">Background</label>
-                <input type="color" value={autBackColor} onChange={(e) => setAutBackColor(e.target.value)}
-                className="w-16 h-10 cursor-pointer" />
-              </div> */}
+                  {/* font colour */}
+                <div className="flex items-center gap-3">
+                <label className="text-sm font-bold">Colour</label>
+                  <input type="color" value={autTextColor} onChange={(e) => setAutTextColor(e.target.value)}
+                  className="w-16 h-10 cursor-pointer rounded-full" />
+              </div>
 
               <div className="flex items-center gap-3">
-              <label className="text-sm font-bold">Font</label>
-              <select value={autFont} onChange={(e) => setAutFont(e.target.value)} className="text-sm border border-gray-300 rounded h-8">
-                  {fontOptions.map(font => <option key={font} value={font}>{font}</option>)}
-                </select>
-              </div>
-              
-              </div>
-              <UsInput placeholder="Enter author..." sizeOptions={{ width: 600 }} value={author} onChange={(e: any) => setAuthor(e.target.value)}/>
-            </h2>
-            <div className="flex w-full flex-col items-center font-medium text-base space-y-4">
-              Genres
+                  {/* add a form option for font styles */}
+                  <label className="text-sm font-bold">Font</label>
+                  <select value={autFont} onChange={(e) => setAutFont(e.target.value)} className="text-sm border border-gray-300 rounded h-8"> 
+                    {fontOptions.map(font => <option key={font} value={font}>{font}</option>)}
+                  </select>
+                </div>
 
+              </div>
+              Genres  
+              <div className="flex items-center justify-start gap-20 mb-2">
               <UsAutofillBox
                 options={[
                   { value: "Science", label: "Science" },
                   { value: "Technology", label: "Technology" },
                   { value: "Engineering", label: "Engineering" },
                   { value: "Mathematics", label: "Mathematics" },
-                ]} value ={genre} onChange={(e: any) => setGenre(e.target.value)}/>
-
-              <Button type="button" onClick={handleSubmit}>Submit</Button>
+                ]} sizeOptions={{width: 600}} value ={genre} onChange={(e: any) => setGenre(e.target.value)}/>
+              </div>
               
-            </div>
+              Description 
+
+              <UsInput multiline={true} placeholder="Enter description..." sizeOptions={{ height: 200, width: 600 }} maxLength={535} value={description} onChange={(e: any) => setDescription(e.target.value)} />
+              
+              <div className="flex items-center justify-center gap-20 mb-2 mt-8">
+                <Button type="button" onClick={handleSubmit} className="px-10 py-4 text-lg font-bold min-w-[200px]">Submit</Button>
+              </div>
+            </h2>
+
           </div>
           {/* </form>  */}
         </div>

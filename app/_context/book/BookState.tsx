@@ -144,7 +144,11 @@ const BookState = ({ children }: Props) => {
         return;
       }
 
-      dispatch({ type: BookActionKind.SET_USER_CONCEPTS, payload: data ?? [] });
+      const mappedConcepts = (data ?? []).map((concept) => ({
+        ...concept,
+        concept_styling: mapToBookCover(concept?.concept_styling),
+      }));
+      dispatch({ type: BookActionKind.SET_USER_CONCEPTS, payload: mappedConcepts });
     } catch (err) {
       console.warn("Unexpected error occurred: ", err);
     }

@@ -131,7 +131,7 @@ const OneVsOnePage = () => {
       </div>
     </div>
 
-{/* /* Back */}
+{/* Back */}
     <div
       onClick={() => setbook1Flipped(!book1flipped)}
       className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"

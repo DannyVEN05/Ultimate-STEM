@@ -182,14 +182,24 @@ const AuthState = ({ children }: Props) => {
     }
   };
 
-  const updateUser = async (user: User) => {
+  const updateUser = async (newUserData: User) => {
     try {
+      const authenticatedUserId = state.user?.user_id;
+
+      if (!authenticatedUserId) {
+        return "Unable to update profile: no authenticated user.";
+      }
+
+      if (newUserData.user_id && newUserData.user_id !== authenticatedUserId) {
+        return "Unable to update profile: user mismatch.";
+      }
+
       const profilePayload = {
-        user_firstname: user.user_firstname.trim(),
-        user_lastname: user.user_lastname.trim(),
-        user_email: user.user_email.trim(),
-        user_phone_number: user.user_phone_number.trim(),
-        user_dob: user.user_dob ? user.user_dob.toISOString().slice(0, 10) : null,
+        user_firstname: newUserData.user_firstname.trim(),
+        user_lastname: newUserData.user_lastname.trim(),
+        user_email: newUserData.user_email.trim(),
+        user_phone_number: newUserData.user_phone_number.trim(),
+        user_dob: newUserData.user_dob ? newUserData.user_dob.toISOString().slice(0, 10) : null,
       };
 
       const { error: authError } = await supabase.auth.updateUser({
@@ -207,7 +217,7 @@ const AuthState = ({ children }: Props) => {
       const { data: updatedProfile, error: profileError } = await supabase
         .from("user")
         .update(profilePayload)
-        .eq("user_id", user.user_id)
+        .eq("user_id", authenticatedUserId)
         .select("*")
         .single();
 

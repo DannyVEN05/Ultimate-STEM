@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import {
   Dialog,
@@ -17,17 +17,12 @@ import {
 const OneVsOnePage = () => {
   const router = useRouter();
   
-// changes to implement 
-// 1. Make everything fit on one page without scrolling
-// 2. Don't need console message, allow user to switch vote between the two books. 
-
-
-
-const [selectedBook, setSelectedBook] = useState<string | null>(null);
-const [book1flipped,setbook1Flipped] = useState(false);
-const [book2flipped,setbook2Flipped] = useState(false);
-const [isVoting, setIsVoting] = useState(false);
-const [hasVoted, setHasVoted] = useState<string | null>(null);
+  const [selectedBook, setSelectedBook] = useState<string | null>(null);
+  const [book1flipped,setbook1Flipped] = useState(false);
+  const [book2flipped,setbook2Flipped] = useState(false);
+  const [isVoting, setIsVoting] = useState(false);
+  const [hasVoted, setHasVoted] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(45900); // 12 hours 45 minutes in seconds
 
   const book1 = {
     title: "Book One",
@@ -44,6 +39,22 @@ const [hasVoted, setHasVoted] = useState<string | null>(null);
   };
  
 
+  // Format timeLeft into hours and minutes
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+  };
+
+  // Countdown timer
+  useEffect(() => {
+    if (timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [timeLeft]);
 
 
 
@@ -64,7 +75,7 @@ const [hasVoted, setHasVoted] = useState<string | null>(null);
         Torunament Title</h1>      
       
       <div className="rounded-full bg-green-100 px-5 py-3 text-sm font-semibold text-blue-800 shadow-lg mb-3 ">
-      Voting Ends in 12h 45m
+      Voting Ends in {formatTime(timeLeft)}
      </div> 
   </div>
     <p className="mb-2 max-w-4xl text-base font-bold text-gray-500 sm:text-xl">Round: 02 One vs One</p>

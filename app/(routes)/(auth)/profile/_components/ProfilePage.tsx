@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useContext, useEffect, useRef, useState } from "react";
 import ProfileBookCard from "./ProfileBookCard";
 import BookContext from "@/app/_context/book/BookContext";
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
 type ProfileFormState = {
@@ -51,8 +52,28 @@ const ProfilePage: React.FC = () => {
   }, [user, editMode]);
 
   useEffect(() => {
+    if (!user) return;
     setUserConceptsRef.current();
-  }, []);
+
+    const channel = supabase
+      .channel(`user-concepts-${user.user_id}`)
+      .on(
+        `postgres_changes`,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'concept'
+        },
+        () => {
+          setUserConceptsRef.current();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const updateFormField = (field: keyof ProfileFormState, value: string) => {
     setFormState((prev) => ({ ...prev, [field]: value }));

@@ -13,11 +13,19 @@ const ProfileBookCard: React.FC<Props> = ({
   concept
 }) => {
 
-  let coverUrl = '/';
-  if (concept.concept_styling.book_cover) {
-    const { data } = supabase.storage.from('book-covers').getPublicUrl(concept.concept_styling.book_cover);
-    coverUrl = data?.publicUrl ?? '/covers/engineering.png';
-  }
+  const fallbackCoverUrl = '/covers/engineering.png';
+  const bookCover = concept.concept_styling.book_cover;
+  let coverUrl = fallbackCoverUrl;
+  if (bookCover) {
+    const isLocalPath = bookCover.startsWith('/');
+    const isAbsoluteUrl = /^(https?:)?\/\//.test(bookCover);
+    if (isLocalPath || isAbsoluteUrl) {
+      coverUrl = bookCover;
+    } else {
+      const { data } = supabase.storage.from('book-covers').getPublicUrl(bookCover);
+      coverUrl = data?.publicUrl ?? fallbackCoverUrl;
+    }
+  };
 
   return (
     <div className={`flex h-full w-[100%] shadow-md border border-gray-200 rounded-lg p-4 gap-4 hover:shadow-xl transition-all hover:bg-secondary/30 ${className}`}>

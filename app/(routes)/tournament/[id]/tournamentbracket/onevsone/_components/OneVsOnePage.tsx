@@ -65,8 +65,8 @@ const OneVsOnePage = () => {
     
 
     
-    <div className="min-h-screen bg-white-50 px-4 py-5 pt-1">
-      <Button className="bg-white-50 hover:bg-slate-100 mb-3 text-sm font-medium text-slate-700" onClick={() => {router.push("./")}}>
+    <div className="min-h-screen bg-white px-4 py-5 pt-1">
+      <Button className="bg-white hover:bg-slate-100 mb-3 text-sm font-medium text-slate-700" onClick={() => {router.push("./")}}>
         ← Back to Bracket
       </Button>
 

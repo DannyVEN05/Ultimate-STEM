@@ -72,7 +72,7 @@ const OneVsOnePage = () => {
 
       <div className= "flex justify-between items-start">
       <h1 className=" md:text-5xl font-headline font-bold text-on-surface tracking-tighter mb-2">
-        Torunament Title</h1>      
+        Tournament Title</h1>      
       
       <div className="rounded-full bg-green-100 px-5 py-3 text-sm font-semibold text-blue-800 shadow-lg mb-3 ">
       Voting Ends in {formatTime(timeLeft)}

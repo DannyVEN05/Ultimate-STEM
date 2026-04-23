@@ -106,7 +106,7 @@ const OneVsOnePage = () => {
       <img
         src={book1.cover}
         alt={book1.title}
-        className="w-90 h-100 object-cover overflow-hidden rounded-[1.75rem] mx-auto shadow-md"
+        className="w-[360px] h-[400px] object-cover overflow-hidden rounded-[1.75rem] mx-auto shadow-md"
       />
 
 

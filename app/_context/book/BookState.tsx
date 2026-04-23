@@ -144,7 +144,7 @@ const BookState = ({ children }: Props) => {
         return;
       }
 
-      dispatch({ type: BookActionKind.SET_USER_CONCEPTS, payload: data });
+      dispatch({ type: BookActionKind.SET_USER_CONCEPTS, payload: data ?? [] });
     } catch (err) {
       console.warn("Unexpected error occurred: ", err);
     }

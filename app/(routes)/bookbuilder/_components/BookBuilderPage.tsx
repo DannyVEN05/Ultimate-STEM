@@ -107,7 +107,7 @@ const BookBuilderPage = () => {
         if (submissionError) {
           console.log("Error uploading concepts - ", submissionError.message, "Code", submissionError.code);
         } else {
-          router.back();
+          router.push("/");
         }
 
       }

@@ -120,10 +120,8 @@ const OneVsOnePage = () => {
           className="bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
           onClick={(e) => {
             e.stopPropagation();
-            setIsVoting(true);
-            setHasVoted(book1.title);
             setSelectedBook(book1.title);
-            router.push("");
+            setIsVoting(true);
           }}
         >
           Vote

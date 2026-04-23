@@ -51,7 +51,13 @@ const AuthState = ({ children }: Props) => {
 
     const hydrate = async () => {
       try {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+
+        if (authError) {
+          // Stale/invalid session — clear it so the user is prompted to log in again
+          await supabase.auth.signOut();
+          return;
+        }
 
         if (authUser && mounted) {
           const { data: user, error } = await supabase

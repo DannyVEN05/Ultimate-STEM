@@ -3,11 +3,12 @@ export enum AuthActionKind {
   SET_LOADING = "SET_LOADING",
 };
 
-export enum BookActionKind{
+export enum BookActionKind {
   SET_BOOKS = "SET_BOOKS",
   SET_STATUS = "SET_STATUS",
   TOGGLE_MODE = "TOGGLE_MODE",
   UPDATE_LIKES = "UPDATE_LIKES",
+  SET_USER_CONCEPTS = "SET_USER_CONCEPTS",
 };
 
 export enum TournamentActionKind {

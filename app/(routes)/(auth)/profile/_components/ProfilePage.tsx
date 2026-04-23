@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useContext, useEffect, useRef, useState } from "react";
 import ProfileBookCard from "./ProfileBookCard";
 import BookContext from "@/app/_context/book/BookContext";
+import { useRouter } from "next/navigation";
 
 type ProfileFormState = {
   user_firstname: string;
@@ -21,6 +22,7 @@ const ProfilePage: React.FC = () => {
   const { user, updateUser } = useContext(AuthContext);
   const { userConcepts, setUserConcepts } = useContext(BookContext);
   const setUserConceptsRef = useRef(setUserConcepts);
+  const router = useRouter();
 
   const [editMode, setEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -102,7 +104,7 @@ const ProfilePage: React.FC = () => {
         <div className="relative flex-[3]">
           <h1 className="text-3xl font-bold text-center px-5">My Submissions</h1>
           <div className="flex absolute top-1/2 -translate-y-1/2 right-4 justify-center items-center">
-            <Button variant="secondary" className="">Submit a new idea</Button>
+            <Button onClick={() => router.push('/bookbuilder')} variant="secondary" className="">Submit a new idea</Button>
           </div>
         </div>
       </div>

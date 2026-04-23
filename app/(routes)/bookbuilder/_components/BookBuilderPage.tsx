@@ -241,10 +241,10 @@ const BookBuilderPage = () => {
           <div className="w-full max-w-2xl border-2 border-gray-300 rounded-lg shadow-sm p-10 space-y-6 ">
             <h2 className="mb-25 text-base text-left text-black">
             
-            Title
+            <label htmlFor="book-title-input">Title</label>
               
             <div className="flex items-center justify-start gap-20 mb-2">
-              <UsInput placeholder="Enter title..." sizeOptions={{ width: 300 }} maxLength={30} value={title} onChange={(e: any) => setTitle(e.target.value)}/>
+              <UsInput id="book-title-input" placeholder="Enter title..." sizeOptions={{ width: 300 }} maxLength={30} value={title} onChange={(e: any) => setTitle(e.target.value)}/>
               
               {/* title colour */}
               <div className="flex items-center gap-3">

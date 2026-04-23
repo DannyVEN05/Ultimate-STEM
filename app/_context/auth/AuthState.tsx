@@ -55,7 +55,8 @@ const AuthState = ({ children }: Props) => {
 
         if (authError) {
           // Stale/invalid session — clear it so the user is prompted to log in again
-          await supabase.auth.signOut();
+          const { error: signOutError } = await supabase.auth.signOut();
+          if (signOutError) console.warn("Sign-out failed during hydration:", signOutError);
           return;
         }
 

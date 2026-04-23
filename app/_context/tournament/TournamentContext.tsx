@@ -12,7 +12,7 @@ export type TournamentContextType = {
   setTournaments: () => Promise<void>;
 
   // Fetches a single tournament by id and sets it as the active tournament.
-  setTournament: (id: string) => Promise<void>;
+  setTournament: (id: number) => Promise<void>;
 };
 
 const TournamentContext = createContext({} as TournamentContextType);

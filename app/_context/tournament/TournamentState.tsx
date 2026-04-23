@@ -50,11 +50,12 @@ const TournamentState = ({ children }: Props) => {
       dispatch({ type: TournamentActionKind.SET_STATUS, payload: "success" });
     } catch (err) {
       console.warn("Error fetching tournaments:", err);
+      dispatch({ type: TournamentActionKind.SET_TOURNAMENTS, payload: [] });
       dispatch({ type: TournamentActionKind.SET_STATUS, payload: "error" });
     }
   };
 
-  const setTournament = async (id: string) => {
+  const setTournament = async (id: number) => {
     dispatch({ type: TournamentActionKind.SET_STATUS, payload: "loading" });
     try {
       const { data, error } = await supabase
@@ -71,6 +72,7 @@ const TournamentState = ({ children }: Props) => {
       dispatch({ type: TournamentActionKind.SET_STATUS, payload: "success" });
     } catch (err) {
       console.warn("Error fetching tournament:", err);
+      dispatch({ type: TournamentActionKind.SET_TOURNAMENT, payload: null });
       dispatch({ type: TournamentActionKind.SET_STATUS, payload: "error" });
     }
   };

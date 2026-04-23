@@ -1,7 +1,7 @@
 export type TournamentStatus = "upcoming" | "stage1" | "stage2" | "concluded" | "terminated";
 
 export class Tournament {
-  tournament_id: string;
+  tournament_id: number;
   tournament_title: string;
   tournament_genre: string;
   tournament_start_date: string;
@@ -12,7 +12,7 @@ export class Tournament {
   tournament_status: TournamentStatus;
 
   constructor(
-    id: string = '',
+    id: number = 0,
     title: string = '',
     genre: string = '',
     start_date: string = '',

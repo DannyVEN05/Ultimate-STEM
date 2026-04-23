@@ -54,9 +54,21 @@ const AuthState = ({ children }: Props) => {
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
 
         if (authError) {
-          // Stale/invalid session — clear it so the user is prompted to log in again
-          const { error: signOutError } = await supabase.auth.signOut();
-          if (signOutError) console.warn("Sign-out failed during hydration:", signOutError);
+          const status = (authError as any)?.status;
+          const isAuthFailure =
+            status === 401 ||
+            authError.message?.toLowerCase().includes("refresh token") ||
+            authError.message?.toLowerCase().includes("invalid") ||
+            authError.message?.toLowerCase().includes("expired");
+
+          if (isAuthFailure) {
+            // Stale/invalid session — clear it so the user is prompted to log in again
+            const { error: signOutError } = await supabase.auth.signOut();
+            if (signOutError) console.warn("Sign-out failed during hydration:", signOutError);
+          } else {
+            // Transient error (network/server) — log and keep the local session intact
+            console.warn("Transient error during auth hydration:", authError);
+          }
           return;
         }
 

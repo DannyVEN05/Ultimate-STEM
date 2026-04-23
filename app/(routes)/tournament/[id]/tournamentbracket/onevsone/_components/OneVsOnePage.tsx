@@ -91,7 +91,7 @@ const OneVsOnePage = () => {
   <div className="perspective-[1000px] mt-4">
     <div
       className={`relative h-[550px] w-[400px] transition-transform duration-500 [transform-style:preserve-3d] ${
-      book1flipped ? "[transform:rotateY(180deg)]" : "hover:[transform:rotateY(15deg)_scale(1.02)]" }`}
+      book1Flipped ? "[transform:rotateY(180deg)]" : "hover:[transform:rotateY(15deg)_scale(1.02)]" }`}
     >
 
     {/* Front */}
@@ -99,7 +99,7 @@ const OneVsOnePage = () => {
       onClick={(e) => {
         const target = e.target as HTMLElement;
         if (target.closest("button")) return;
-        setbook1Flipped(!book1flipped)
+        setBook1Flipped(!book1Flipped)
       }}
       className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
     >
@@ -131,7 +131,7 @@ const OneVsOnePage = () => {
 
 {/* Back */}
     <div
-      onClick={() => setbook1Flipped(!book1flipped)}
+      onClick={() => setBook1Flipped(!book1Flipped)}
       className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
     >
       <h2 className="text-2xl font-bold text-gray-800 mb-3">
@@ -163,13 +163,13 @@ const OneVsOnePage = () => {
     <div className="perspective-[1000px] mt-4">
       <div
       className={`relative h-[550px] w-[400px] transition-transform duration-500 [transform-style:preserve-3d] ${
-      book2flipped ? "[transform:rotateY(180deg)]" : "hover:[transform:rotateY(15deg)_scale(1.02)]"}`}
+      book2Flipped ? "[transform:rotateY(180deg)]" : "hover:[transform:rotateY(15deg)_scale(1.02)]"}`}
       >
     
     {/* Front */}
 
     <div
-      onClick={() => setbook2Flipped(!book2flipped)}
+      onClick={() => setBook2Flipped(!book2Flipped)}
       className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
     >
       <img
@@ -202,7 +202,7 @@ const OneVsOnePage = () => {
 
     {/* Back */}
     <div
-      onClick={() => setbook2Flipped(!book2flipped)}
+      onClick={() => setBook2Flipped(!book2Flipped)}
       className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
     >
     

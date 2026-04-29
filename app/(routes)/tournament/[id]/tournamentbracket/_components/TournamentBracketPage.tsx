@@ -1,217 +1,162 @@
 "use client";
 
-import UsButton from "@/app/_common/ui/buttons/UsButton";
-import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 
-declare global {
-  interface Window {
-    bracketsViewer?: {
-      render: (data: any, options?: any) => void;
-    };
+import { BracketsViewer } from "brackets-viewer";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// ----------------------------
+// FETCH SUBMISSIONS ONLY
+// ----------------------------
+async function fetchSubmissions(tournamentId: string) {
+  const { data, error } = await supabase
+    .from("tournament_submissions")
+    .select("*")
+    .eq("tournament_id", tournamentId);
+
+  if (error) {
+    console.error("Supabase error:", error);
+    return [];
   }
+
+  return data || [];
 }
 
-interface TournamentSubmission {
-  tournamentsub_id: string;
-  concept_id: string;
-  tournament_id: string;
-  tournamentsub_status: string;
+// ----------------------------
+// HELPERS
+// ----------------------------
+
+// next power of 2 (required for bracket trees)
+function nextPowerOfTwo(n: number) {
+  return Math.pow(2, Math.ceil(Math.log2(n)));
 }
 
-interface Concept {
-  concept_id: string;
-  concept_title: string;
-  user_id: string;
+// ----------------------------
+// MAIN BRACKET ENGINE
+// ----------------------------
+function buildBracketsViewerFormat(submissions: any[], tournamentId: string) {
+  const participants = submissions.map((s, index) => ({
+    id: String(s.id),
+    name: s.team_name || s.name || `Team ${index + 1}`,
+    seed: index + 1
+  }));
+
+  const participantCount = participants.length;
+  const size = nextPowerOfTwo(participantCount);
+  const totalRounds = Math.log2(size);
+
+  // ----------------------------
+  // STAGE
+  // ----------------------------
+  const stage = {
+    id: `stage-${tournamentId}`,
+    tournamentId,
+    name: "Main Stage",
+    type: "single_elimination",
+    number: 1,
+    settings: {
+      seedOrdering: ["natural"]
+    }
+  };
+
+  // ----------------------------
+  // GROUP
+  // ----------------------------
+  const group = {
+    id: `group-${tournamentId}`,
+    stageId: stage.id,
+    number: 1
+  };
+
+  // ----------------------------
+  // MATCH GENERATOR
+  // ----------------------------
+  const matches: any[] = [];
+  let matchId = 1;
+
+  // Round 1 initial pairing
+  let currentRoundMatches = size / 2;
+
+  let previousRoundMatchIds: string[] = [];
+
+  for (let round = 0; round < totalRounds; round++) {
+    const roundMatches: string[] = [];
+
+    for (let i = 0; i < currentRoundMatches; i++) {
+      const match = {
+        id: String(matchId++),
+        stage_id: stage.id,
+        group_id: group.id,
+        round_number: round + 1,
+
+        // important for viewer
+        child_count: 2,
+
+        opponent1: null,
+        opponent2: null,
+
+        // bracket-viewer expects matchGames
+        matchGames: [
+          {
+            id: `${matchId}-g1`,
+            number: 1,
+            opponent1_score: null,
+            opponent2_score: null
+          }
+        ]
+      };
+
+      matches.push(match);
+      roundMatches.push(match.id);
+    }
+
+    previousRoundMatchIds = roundMatches;
+    currentRoundMatches = Math.floor(currentRoundMatches / 2);
+  }
+
+  return {
+    stage,
+    group,
+    participants,
+    matches
+  };
 }
 
-interface User {
-  user_id: string;
-  user_firstname: string;
-  user_lastname: string;
-}
-
-interface BracketData {
-  stage: Array<{
-    id: string;
-    name: string;
-    type: string;
-  }>;
-  match: Array<{
-    id: string;
-    name: string;
-    nextMatchId: null;
-    tournamentRoundText: string;
-    startTime: string;
-    state: string;
-    participants: Array<{
-      id: string;
-      name: string;
-    }>;
-  }>;
-  match_game: Array<any>;
-  participant: Array<{
-    id: string;
-    name: string;
-  }>;
-}
-
-const TournamentBracketPage = () => {
-  const router = useRouter();
-  const params = useParams();
-  const tournamentId = params.id as string;
-  const [bracketData, setBracketData] = useState<BracketData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// ----------------------------
+// PAGE
+// ----------------------------
+export default function BracketPage({ tournamentId }: { tournamentId: string }) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load brackets-viewer CSS
-    if (typeof window !== "undefined" && !document.querySelector('link[href*="brackets-viewer"]')) {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href =
-        "https://cdn.jsdelivr.net/npm/brackets-viewer@latest/dist/brackets-viewer.min.css";
-      document.head.appendChild(link);
-    }
+    async function load() {
+      setLoading(true);
 
-    // Load brackets-viewer library dynamically if not already loaded
-    if (typeof window !== "undefined" && !window.bracketsViewer) {
-      const script = document.createElement("script");
-      script.src =
-        "https://cdn.jsdelivr.net/npm/brackets-viewer@latest/dist/brackets-viewer.min.js";
-      script.async = true;
-      script.onload = () => {
-        renderBrackets();
-      };
-      document.body.appendChild(script);
-    } else if (window.bracketsViewer) {
-      renderBrackets();
-    }
-  }, [bracketData]);
+      const submissions = await fetchSubmissions(tournamentId);
 
-  const fetchTournamentSubmissions = async () => {
-    setLoading(true);
-    setError(null);
+      const tournamentData = buildBracketsViewerFormat(submissions, tournamentId);
 
-    try {
-      // Fetch tournament submissions for this tournament
-      const { data: submissions, error: subsError } = await supabase
-        .from("tournament_submission")
-        .select("tournamentsub_id, concept_id, tournament_id, tournamentsub_status")
-        .eq("tournament_id", tournamentId)
-        .eq("tournamentsub_status", "approved"); // Only approved submissions
+      setData(tournamentData);
 
-      if (subsError) throw new Error(subsError.message);
-      if (!submissions || submissions.length === 0) {
-        setError("No approved submissions found for this tournament");
-        return;
-      }
-
-      // Get concept IDs and fetch concept details
-      const conceptIds = submissions.map((sub: TournamentSubmission) => sub.concept_id);
-      const { data: concepts, error: conceptsError } = await supabase
-        .from("concept")
-        .select("concept_id, concept_title, user_id")
-        .in("concept_id", conceptIds);
-
-      if (conceptsError) throw new Error(conceptsError.message);
-
-      // Get user IDs and fetch user details
-      const userIds = concepts?.map((concept: Concept) => concept.user_id).filter(Boolean) || [];
-      const { data: users, error: usersError } = await supabase
-        .from("user")
-        .select("user_id, user_firstname, user_lastname")
-        .in("user_id", userIds);
-
-      if (usersError) throw new Error(usersError.message);
-
-      // Transform data into brackets-viewer format
-      const participants = concepts?.map((concept: Concept, index: number) => {
-        const user = users?.find((u: User) => u.user_id === concept.user_id);
-        const authorName = user ? `${user.user_firstname} ${user.user_lastname}`.trim() : "Unknown Author";
-
-        return {
-          id: concept.concept_id,
-          name: `${concept.concept_title} by ${authorName}`,
-        };
-      }) || [];
-
-      // For now, create a simple single-elimination bracket structure
-      // This is a basic example - you'll need to implement proper bracket logic
-      const matches = [];
-      const numParticipants = participants.length;
-
-      // Create matches for a single elimination tournament
-      // This is simplified - in a real implementation you'd use brackets-manager
-      if (numParticipants >= 2) {
-        for (let i = 0; i < Math.floor(numParticipants / 2); i++) {
-          matches.push({
-            id: `match-${i + 1}`,
-            name: `Match ${i + 1}`,
-            nextMatchId: null, // Will be set for bracket progression
-            tournamentRoundText: "Round 1",
-            startTime: new Date().toISOString(),
-            state: "SCHEDULED",
-            participants: [
-              { id: participants[i * 2]?.id, name: participants[i * 2]?.name },
-              { id: participants[i * 2 + 1]?.id, name: participants[i * 2 + 1]?.name },
-            ],
-          });
-        }
-      }
-
-      const bracketData = {
-        stage: [{
-          id: "single-elimination",
-          name: "Single Elimination",
-          type: "single_elimination",
-        }],
-        match: matches,
-        match_game: [],
-        participant: participants,
-      };
-
-      setBracketData(bracketData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load tournament data");
-    } finally {
       setLoading(false);
     }
-  };
 
-  const renderBrackets = () => {
-    if (window.bracketsViewer && bracketData) {
-      window.bracketsViewer.render(
-        {
-          stages: bracketData.stage || [],
-          matches: bracketData.match || [],
-          matchGames: bracketData.match_game || [],
-          participants: bracketData.participant || [],
-        },
-        {
-          selector: ".brackets-viewer",
-          clear: true,
-        }
-      );
-    }
-  };
+    load();
+  }, [tournamentId]);
+
+  if (loading) return <div>Loading bracket...</div>;
 
   return (
-    <div className="w-full h-screen flex flex-col gap-4 p-4">
-      <div className="flex gap-2">
-        <UsButton onClick={() => router.back()}>Back</UsButton>
-        <UsButton onClick={fetchTournamentSubmissions} disabled={loading}>
-          {loading ? "Loading..." : "Load Bracket"}
-        </UsButton>
-      </div>
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-      <div className="brackets-viewer flex-1 overflow-auto bg-white rounded-lg"></div>
+    <div>
+      <h1>Tournament Bracket</h1>
+
+      <BracketsViewer data={data} />
     </div>
   );
-};
-export default TournamentBracketPage;
+}

@@ -3,21 +3,48 @@
 import BookContext from "@/app/_context/book/BookContext";
 import { useContext, useEffect, useRef } from "react";
 import BookCard from "./BookCard";
+import { useParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 const GridViewPage = () => {
   const { books, setBooks } = useContext(BookContext);
+  const params = useParams<{ id: string }>();
+  const id = params.id;
   const setBooksRef = useRef(setBooks);
   
   useEffect(() => {
-    setBooksRef.current();
-  }, []);
+    setBooksRef.current(id);
+    const channel = supabase
+      .channel(`tournament-${id}`)
+      .on(
+        `postgres_changes`, 
+        {
+          event: '*', 
+          schema: 'public', 
+          table: 'tournament_submission'
+        }, 
+        () => {
+          setBooksRef.current(id);
+          }
+      ).subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
+  }, [id]);
 
   return (
-    <div className="mt-5 w-full grid grid-cols-6 gap-6">
+    <div className="pt-8 w-full grid grid-cols-6 gap-6">
       {books.map((book) => (
-        <div key={book.tournamentsub_id} className={`relative w-full bg-secondary/30 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 hover:bg-secondary/50`}>
-          <BookCard title={book.concept_title} genre={book.concept_genre} tournamentsub_id={book.tournamentsub_id} styling={book.concept_styling}/>
-        </div>
+        <BookCard 
+          key={book.tournamentsub_id} 
+          title={book.concept_title} 
+          author= {book.concept_styling.author}
+          description={book.concept_description} 
+          genre={book.concept_genre} 
+          tournamentsub_id={book.tournamentsub_id} 
+          styling={book.concept_styling}
+        />
       ))}
     </div>
   );

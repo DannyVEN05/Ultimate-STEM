@@ -1,18 +1,21 @@
 import { BookActionKind } from "@/app/_types/context";
 import { Book } from "@/app/_types/model/Book";
+import { Concept } from "@/app/_types/model/Concept";
 import { Reducer } from "react";
 
 export interface BookReducerState {
   books: Book[];
   status: string;
   isGridMode: boolean;
+  userConcepts: Concept[];
 }
 
 export type BookReducerAction =
   | { type: BookActionKind.SET_BOOKS; payload: Book[] }
   | { type: BookActionKind.SET_STATUS; payload: string }
   | { type: BookActionKind.TOGGLE_MODE; payload: boolean }
-  | { type: BookActionKind.UPDATE_LIKES; payload: { tournamentsub_id: string, isAdding: boolean } };
+  | { type: BookActionKind.UPDATE_LIKES; payload: { tournamentsub_id: string, isAdding: boolean } }
+  | { type: BookActionKind.SET_USER_CONCEPTS; payload: Concept[] };
 
 const bookReducer: Reducer<BookReducerState, BookReducerAction> = (state, action): BookReducerState => {
   switch (action.type) {
@@ -33,7 +36,7 @@ const bookReducer: Reducer<BookReducerState, BookReducerAction> = (state, action
         ...state,
         isGridMode: action.payload,
       };
-    
+
     // Currently not being used as likes are updated directly in the database without worrying about errors.
     case BookActionKind.UPDATE_LIKES:
       return {
@@ -44,6 +47,12 @@ const bookReducer: Reducer<BookReducerState, BookReducerAction> = (state, action
             : book
         })
       };
+
+    case BookActionKind.SET_USER_CONCEPTS:
+      return {
+        ...state,
+        userConcepts: action.payload,
+      }
 
     default:
       return state;

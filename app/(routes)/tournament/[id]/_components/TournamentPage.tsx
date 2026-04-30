@@ -1,17 +1,35 @@
 "use client";
 
+import UsMenuButton from "@/app/_common/layout/header/UsMenuButton";
 import UsButton from "@/app/_common/ui/buttons/UsButton";
 import TournamentContext from "@/app/_context/tournament/TournamentContext";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+
 
 type Tournament = {
   tournament_id: number;
   tournament_title: string;
   tournament_genre:string;
+  tournament_status: string;
   tournament_end_date: string;
   description: string;
+};
+
+type ConceptSubmission = {
+  tournamentsub_id: string;
+  tournamentsub_likes: number;
+  tournamentsub_status: string;
+  concept: {
+    concept_id: string;
+    concept_title: string;
+    concept_description: string;
+    concept_genre: string;
+    concept_status: string;
+    concept_styling: string;
+  };
 };
 
 const TournamentPage = ({ id }: { id: string }) => {
@@ -19,9 +37,31 @@ const TournamentPage = ({ id }: { id: string }) => {
   const {tournament, setTournament } = useContext(TournamentContext);
 
   const [tournamentData, setTournamentData] = useState<Tournament | null>(null);
+  const [conceptSubmissions, setConceptSubmissions] = useState<ConceptSubmission[]>([]);
   const [loading, setLoading] = useState(true);
 
+const getTimeLeft = (endDate?: string) => {
+  if (!endDate) {
+    return { days: 0, hours: 0, minutes: 0 };
+  }
 
+  const difference = new Date(endDate).getTime() - Date.now();
+
+  if (difference <= 0) {
+    return { days: 0, hours: 0, minutes: 0 };
+  }
+
+  return {
+    days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((difference / (1000 * 60)) % 60),
+  };
+};
+
+const [timeLeft, setTimeLeft] = useState(() => getTimeLeft());
+
+
+  
   useEffect(() => {
     setTournament(Number(id));
 
@@ -45,31 +85,143 @@ const TournamentPage = ({ id }: { id: string }) => {
 
   }, [id, setTournament]);
 
+  useEffect(() => {
+    const getConceptSubmissions = async () => {
+      const { data, error } = await supabase
+        .from("tournament_submission")
+        .select(`
+          tournamentsub_id,
+          tournamentsub_likes,
+          tournamentsub_status,
+          concept:concept_id (
+            concept_id,
+            concept_title,
+            concept_description,
+            concept_genre,
+            concept_status,
+            concept_styling
+          )
+        `)
+        .eq("tournament_id", Number(id))
+        .limit(3);
+
+      if (error) {
+        console.error("Error fetching concept submissions:", error);
+        return;
+      }
+
+      setConceptSubmissions((data  ? (data as unknown as ConceptSubmission[]) : []));
+    };
+
+    if (tournamentData) {
+      getConceptSubmissions();
+    }
+  }, [tournamentData, id]);
+
+  useEffect(() => {
+    if (!tournamentData?.tournament_end_date) {
+      setTimeLeft({ days: 0, hours: 0, minutes: 0 });
+      return;
+    }
+
+    setTimeLeft(getTimeLeft(tournamentData.tournament_end_date));
+
+    const timer = window.setInterval(() => {
+      setTimeLeft(getTimeLeft(tournamentData.tournament_end_date));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [tournamentData?.tournament_end_date]);
+
   if (loading) return <p>Loading tournament...</p>;
 
   if (!tournamentData) return <p>Tournament not found.</p>;
 
   return (
-    <div className="flex w-full flex-col items-center mt-10 font-bold">
-      <h1 className="mb-25 text-4xl">{tournamentData.tournament_title}</h1>
-      
-      <p className="mb-10 text-lg">Genre: {tournamentData.tournament_genre}</p>
-      <p className="mb-10 text-lg"> Ends on:{" "}
-      {new Date(tournamentData.tournament_end_date).toLocaleDateString()}</p>
+  <div className="min-h-screen bg-white px-6 py-10">
+    <div className="mx-auto max-w-6xl">
 
-      <div className="flex w-full justify-center gap-25 text-center font-bold text-2xl">
-        <div className="w-full max-w-md border-2 border-gray-700 p-12">
-          <h2 className="my-10">Submissions</h2>
-          <UsButton variant="blue" onClick={() => {router.push(`/tournament/${id}/submissions`)}}>
-            Submissions
-          </UsButton>
+      <section className="rounded-2xl bg-[#baffe5af] px-10 py-12 shadow-lg">
+        <div className="mb-4 inline-block rounded-full bg-orange-300 px-4 py-1 text-s font-bold text-orange-900">
+          Active Tournament
         </div>
-        <div className="w-full max-w-md border-2 border-gray-700 p-12">
-          <h2 className="my-10">Tournament Bracket</h2>
-          <UsButton variant="blue" onClick={() => {router.push(`/tournament/${id}/tournamentbracket`)}}>
-            Tournament Bracket
-          </UsButton>
+
+        <h1 className="max-w-2xl text-4xl font-bold leading-tight text-purple-950">{tournamentData.tournament_title}</h1>
+        <div className="mb-4 inline-block rounded-full bg-green-300 my-3 px-4 py-1 mr-4 text-s font-bold text-green-900">
+          {tournamentData.tournament_genre}
+        </div> 
+        <div className="mb-4 inline-block rounded-full bg-purple-300 px-4 py-1 text-s font-bold text-purple-900">
+          {tournamentData.tournament_status.charAt(0).toUpperCase() + tournamentData.tournament_status.slice(1)}
         </div>
+
+      </section>
+
+      <section className="mt-10 rounded-[2rem] bg-[whitesmoke] px-8 py-10 text-center shadow-lg">
+        <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700">
+          Time remaining to vote
+        </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-purple-600">
+          
+          <div className="rounded-3xl border border-purple-200 bg-purple-50 px-8 py-8 shadow-sm">
+            <div className="text-5xl font-extrabold">{timeLeft.days}</div>
+            <div className="mt-2 text-sm uppercase tracking-[0.2em] text-purple-700">Days</div>
+          </div>
+          <span className="text-6xl font-extrabold">:</span>
+
+          <div className="rounded-3xl border border-purple-200 bg-purple-50 px-8 py-8 shadow-sm">
+            <div className="text-5xl font-extrabold">{timeLeft.hours}</div>
+            <div className="mt-2 text-sm uppercase tracking-[0.2em] text-purple-700">Hours</div>
+          </div>
+          <span className="text-6xl font-extrabold">:</span>
+
+          <div className="rounded-3xl border border-purple-200 bg-purple-50 px-8 py-8 shadow-sm">
+            <div className="text-5xl font-extrabold">{timeLeft.minutes}</div>
+            <div className="mt-2 text-sm uppercase tracking-[0.2em] text-purple-700">Minutes</div>
+          </div>
+        
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <div className="flex justify-between items-start mb-6">
+          <h2 className="text-2xl font-bold text-gray-600">
+            Concept Submissions
+          </h2>
+
+          <Button className="bg-white hover:bg-slate-100 text-sm font-medium text-slate-700" onClick={() => {router.push(`/tournament/${id}/submissions`)}}>
+            View all submissions →
+          </Button>
+        </div>
+
+        {conceptSubmissions.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {conceptSubmissions.map((submission) => (
+              <div key={submission.tournamentsub_id} className=" w-[300px] h-[400px] rounded-lg border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{submission.concept.concept_title}</h3>
+                <p className="text-sm text-gray-600 mb-4 line-clamp-3">{submission.concept.concept_description}</p>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                    {submission.concept.concept_genre}
+                  </span>
+                  <span className="text-sm font-semibold text-purple-600">❤️ {submission.tournamentsub_likes}</span>
+                </div>
+                <UsButton 
+                  variant="blue" 
+                  onClick={() => router.push(`/tournament/${id}/submissions`)}
+                  className="w-full"
+                >
+                  View
+                </UsButton>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-12 text-center">
+            <p className="text-gray-500">No concept submissions yet.</p>
+          </div>
+        )}
+      </section>
+
       </div>
     </div>
   );

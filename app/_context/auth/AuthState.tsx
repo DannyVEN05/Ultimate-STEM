@@ -198,6 +198,14 @@ const AuthState = ({ children }: Props) => {
     if (!oldPassword) return "Password is required.";
 
     isReactivatingRef.current = true;
+    let signedIn = false;
+
+    const abortSignIn = async (message: string): Promise<string> => {
+      await supabase.auth.signOut();
+      dispatch({ type: AuthActionKind.SET_USER, payload: null });
+      return message;
+    };
+
     try {
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
@@ -205,8 +213,10 @@ const AuthState = ({ children }: Props) => {
       });
 
       if (signInError) return signInError.message ?? String(signInError);
+      signedIn = true;
+
       const authenticatedUserId = signInData.user?.id;
-      if (!authenticatedUserId) return "Unable to verify identity.";
+      if (!authenticatedUserId) return await abortSignIn("Unable to verify identity.");
 
       const { data: existingProfile, error: existingProfileError } = await supabase
         .from("user")
@@ -214,10 +224,10 @@ const AuthState = ({ children }: Props) => {
         .eq("user_id", authenticatedUserId)
         .single();
 
-      if (existingProfileError) return existingProfileError.message ?? String(existingProfileError);
+      if (existingProfileError) return await abortSignIn(existingProfileError.message ?? String(existingProfileError));
 
       if (existingProfile?.user_role !== "deleted") {
-        return "This account is not disabled.";
+        return await abortSignIn("This account is not disabled.");
       }
 
       const profilePayload = {
@@ -238,7 +248,7 @@ const AuthState = ({ children }: Props) => {
         },
       });
 
-      if (authUpdateError) return authUpdateError.message ?? String(authUpdateError);
+      if (authUpdateError) return await abortSignIn(authUpdateError.message ?? String(authUpdateError));
 
       const { data: updatedProfile, error: profileError } = await supabase
         .from("user")
@@ -247,11 +257,15 @@ const AuthState = ({ children }: Props) => {
         .select("*")
         .single();
 
-      if (profileError) return profileError.message ?? String(profileError);
+      if (profileError) return await abortSignIn(profileError.message ?? String(profileError));
 
       dispatch({ type: AuthActionKind.SET_USER, payload: mapToAppUser(updatedProfile as DbUserRow) });
       return null;
     } catch (err) {
+      if (signedIn) {
+        await supabase.auth.signOut();
+        dispatch({ type: AuthActionKind.SET_USER, payload: null });
+      }
       return err instanceof Error ? err.message : String(err);
     } finally {
       isReactivatingRef.current = false;

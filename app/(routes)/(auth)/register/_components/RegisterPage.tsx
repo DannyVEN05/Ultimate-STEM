@@ -149,7 +149,6 @@ const RegisterPage: React.FC = () => {
       const response = await reactivateUser(
         {
           email,
-          password: "__unused__",
           user_firstname: form.user_firstname.trim(),
           user_lastname: form.user_lastname.trim(),
           user_phone_number: form.user_phone_number.trim(),

@@ -22,6 +22,8 @@ export type SignUpData = {
   user_dob: string;
 };
 
+export type ReactivateProfileData = Omit<SignUpData, "password">;
+
 type Props = {
   children?: React.ReactNode | React.ReactNode[];
 }
@@ -190,7 +192,7 @@ const AuthState = ({ children }: Props) => {
     }
   };
 
-  const reactivateUser = async (signUpData: SignUpData, oldPassword: string) => {
+  const reactivateUser = async (signUpData: ReactivateProfileData, oldPassword: string) => {
     const email = signUpData.email.trim().toLowerCase();
     if (!email) return "Email is required.";
     if (!oldPassword) return "Password is required.";

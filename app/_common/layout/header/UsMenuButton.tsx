@@ -33,6 +33,7 @@ const UsMenuButton: React.FC = ({ }) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [disableError, setDisableError] = useState<string | null>(null);
 
   return (
     <DropdownMenu>
@@ -67,7 +68,7 @@ const UsMenuButton: React.FC = ({ }) => {
                 Delete Account
               </DropdownMenuItem>
 
-              <Dialog open={confirmOpen} onOpenChange={(open) => { setConfirmOpen(open); if (!open) setConfirmChecked(false); }}>
+              <Dialog open={confirmOpen} onOpenChange={(open) => { setConfirmOpen(open); if (!open) { setConfirmChecked(false); setDisableError(null); } }}>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
                     <DialogTitle>Delete account?</DialogTitle>
@@ -85,6 +86,9 @@ const UsMenuButton: React.FC = ({ }) => {
                       />
                       <span className="text-sm">I understand the consequences of deleting my account.</span>
                     </label>
+                    {disableError && (
+                      <p className="mt-2 text-sm text-red-600">{disableError}</p>
+                    )}
                   </div>
 
                   <DialogFooter className="gap-2 sm:gap-2">
@@ -99,11 +103,15 @@ const UsMenuButton: React.FC = ({ }) => {
                       onClick={async () => {
                         if (!confirmChecked || isDeleting) return;
                         setIsDeleting(true);
+                        setDisableError(null);
                         const err = await disableUser();
                         setIsDeleting(false);
-                        setConfirmOpen(false);
-                        setConfirmChecked(false);
-                        // optionally handle `err` (error message) later
+                        if (err) {
+                          setDisableError(err);
+                        } else {
+                          setConfirmOpen(false);
+                          setConfirmChecked(false);
+                        }
                       }}
                     >
                       {isDeleting ? "Deleting…" : "Confirm"}

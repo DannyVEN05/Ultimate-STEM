@@ -6,6 +6,7 @@ import AuthContext from "./AuthContext";
 import { supabase } from "@/lib/supabase";
 import { AuthActionKind } from "@/app/_types/context";
 import { User } from "@/app/_types/model/User";
+import type { AuthError } from "@supabase/supabase-js";
 
 export type LogInData = {
   email: string;
@@ -25,15 +26,28 @@ type Props = {
   children?: React.ReactNode | React.ReactNode[];
 }
 
+type DbUserRow = {
+  user_id: string;
+  user_firstname: string;
+  user_lastname: string;
+  user_email: string;
+  user_phone_number: string;
+  user_dob: string | null;
+  user_created_at: string | null;
+  user_role: string;
+};
+
 const AuthState = ({ children }: Props) => {
   const initialState: AuthReducerState = {
     user: null,
     isLoading: true,
   };
 
+  const isReactivatingRef = React.useRef(false);
+
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  const mapToAppUser = (u: any): User => {
+  const mapToAppUser = (u: DbUserRow): User => {
     return new User(
       u.user_id,
       u.user_firstname,
@@ -54,7 +68,7 @@ const AuthState = ({ children }: Props) => {
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
 
         if (authError) {
-          const status = (authError as any)?.status;
+          const status = (authError as AuthError & { status?: number })?.status;
           const isAuthFailure =
             status === 401 ||
             authError.message?.toLowerCase().includes("refresh token") ||
@@ -80,6 +94,12 @@ const AuthState = ({ children }: Props) => {
             .single();
 
           if (error) console.log("Error fetching user profile during hydration:", error);
+
+          if (user && user.user_role === "deleted") {
+            const { error: signOutError } = await supabase.auth.signOut();
+            if (signOutError) console.warn("Sign-out failed for deleted account during hydration:", signOutError);
+            return;
+          }
 
           if (user) dispatch({ type: AuthActionKind.SET_USER, payload: mapToAppUser(user) });
         }
@@ -111,6 +131,14 @@ const AuthState = ({ children }: Props) => {
               .single();
 
             if (error) console.error("Error fetching user profile on auth state change:", error);
+
+            if (user && user.user_role === "deleted") {
+              if (isReactivatingRef.current) return;
+              const { error: signOutError } = await supabase.auth.signOut();
+              if (signOutError) console.warn("Sign-out failed for deleted account on auth state change:", signOutError);
+              if (mounted) dispatch({ type: AuthActionKind.SET_USER, payload: null });
+              return;
+            }
 
             if (user && mounted) dispatch({ type: AuthActionKind.SET_USER, payload: mapToAppUser(user) });
           }, 0);
@@ -162,6 +190,72 @@ const AuthState = ({ children }: Props) => {
     }
   };
 
+  const reactivateUser = async (signUpData: SignUpData, oldPassword: string) => {
+    const email = signUpData.email.trim().toLowerCase();
+    if (!email) return "Email is required.";
+    if (!oldPassword) return "Password is required.";
+
+    isReactivatingRef.current = true;
+    try {
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: oldPassword,
+      });
+
+      if (signInError) return signInError.message ?? String(signInError);
+      const authenticatedUserId = signInData.user?.id;
+      if (!authenticatedUserId) return "Unable to verify identity.";
+
+      const { data: existingProfile, error: existingProfileError } = await supabase
+        .from("user")
+        .select("*")
+        .eq("user_id", authenticatedUserId)
+        .single();
+
+      if (existingProfileError) return existingProfileError.message ?? String(existingProfileError);
+
+      if (existingProfile?.user_role !== "deleted") {
+        return "This account is not disabled.";
+      }
+
+      const profilePayload = {
+        user_firstname: signUpData.user_firstname.trim(),
+        user_lastname: signUpData.user_lastname.trim(),
+        user_email: email,
+        user_phone_number: signUpData.user_phone_number.trim(),
+        user_dob: signUpData.user_dob.trim(),
+        user_role: "user",
+      };
+
+      const { error: authUpdateError } = await supabase.auth.updateUser({
+        data: {
+          user_firstname: profilePayload.user_firstname,
+          user_lastname: profilePayload.user_lastname,
+          user_phone_number: profilePayload.user_phone_number,
+          user_dob: profilePayload.user_dob,
+        },
+      });
+
+      if (authUpdateError) return authUpdateError.message ?? String(authUpdateError);
+
+      const { data: updatedProfile, error: profileError } = await supabase
+        .from("user")
+        .update(profilePayload)
+        .eq("user_id", authenticatedUserId)
+        .select("*")
+        .single();
+
+      if (profileError) return profileError.message ?? String(profileError);
+
+      dispatch({ type: AuthActionKind.SET_USER, payload: mapToAppUser(updatedProfile as DbUserRow) });
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+    } finally {
+      isReactivatingRef.current = false;
+    }
+  };
+
   const logIn = async (logInData: LogInData) => {
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword(logInData);
@@ -177,6 +271,12 @@ const AuthState = ({ children }: Props) => {
         await supabase.auth.signOut();
         dispatch({ type: AuthActionKind.SET_USER, payload: null });
         return "Could not fetch user profile.";
+      }
+
+      if (user.user_role === "deleted") {
+        await supabase.auth.signOut();
+        dispatch({ type: AuthActionKind.SET_USER, payload: null });
+        return "Invalid login credentials.";
       }
 
       dispatch({
@@ -250,6 +350,29 @@ const AuthState = ({ children }: Props) => {
     }
   };
 
+  const disableUser = async () => {
+    try {
+      if (!state.user) return "No user logged in.";
+
+      const { error: deleteError } = await supabase
+        .from("user")
+        .update({ user_role: "deleted" })
+        .eq("user_id", state.user.user_id)
+        .select("*")
+        .single();
+
+      if (deleteError) return deleteError.message ?? String(deleteError);
+
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) return signOutError.message ?? String(signOutError);
+
+      dispatch({ type: AuthActionKind.SET_USER, payload: null });
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -257,8 +380,10 @@ const AuthState = ({ children }: Props) => {
         isLoading: state.isLoading,
         signUp,
         logIn,
+        reactivateUser,
         logOut,
         updateUser,
+        disableUser,
       }}
     >
       {children}

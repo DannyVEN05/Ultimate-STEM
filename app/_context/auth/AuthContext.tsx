@@ -9,8 +9,10 @@ export type AuthContextType = {
   isLoading: boolean;
   signUp: (signUpData: SignUpData) => Promise<null | string>;
   logIn: (logInData: LogInData) => Promise<null | string>;
+  reactivateUser: (signUpData: SignUpData, oldPassword: string) => Promise<null | string>;
   logOut: () => Promise<null | string>;
   updateUser: (user: User) => Promise<null | string>;
+  disableUser: () => Promise<null | string>;
 };
 
 const AuthContext = createContext({} as AuthContextType);

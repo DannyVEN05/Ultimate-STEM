@@ -5,6 +5,14 @@ import UsInput from "@/app/_common/ui/inputs/UsInput";
 import UsWidget from "@/app/_common/ui/other/UsWidget";
 import AuthContext from "@/app/_context/auth/AuthContext";
 import { supabase } from "@/lib/supabase";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
 import React, { useContext } from "react";
 
@@ -21,7 +29,7 @@ type RegisterFormState = {
 const RegisterPage: React.FC = () => {
   const router = useRouter();
 
-  const { signUp } = useContext(AuthContext);
+  const { signUp, reactivateUser } = useContext(AuthContext);
 
   const [form, setForm] = React.useState<RegisterFormState>({
     user_firstname: "",
@@ -36,6 +44,11 @@ const RegisterPage: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
 
+  const [reactivateOpen, setReactivateOpen] = React.useState(false);
+  const [reactivateStep, setReactivateStep] = React.useState<"choice" | "confirm">("choice");
+  const [reactivateOldPassword, setReactivateOldPassword] = React.useState("");
+  const [reactivateError, setReactivateError] = React.useState<string | null>(null);
+
   const updateField = (key: keyof RegisterFormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -46,6 +59,7 @@ const RegisterPage: React.FC = () => {
     if (isSubmitting) return;
 
     setSuccess(null);
+    setError(null);
 
     const { data: exists, error } = await supabase.rpc("email_exists", { email_to_check: form.user_email.trim() });
 
@@ -55,6 +69,27 @@ const RegisterPage: React.FC = () => {
     }
 
     if (exists) {
+      const email = form.user_email.trim().toLowerCase();
+
+      const { data: isDisabled, error: disabledError } = await supabase.rpc("email_disabled", {
+        email_to_check: email,
+      });
+
+      if (disabledError) {
+        setError("An error occurred while checking the email: " + disabledError.message);
+        return;
+      }
+
+      console.log(isDisabled);
+
+      if (isDisabled) {
+        setReactivateError(null);
+        setReactivateOldPassword("");
+        setReactivateStep("choice");
+        setReactivateOpen(true);
+        return;
+      }
+
       setError("An account with this email already exists.");
       return;
     }
@@ -91,6 +126,50 @@ const RegisterPage: React.FC = () => {
       router.push('/dashboard');
     } catch (err) {
       setError("An unexpected error occurred: " + err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onConfirmReactivate = async () => {
+    if (isSubmitting) return;
+    setReactivateError(null);
+
+    const email = form.user_email.trim().toLowerCase();
+    if (!email) {
+      setReactivateError("Email is required.");
+      return;
+    }
+
+    if (!reactivateOldPassword) {
+      setReactivateError("Please enter your old password.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await reactivateUser(
+        {
+          email,
+          password: "__unused__",
+          user_firstname: form.user_firstname.trim(),
+          user_lastname: form.user_lastname.trim(),
+          user_phone_number: form.user_phone_number.trim(),
+          user_dob: form.user_dob.trim(),
+        },
+        reactivateOldPassword
+      );
+
+      if (response) {
+        setReactivateError(response);
+        return;
+      }
+
+      setReactivateOpen(false);
+      setSuccess("Account reactivated! Redirecting...");
+      router.push("/dashboard");
+    } catch (err) {
+      setReactivateError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -221,6 +300,111 @@ const RegisterPage: React.FC = () => {
           </form>
         )}
       </UsWidget>
+
+      <Dialog
+        open={reactivateOpen}
+        onOpenChange={(open) => {
+          setReactivateOpen(open);
+          if (!open) {
+            setReactivateStep("choice");
+            setReactivateOldPassword("");
+            setReactivateError(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reactivate account?</DialogTitle>
+            {reactivateStep === "choice" ? (
+              <>
+                <DialogDescription>
+                  This email belongs to a disabled account.
+                </DialogDescription>
+                <DialogDescription>
+                  Would you like to reactivate?
+                </DialogDescription>
+              </>
+            ) : (
+              <>
+                <DialogDescription>
+                  Please enter your old password to confirm your identity.
+                </DialogDescription>
+                <DialogDescription>
+                  Note: The new password you entered into the form will not be used.
+                </DialogDescription>
+              </>
+            )}
+          </DialogHeader>
+
+          {reactivateStep === "confirm" && (
+            <div className="px-6 pb-2">
+              {reactivateError && (
+                <p className="text-red-500 text-sm mb-3">{reactivateError}</p>
+              )}
+
+              <label htmlFor="oldPassword" className="block text-sm font-medium ml-1">
+                Old Password:
+              </label>
+              <UsInput
+                id="oldPassword"
+                name="oldPassword"
+                type="password"
+                autoComplete="current-password"
+                required
+                className="w-full"
+                value={reactivateOldPassword}
+                onChange={(e) => setReactivateOldPassword(e.target.value)}
+              />
+            </div>
+          )}
+
+          <DialogFooter>
+            {reactivateStep === "choice" ? (
+              <>
+                <UsButton
+                  variant="white"
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => setReactivateOpen(false)}
+                >
+                  No, I will use a different email
+                </UsButton>
+                <UsButton
+                  variant="blue"
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => setReactivateStep("confirm")}
+                >
+                  Yes
+                </UsButton>
+              </>
+            ) : (
+              <>
+                <UsButton
+                  variant="white"
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    setReactivateStep("choice");
+                    setReactivateOldPassword("");
+                    setReactivateError(null);
+                  }}
+                >
+                  Back
+                </UsButton>
+                <UsButton
+                  variant="blue"
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={onConfirmReactivate}
+                >
+                  {isSubmitting ? "Reactivating..." : "Confirm"}
+                </UsButton>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

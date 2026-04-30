@@ -12,12 +12,27 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import AuthContext from "@/app/_context/auth/AuthContext";
 import { useContext } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 const UsMenuButton: React.FC = ({ }) => {
-  const { user, logOut } = useContext(AuthContext);
+  const { user, logOut, disableUser } = useContext(AuthContext);
 
   const router = useRouter();
+  const pathname = usePathname();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmChecked, setConfirmChecked] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   return (
     <DropdownMenu>
@@ -46,16 +61,65 @@ const UsMenuButton: React.FC = ({ }) => {
           <DropdownMenuItem className="cursor-pointer" onSelect={() => router.push("/profile")}>
             Profile
           </DropdownMenuItem>
-          <DropdownMenuItem disabled className="cursor-pointer">
-            Settings
-          </DropdownMenuItem>
+          {pathname === "/profile" && (
+            <>
+              <DropdownMenuItem className="cursor-pointer text-red-500 focus:text-red-500 focus:font-bold" onSelect={(e: any) => { e.preventDefault(); setConfirmOpen(true); }}>
+                Delete Account
+              </DropdownMenuItem>
+
+              <Dialog open={confirmOpen} onOpenChange={(open) => { setConfirmOpen(open); if (!open) setConfirmChecked(false); }}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Delete account?</DialogTitle>
+                    <DialogDescription>
+                      This will disable your account. You will no longer be able to log in using your email <strong>{user?.user_email}</strong>. If you register again with this email, you may have the option to restore your previous account.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="px-6 py-2">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={confirmChecked}
+                        onChange={(e) => setConfirmChecked(e.target.checked)}
+                      />
+                      <span className="text-sm">I understand the consequences of deleting my account.</span>
+                    </label>
+                  </div>
+
+                  <DialogFooter className="gap-2 sm:gap-2">
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline" className="rounded-full">Cancel</Button>
+                    </DialogClose>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="rounded-full"
+                      disabled={!confirmChecked || isDeleting}
+                      onClick={async () => {
+                        if (!confirmChecked || isDeleting) return;
+                        setIsDeleting(true);
+                        const err = await disableUser();
+                        setIsDeleting(false);
+                        setConfirmOpen(false);
+                        setConfirmChecked(false);
+                        // optionally handle `err` (error message) later
+                      }}
+                    >
+                      {isDeleting ? "Deleting…" : "Confirm"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="cursor-pointer" onClick={logOut}>
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
-    </DropdownMenu>
+    </DropdownMenu >
   )
 };
 

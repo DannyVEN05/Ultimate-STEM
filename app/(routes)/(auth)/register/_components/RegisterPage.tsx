@@ -80,8 +80,6 @@ const RegisterPage: React.FC = () => {
         return;
       }
 
-      console.log(isDisabled);
-
       if (isDisabled) {
         setReactivateError(null);
         setReactivateOldPassword("");

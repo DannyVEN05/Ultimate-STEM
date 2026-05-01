@@ -17,6 +17,7 @@ export class Book {
   concept_styling: BookCover;
   concept_genre: string;
   user_id: string;
+  isLiked: boolean;
 
   constructor(
     tournamentsub_id: string = '',
@@ -49,7 +50,8 @@ export class Book {
       author_y: 100,
     },
     concept_genre: string = '',
-    user_id: string = ''
+    user_id: string = '',
+    isLiked: boolean = false,
   ) {
     this.tournamentsub_id = tournamentsub_id;
     this.tournamentsub_created_at = tournamentsub_created_at;
@@ -67,5 +69,6 @@ export class Book {
     this.concept_styling = concept_styling;
     this.concept_genre = concept_genre;
     this.user_id = user_id;
+    this.isLiked = false;
   }
 }

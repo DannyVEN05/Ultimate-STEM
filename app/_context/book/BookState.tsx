@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useContext, useReducer } from "react";
+import React, { useContext, useReducer, useState } from "react";
 import bookReducer, { BookReducerState } from "./BookReducer";
 import { Book } from "@/app/_types/model/Book";
 import { supabase } from "@/lib/supabase";
@@ -21,6 +21,7 @@ const BookState = ({ children }: Props) => {
     userConcepts: [],
   }
 
+  const [isProcessing, setIsProcessing] = useState(false);
   const [state, dispatch] = useReducer(bookReducer, initialState);
   const { user } = useContext(AuthContext);
 
@@ -73,7 +74,7 @@ const BookState = ({ children }: Props) => {
       row.concept.concept_genre,
       row.concept.user_id,
     )
-
+    book.isLiked = !!(row.submission_likes && row.submission_likes.length > 0)
     return book;
   }
 
@@ -89,10 +90,12 @@ const BookState = ({ children }: Props) => {
         .from("tournament_submission")
         .select(`
           *,
-          concept!inner(*)
+          concept!inner(*),
+          submission_likes!left(user_id)
         `)
         .eq("tournament_id", tournament_id)
         .eq("tournamentsub_status", "approved")
+        .eq("submission_likes.user_id", user?.user_id || '')
 
       if (error) {
         console.warn("Error fetching data: ", error);
@@ -118,13 +121,49 @@ const BookState = ({ children }: Props) => {
 
 
   const updateLikes = async (tournamentsub_id: string, isLiked: boolean) => {
-    const { error } = await supabase
-      .rpc(isLiked ? "increment_tournamentsub_likes" : "decrement_tournamentsub_likes", { id: tournamentsub_id }
-      );
-
-    if (error) {
-      console.warn(`Error: ${isLiked ? "incrementing" : "decrementing"}, Likes`, error)
+    if (!user?.user_id) {
+      alert("User must be logged in to like submissions!")
+      return;
     }
+
+    if (isProcessing) return;
+    setIsProcessing(true);
+
+    try {
+      if (isLiked) {
+        // LIKE
+        const { error } = await supabase
+          .from("submission_likes")
+          .upsert(
+            { user_id: user?.user_id, tournamentsub_id: tournamentsub_id },
+            { onConflict: 'user_id, tournamentsub_id', ignoreDuplicates: true }
+          )
+
+        if (error) console.warn("Error while inserting vote, error: ", error)
+      } else {
+        // UNLIKE
+        const { error } = await supabase
+          .from("submission_likes")
+          .delete()
+          .eq("user_id", user?.user_id)
+          .eq("tournamentsub_id", tournamentsub_id)
+
+        if (error) console.warn("Error while deleting entry from submission_likes, error: ", error)
+        return;
+      }
+    } catch (err) {
+      console.warn("Unexpected error while updating likes: ", err)
+    } finally {
+      setIsProcessing(false);
+    }
+
+    // const { error } = await supabase
+    //   .rpc(isLiked ? "increment_tournamentsub_likes" : "decrement_tournamentsub_likes", { id: tournamentsub_id }
+    //   );
+
+    // if (error) {
+    //   console.warn(`Error: ${isLiked ? "incrementing" : "decrementing"}, Likes`, error)
+    // }
   }
 
   const setUserConcepts = async () => {

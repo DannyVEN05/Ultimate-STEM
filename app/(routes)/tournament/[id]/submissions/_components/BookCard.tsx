@@ -3,7 +3,7 @@ import { BookCover } from "@/app/_types/model/Concept";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { Heart } from "lucide-react";
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { MouseEvent } from "react";
 
 type BookCardProps = {
@@ -13,21 +13,26 @@ type BookCardProps = {
   genre: string;
   tournamentsub_id: string;
   styling: BookCover;
+  isLiked: boolean;
 }
 
 const BookCard = (props: BookCardProps) => {
-  const [ isLiked, setIsLiked ] = useState(false);
+  const [isLiked, setIsLiked] = useState(props.isLiked);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [ isProcessing, setIsProcessing ] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { updateLikes } = useContext(BookContext);
 
   const { data } = supabase.storage.from('book-covers').getPublicUrl(props.styling.book_cover);
   const coverUrl = data?.publicUrl || '/covers/engineering.png';
 
+  useEffect(() => {
+    setIsLiked(props.isLiked)
+  }, [props.isLiked])
+
   async function handleClickLike(e: MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
 
-    if(isProcessing) return;
+    if (isProcessing) return;
 
     setIsProcessing(true);
     const nextLiked = !isLiked;
@@ -36,16 +41,16 @@ const BookCard = (props: BookCardProps) => {
     await updateLikes(props.tournamentsub_id, nextLiked);
     setIsProcessing(false)
   }
+
   return (
     <div className={`perspective-[1200px] transition-all duration-700 ${isFlipped ? "z-50" : "z-10"}`}>
       <div
-        className={`relative w-full transition-all duration-700 [transform-style:preserve-3d] ${
-          isFlipped 
-            ? "[transform:rotateY(180deg)]" 
-            : "hover:[transform:rotateY(8deg)]"
-        }`}
+        className={`relative w-full transition-all duration-700 [transform-style:preserve-3d] ${isFlipped
+          ? "[transform:rotateY(180deg)]"
+          : "hover:[transform:rotateY(8deg)]"
+          }`}
       >
-        <div 
+        <div
           onClick={() => setIsFlipped(true)}
           role="button"
           className="rounded-xl shadow-sm hover:shadow-md cursor-pointer [backface-visibility:hidden]"

@@ -156,14 +156,6 @@ const BookState = ({ children }: Props) => {
     } finally {
       setIsProcessing(false);
     }
-
-    // const { error } = await supabase
-    //   .rpc(isLiked ? "increment_tournamentsub_likes" : "decrement_tournamentsub_likes", { id: tournamentsub_id }
-    //   );
-
-    // if (error) {
-    //   console.warn(`Error: ${isLiked ? "incrementing" : "decrementing"}, Likes`, error)
-    // }
   }
 
   const setUserConcepts = async () => {

@@ -21,9 +21,12 @@ const BookBuilderPage = () => {
   const [spineColor, setSpineColor] = useState("#000000");
   const [titTextColor, setTitColor] = useState("#FFFFFF");
   const [coverColor, setCoverColor] = useState(("#000000"));
+  const [icon, setIcon] = useState("/covers/Icon1.png");
   const stageRef = useRef<any>(null);
 
   const [image] = useImage(selectedCover, 'anonymous');
+  const [iconImage] = useImage(icon);
+  const [spineImage] = useImage(selectedSpine);
 
   const fontOptions = ["sans-serif", "serif", "monospace", "cursive", "fantasy"];
 
@@ -113,48 +116,37 @@ const BookBuilderPage = () => {
         Back
       </Button>
 
-      <div className="flex w-full flex-col items-center mt-10 font-bold space-y-10">
-        {/* <h1 className="mb-25 text-4xl">{'Book Submissions'}
-
-        </h1> */}
+      <div className="flex w-full flex-col items-center mt-2 font-bold overflow-hidden">
         {/* Book Submissions */}
-        <div className="flex w-full justify-center gap-25 text-center font-bold text-2xl">
+        <div className="flex w-full h-full justify-center gap-25 text-center font-bold text-2xl overflow-hidden">
 
-          <div className="w-full max-w-md border-2 border-gray-300 rounded-lg shadow-sm p-10 space-y-6 ">
-            {/* Spine */}
+          <div className="flex flex-col w-full max-w-md border-2 border-gray-300 rounded-lg shadow-sm p-6 space-y-4 overflow-y-auto">
+            {/* Make it center */}
             <div className="flex items-center justify-center">
 
-              <div
-                className="h-96 w-12 flex items-center justify-center text-white text-xs font-bold"
-                style={{ backgroundColor: spineColor }}>
-                <span className="rotate-90 ">
-                  {/* {title || "Book Title"} */}
-                </span>
-                {/* conditionally render the image so it only appears when a source actually exists */}
-                {selectedSpine && (
-                  <img
-                    src={selectedSpine}
-                    className="w-full h-full object-cover" style={{
-                      transform: 'translate(1px, -2px)'
-                    }} />
-                )}
-
-              </div>
-
               {/* Cover */}
-              <div className="relative w-64 h-96 border-black" style={{ backgroundColor: coverColor }}>
+              <div className="relative w-69 h-96 border-black " >
                 {/* konva stage */}
                 {/* background */}
-                <Stage ref={stageRef} width={256} height={384} className="absolute top-0 left-0">
+                <Stage ref={stageRef} width={306} height={384} className="absolute top-0 left-0">
+                  <Layer>
+
+                    <Rect x={0} y={0} width={52} height={384} fill={spineColor} />
+                    {spineImage && (<KonvaImage image={spineImage} x={0} y={0} width={52} height={384} />)}
+
+                  </Layer>
+
                   <Layer listening={false}>
-                    {image && <KonvaImage image={image} width={256} height={384} opacity={0.1} />}
+                    <Rect x={50} y={0} width={256} height={384} fill={coverColor} />
+                    {image && <KonvaImage image={image} x={50} width={256} height={384} opacity={0.2} />}
                   </Layer>
 
                   <Layer>
                     <Rect width={(title || "Book Title").length * 15} height={40} cornerRadius={4} />
                     {/* was confusing konva text with our text so I change to KonvaText */}
                     <KonvaText text={(title || "Book Title").toUpperCase()}
-                      fontSize={60}
+                      x={55} y={20}
+                      fontSize={50}
                       fontFamily="sans-serif"
                       fontStyle="bold"
                       width={240}
@@ -163,12 +155,19 @@ const BookBuilderPage = () => {
                       padding={5} />
 
                   </Layer>
+
+                  <Layer>
+                    {iconImage && (<KonvaImage image={iconImage} x={180} y={250} width={100} height={100} />)}
+                  </Layer>
+
+
                 </Stage>
 
               </div>
             </div>
+
             {/* Spine Cover */}
-            <div className="block mb-2 text-sm mb-6 ">
+            <div className="block mb-2 text-sm ">
               Select Spine Cover
               <UsAutofillBox
                 options={[
@@ -177,6 +176,23 @@ const BookBuilderPage = () => {
                   { value: "/covers/spine3.png", label: "Spine 3" },
                   { value: "/covers/spine4.png", label: "Spine 4" },
                 ]} sizeOptions={{ width: 300 }} value={selectedSpine} onChange={(e: any) => setSelectedSpine(e.target.value)} />
+
+            </div>
+
+            <div className="block mb-2 text-sm ">
+              Select Icon here
+              <UsAutofillBox
+                options={[
+                  { value: "/covers/Icon1.png", label: "STEM" },
+                  { value: "/covers/Icon2.png", label: "Technology" },
+                  { value: "/covers/Icon3.png", label: "Maths" },
+                  { value: "/covers/Icon4.png", label: "Engineering" },
+                  { value: "/covers/Icon5.png", label: "Physics" },
+                  { value: "/covers/Icon6.png", label: "Biology" },
+                  { value: "/covers/Icon7.png", label: "Robot" },
+                  { value: "/covers/Icon8.png", label: "Books" },
+
+                ]} sizeOptions={{ width: 300 }} value={icon} onChange={(e: any) => setIcon(e.target.value)} />
 
             </div>
 
@@ -190,17 +206,18 @@ const BookBuilderPage = () => {
               <input type="color" value={coverColor} onChange={(e) => setCoverColor(e.target.value)}
                 className="w-16 h-10 cursor-pointer" />
             </div>
+
           </div>
 
 
           {/* <form>  cant have form has it refresh the page and cancels handlesubmit*/}
-          <div className="w-full max-w-2xl border-2 border-gray-300 rounded-lg shadow-sm p-10 space-y-6 ">
-            <div className="mb-25 text-base text-left text-black">
+          <div className="w-full max-w-2xl border-2 border-gray-300 rounded-lg shadow-sm p-6 space-y-4 overflow-hidden">
+            <div className="text-base text-left text-black">
 
               Title
 
               <div className="flex items-center justify-start gap-20 mb-2">
-                <UsInput placeholder="Enter title..." sizeOptions={{ width: 300 }} maxLength={30} value={title} onChange={(e: any) => setTitle(e.target.value)} />
+                <UsInput placeholder="Enter title..." sizeOptions={{ width: 300 }} maxLength={35} value={title} onChange={(e: any) => setTitle(e.target.value)} />
 
                 {/* title colour */}
                 <div className="flex items-center gap-3">

@@ -8,6 +8,7 @@ import { BookActionKind } from "@/app/_types/context";
 import BookContext from "./BookContext";
 import { BookCover } from "@/app/_types/model/Concept";
 import AuthContext from "../auth/AuthContext";
+import { useRouter } from "next/navigation";
 
 type Props = {
   children?: React.ReactNode | React.ReactNode[];
@@ -21,8 +22,8 @@ const BookState = ({ children }: Props) => {
     userConcepts: [],
   }
 
-  const [isProcessing, setIsProcessing] = useState(false);
   const [state, dispatch] = useReducer(bookReducer, initialState);
+  const router = useRouter();
   const { user } = useContext(AuthContext);
 
   const mapToBookCover = (styling: string | BookCover | any): BookCover => {
@@ -95,7 +96,7 @@ const BookState = ({ children }: Props) => {
         `)
         .eq("tournament_id", tournament_id)
         .eq("tournamentsub_status", "approved")
-        .eq("submission_likes.user_id", user?.user_id || '')
+        .filter("submission_likes.user_id", "eq", user?.user_id || '00000000-0000-0000-0000-000000000000')
 
       if (error) {
         console.warn("Error fetching data: ", error);
@@ -123,38 +124,28 @@ const BookState = ({ children }: Props) => {
   const updateLikes = async (tournamentsub_id: string, isLiked: boolean) => {
     if (!user?.user_id) {
       alert("User must be logged in to like submissions!")
-      return;
+      router.push("/login")
+      return false;
     }
 
-    if (isProcessing) return;
-    setIsProcessing(true);
-
     try {
-      if (isLiked) {
-        // LIKE
-        const { error } = await supabase
-          .from("submission_likes")
-          .upsert(
-            { user_id: user?.user_id, tournamentsub_id: tournamentsub_id },
-            { onConflict: 'user_id, tournamentsub_id', ignoreDuplicates: true }
-          )
-
-        if (error) console.warn("Error while inserting vote, error: ", error)
-      } else {
-        // UNLIKE
-        const { error } = await supabase
-          .from("submission_likes")
-          .delete()
+      const { error } = isLiked
+        ? await supabase.from("submission_likes").upsert(
+          { user_id: user?.user_id, tournamentsub_id: tournamentsub_id },
+          { onConflict: 'user_id, tournamentsub_id' })
+        : await supabase.from("submission_likes").delete()
           .eq("user_id", user?.user_id)
           .eq("tournamentsub_id", tournamentsub_id)
 
-        if (error) console.warn("Error while deleting entry from submission_likes, error: ", error)
-        return;
+      if (error) {
+        console.warn("Error updating likes: ", error)
+        return false;
       }
+
+      return true;
     } catch (err) {
       console.warn("Unexpected error while updating likes: ", err)
-    } finally {
-      setIsProcessing(false);
+      return false;
     }
   }
 

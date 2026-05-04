@@ -69,6 +69,6 @@ export class Book {
     this.concept_styling = concept_styling;
     this.concept_genre = concept_genre;
     this.user_id = user_id;
-    this.isLiked = false;
+    this.isLiked = isLiked;
   }
 }

@@ -121,7 +121,7 @@ const BookState = ({ children }: Props) => {
   }
 
 
-  const updateLikes = async (tournamentsub_id: string, isLiked: boolean) => {
+  const updateLikes = async (tournamentsub_id: string, isLiked: boolean): Promise<boolean> => {
     if (!user?.user_id) {
       alert("User must be logged in to like submissions!")
       router.push("/login")

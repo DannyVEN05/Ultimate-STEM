@@ -8,7 +8,6 @@ import { MouseEvent } from "react";
 
 type BookCardProps = {
   title: string;
-  author: string;
   description: string;
   genre: string;
   tournamentsub_id: string;
@@ -49,7 +48,7 @@ const BookCard = (props: BookCardProps) => {
   return (
     <div className={`perspective-[1200px] ${isFlipped ? "z-50" : "z-10"}`}>
       <div
-        className={`relative w-full h-full transition-transform duration-400 [transform-style:preserve-3d] will-change-transform ${isFlipped
+        className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] will-change-transform ${isFlipped
           ? "[transform:rotateY(180deg)]"
           : "hover:[transform:rotateY(4deg)]"
           }`}

@@ -39,7 +39,6 @@ const GridViewPage = () => {
         <BookCard
           key={book.tournamentsub_id}
           title={book.concept_title}
-          author={book.concept_styling.author}
           description={book.concept_description}
           genre={book.concept_genre}
           tournamentsub_id={book.tournamentsub_id}

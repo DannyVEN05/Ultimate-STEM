@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useContext, useReducer, useState } from "react";
+import React, { useContext, useReducer } from "react";
 import bookReducer, { BookReducerState } from "./BookReducer";
 import { Book } from "@/app/_types/model/Book";
 import { supabase } from "@/lib/supabase";
@@ -74,8 +74,8 @@ const BookState = ({ children }: Props) => {
       mapToBookCover(row.concept.concept_styling),
       row.concept.concept_genre,
       row.concept.user_id,
-    )
-    book.isLiked = !!(row.submission_likes && row.submission_likes.length > 0)
+      !!(row.submission_likes && row.submission_likes.length > 0)
+    );
     return book;
   }
 
@@ -132,7 +132,7 @@ const BookState = ({ children }: Props) => {
       const { error } = isLiked
         ? await supabase.from("submission_likes").upsert(
           { user_id: user?.user_id, tournamentsub_id: tournamentsub_id },
-          { onConflict: 'user_id, tournamentsub_id' })
+          { onConflict: 'user_id,tournamentsub_id' })
         : await supabase.from("submission_likes").delete()
           .eq("user_id", user?.user_id)
           .eq("tournamentsub_id", tournamentsub_id)

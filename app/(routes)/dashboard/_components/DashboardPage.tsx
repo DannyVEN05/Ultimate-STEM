@@ -99,7 +99,7 @@ function UpcomingCard({ t, now, isNotified, isNotifying, onNotify }: UpcomingCar
 const DashboardPage = () => {
   const router = useRouter();
   const { user } = useContext(AuthContext);
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [allTournaments, setAllTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notifiedIds, setNotifiedIds] = useState<Set<string>>(new Set());
@@ -112,9 +112,9 @@ const DashboardPage = () => {
     return () => clearInterval(id);
   }, []);
 
-  const active = tournaments.filter(t => t.status === "stage1" || t.status === "stage2");
-  const upcoming = tournaments.filter(t => t.status === "upcoming");
-  const concluded = tournaments.filter(t => t.status === "concluded");
+  const active = allTournaments.filter(t => t.status === "stage1" || t.status === "stage2");
+  const upcoming = allTournaments.filter(t => t.status === "upcoming");
+  const concluded = allTournaments.filter(t => t.status === "concluded");
   const sidebar = active.slice(1);
 
   useEffect(() => {
@@ -127,7 +127,7 @@ const DashboardPage = () => {
         if (err) {
           setError(err.message);
         } else if (data) {
-          setTournaments(data.map((row: any) => ({
+          setAllTournaments(data.map((row: any) => ({
             id: String(row.tournament_id),
             title: row.tournament_title,
             category: row.tournament_genre ?? "",

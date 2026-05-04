@@ -58,7 +58,7 @@ async function fetchSubmissions(): Promise<Submission[]> {
     const { data: users } = await supabase
       .from("user")
       .select("user_id, user_firstname, user_lastname")
-      .in("user_id", userIds);
+      .in("user_id", userIds); 
     if (users) {
       usersMap = new Map(users.map((u: any) => [u.user_id, `${u.user_firstname} ${u.user_lastname}`.trim()]));
     }

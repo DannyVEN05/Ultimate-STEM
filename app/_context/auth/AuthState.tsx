@@ -51,7 +51,26 @@ const AuthState = ({ children }: Props) => {
 
     const hydrate = async () => {
       try {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+
+        if (authError) {
+          const status = (authError as any)?.status;
+          const isAuthFailure =
+            status === 401 ||
+            authError.message?.toLowerCase().includes("refresh token") ||
+            authError.message?.toLowerCase().includes("invalid") ||
+            authError.message?.toLowerCase().includes("expired");
+
+          if (isAuthFailure) {
+            // Stale/invalid session — clear it so the user is prompted to log in again
+            const { error: signOutError } = await supabase.auth.signOut();
+            if (signOutError) console.warn("Sign-out failed during hydration:", signOutError);
+          } else {
+            // Transient error (network/server) — log and keep the local session intact
+            console.warn("Transient error during auth hydration:", authError);
+          }
+          return;
+        }
 
         if (authUser && mounted) {
           const { data: user, error } = await supabase
@@ -182,6 +201,55 @@ const AuthState = ({ children }: Props) => {
     }
   };
 
+  const updateUser = async (newUserData: User) => {
+    try {
+      const authenticatedUserId = state.user?.user_id;
+
+      if (!authenticatedUserId) {
+        return "Unable to update profile: no authenticated user.";
+      }
+
+      if (newUserData.user_id && newUserData.user_id !== authenticatedUserId) {
+        return "Unable to update profile: user mismatch.";
+      }
+
+      const profilePayload = {
+        user_firstname: newUserData.user_firstname.trim(),
+        user_lastname: newUserData.user_lastname.trim(),
+        user_email: newUserData.user_email.trim(),
+        user_phone_number: newUserData.user_phone_number.trim(),
+        user_dob: newUserData.user_dob ? newUserData.user_dob.toISOString().slice(0, 10) : null,
+      };
+
+      const { error: authError } = await supabase.auth.updateUser({
+        email: profilePayload.user_email,
+        data: {
+          user_firstname: profilePayload.user_firstname,
+          user_lastname: profilePayload.user_lastname,
+          user_phone_number: profilePayload.user_phone_number,
+          user_dob: profilePayload.user_dob,
+        },
+      });
+
+      if (authError) return authError.message ?? String(authError);
+
+      const { data: updatedProfile, error: profileError } = await supabase
+        .from("user")
+        .update(profilePayload)
+        .eq("user_id", authenticatedUserId)
+        .select("*")
+        .single();
+
+      if (profileError) return profileError.message ?? String(profileError);
+
+      dispatch({ type: AuthActionKind.SET_USER, payload: mapToAppUser(updatedProfile) });
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -190,6 +258,7 @@ const AuthState = ({ children }: Props) => {
         signUp,
         logIn,
         logOut,
+        updateUser,
       }}
     >
       {children}

@@ -15,7 +15,7 @@ export type BookContextType = {
   setBooks: (tournament_id: string) => Promise<void>;
 
   // This function updates the likes count for a specific tournament submission in the database. It takes the tournamentsub_id and a boolean indicating whether to increment or decrement the likes.
-  updateLikes: (tournamentsub_id: string, isLiked: boolean) => Promise<void>;
+  updateLikes: (tournamentsub_id: string, isLiked: boolean) => Promise<boolean>;
 
   setUserConcepts: () => Promise<void>;
 };

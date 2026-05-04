@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@2toad/profanity": "^3.3.0",
+    "@elyasasmad/react-tournament-brackets": "^1.1.1",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.98.0",
     "brackets-manager": "^1.9.1",

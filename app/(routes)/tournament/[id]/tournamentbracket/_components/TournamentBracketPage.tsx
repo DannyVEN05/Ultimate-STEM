@@ -48,11 +48,11 @@ async function fetchSubmissions(tournamentId: string) {
   const { data, error } = await supabase
     .from("tournament_submission")
     .select("*, concept(*)")
-    .eq("tournament_id", tournamentId);
+    .eq("tournament_id", tournamentId)
+    .order("tournamentsub_likes", { ascending: false }); // highest likes = seed 1
 
   if (error || !data) return [];
-
-  console.log("Submissions fetched:", JSON.stringify(data, null, 2)); // ADD THIS
+  console.log("Submissions fetched:", JSON.stringify(data, null, 2));
   return data;
 }
 
@@ -104,9 +104,11 @@ function buildMatchesFromSubmissions(submissions: any[]) {
   const size = Math.pow(2, Math.ceil(Math.log2(submissions.length)));
   const totalRounds = Math.log2(size);
 
+  // Pad with nulls (byes) if submissions aren't a power of 2
   const padded = [...submissions];
   while (padded.length < size) padded.push(null);
 
+  // Pre-generate all match IDs per round so we can link nextMatchId
   let matchId = 1;
   const roundMatchIds: number[][] = [];
   let matchesInRound = size / 2;
@@ -125,21 +127,28 @@ function buildMatchesFromSubmissions(submissions: any[]) {
 
     ids.forEach((id, i) => {
       const nextMatchId = nextRoundIds[Math.floor(i / 2)] ?? null;
+
+      // Only assign real teams in round 1, later rounds are TBD
       const teamA = r === 0 ? padded[i * 2] : null;
       const teamB = r === 0 ? padded[i * 2 + 1] : null;
+
+      // Seed numbers based on position after sorting by likes
+      const seedA = i * 2 + 1;
+      const seedB = i * 2 + 2;
 
       matches.push({
         id,
         name: `Round ${r + 1} - Match ${i + 1}`,
         nextMatchId: nextMatchId ?? null,
-        tournamentRoundText: `Round ${r + 1}`,
+        tournamentRoundText: `${r + 1}`,
         startTime: new Date().toISOString(),
         state: "SCHEDULED",
         participants: [
           teamA
             ? {
                 id: String(teamA.tournamentsub_id),
-                name: teamA.concept?.concept_title || `Submission ${i * 2 + 1}`,
+                name: teamA.concept?.concept_title || `Submission ${seedA}`,
+                seed: seedA,
                 isWinner: false,
                 status: null,
                 resultText: null,
@@ -147,6 +156,7 @@ function buildMatchesFromSubmissions(submissions: any[]) {
             : {
                 id: `bye-${id}-a`,
                 name: "TBD",
+                seed: null,
                 isWinner: false,
                 status: "NO_PARTY",
                 resultText: null,
@@ -154,7 +164,8 @@ function buildMatchesFromSubmissions(submissions: any[]) {
           teamB
             ? {
                 id: String(teamB.tournamentsub_id),
-                name: teamB.concept?.concept_title || `Submission ${i * 2 + 2}`,
+                name: teamB.concept?.concept_title || `Submission ${seedB}`,
+                seed: seedB,
                 isWinner: false,
                 status: null,
                 resultText: null,
@@ -162,6 +173,7 @@ function buildMatchesFromSubmissions(submissions: any[]) {
             : {
                 id: `bye-${id}-b`,
                 name: "TBD",
+                seed: null,
                 isWinner: false,
                 status: "NO_PARTY",
                 resultText: null,
@@ -207,10 +219,10 @@ export default function BracketPage({ tournamentId }: { tournamentId: string }) 
     load();
   }, [tournamentId]);
 
+
+// custom match box as react-tournament-brackets one is broken
 const CustomMatch = ({
   match,
-  onMatchClick,
-  onPartyClick,
   onMouseEnter,
   onMouseLeave,
   topParty,
@@ -220,48 +232,123 @@ const CustomMatch = ({
 
   const handleMatchClick = () => {
     if (!topParty?.id || !bottomParty?.id) return;
+    console.log("Navigating with:", topParty.id, bottomParty.id);
     router.push(`./onevsone?conceptA=${topParty.id}&conceptB=${bottomParty.id}`);
   };
 
   return (
     <div
+      onClick={handleMatchClick}
       style={{
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-around",
         width: "100%",
         height: "100%",
-        padding: "4px",
-        boxSizing: "border-box",
-        border: "1px solid #333",
-        borderRadius: "4px",
-        background: "#1a1a2e",
-        color: "#fff",
-        fontSize: "12px",
         cursor: "pointer",
+        fontFamily: "sans-serif",
       }}
-      onClick={handleMatchClick}
     >
-      <div
-        onMouseEnter={() => onMouseEnter && onMouseEnter(topParty?.id)}
-        onMouseLeave={() => onMouseLeave && onMouseLeave()}
-        style={{
-          padding: "4px",
-          borderBottom: "1px solid #333",
-          background: topParty?.isWinner ? "#2d5a27" : "transparent",
-        }}
-      >
-        {topParty?.name || "TBD"}
+      {/* Match label */}
+      <div style={{
+        fontSize: "10px",
+        color: "#999",
+        marginBottom: "4px",
+        paddingLeft: "2px",
+      }}>
+        {match?.name || "Match"}
       </div>
-      <div
-        onMouseEnter={() => onMouseEnter && onMouseEnter(bottomParty?.id)}
-        onMouseLeave={() => onMouseLeave && onMouseLeave()}
-        style={{
-          padding: "4px",
-          background: bottomParty?.isWinner ? "#2d5a27" : "transparent",
-        }}
-      >
-        {bottomParty?.name || "TBD"}
+
+      {/* Match card */}
+      <div style={{
+        border: "1px solid #e0e0e0",
+        borderRadius: "6px",
+        overflow: "hidden",
+        background: "#fff",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+      }}>
+        {/* Top participant */}
+        <div
+          onMouseEnter={() => onMouseEnter && onMouseEnter(topParty?.id)}
+          onMouseLeave={() => onMouseLeave && onMouseLeave()}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "2px 10px",
+            borderBottom: "1px solid #e0e0e0",
+            background: topParty?.isWinner ? "#f0fff4" : "#fff",
+            flex: 1, // ADD THIS
+            boxSizing: "border-box",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {topParty?.seed && (
+              <span style={{ color: "#999", fontSize: "10px", minWidth: "16px" }}>
+                #{topParty.seed}
+              </span>
+            )}
+            <span style={{
+              fontSize: "12px",
+              fontWeight: topParty?.isWinner ? 700 : 400,
+              color: topParty?.status === "NO_PARTY" ? "#bbb" : "#1a1a1a",
+            }}>
+              {topParty?.name || "TBD"}
+            </span>
+          </div>
+          {topParty?.resultText != null && (
+            <span style={{
+              fontSize: "12px",
+              fontWeight: 700,
+              color: topParty?.isWinner ? "#22c55e" : "#ef4444",
+              marginLeft: "8px",
+            }}>
+              {topParty.resultText}
+            </span>
+          )}
+        </div>
+
+        {/* Bottom participant */}
+        <div
+          onMouseEnter={() => onMouseEnter && onMouseEnter(bottomParty?.id)}
+          onMouseLeave={() => onMouseLeave && onMouseLeave()}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "2px 10px",
+            background: bottomParty?.isWinner ? "#f0fff4" : "#fff",
+            flex: 1, // ADD THIS
+            boxSizing: "border-box",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {bottomParty?.seed && (
+              <span style={{ color: "#999", fontSize: "10px", minWidth: "16px" }}>
+                #{bottomParty.seed}
+              </span>
+            )}
+            <span style={{
+              fontSize: "12px",
+              fontWeight: bottomParty?.isWinner ? 700 : 400,
+              color: bottomParty?.status === "NO_PARTY" ? "#bbb" : "#1a1a1a",
+            }}>
+              {bottomParty?.name || "TBD"}
+            </span>
+          </div>
+          {bottomParty?.resultText != null && (
+            <span style={{
+              fontSize: "12px",
+              fontWeight: 700,
+              color: bottomParty?.isWinner ? "#22c55e" : "#ef4444",
+              marginLeft: "8px",
+            }}>
+              {bottomParty.resultText}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -270,33 +357,51 @@ const CustomMatch = ({
   if (loading) return <div>Loading bracket...</div>;
   if (!matches.length) return <div>No submissions found for this tournament.</div>;
 
-  // Calculate dimensions based on bracket size
   const totalRounds = Math.ceil(Math.log2(matches.length + 1));
   const bracketWidth = Math.max(800, totalRounds * 250);
   const bracketHeight = Math.max(400, (matches.length + 1) * 80);
 
   return (
-    <div style={{ overflowX: "auto", width: "100%" }}>
-      <h1>Tournament Bracket</h1>
+    <div style={{ padding: "24px", background: "#f9f9f9", minHeight: "100vh" }}>
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: "700",
+        color: "#1a1a1a",
+        marginBottom: "8px",
+      }}>
+        Tournament Bracket
+      </h1>
       {usingFallback && (
-        <p style={{ color: "gray", fontSize: "0.85rem" }}>
+        <p style={{
+          color: "#999",
+          fontSize: "13px",
+          marginBottom: "16px",
+        }}>
           No bracket created yet — showing preview based on current submissions.
         </p>
       )}
-      <SingleEliminationBracket
-        matches={matches}
-        matchComponent={CustomMatch}
-        svgWrapper={({ children, bracketWidth: bw, bracketHeight: bh, startAt, ...props }) => (
-          <svg
-            {...props}
-            width={bracketWidth}
-            height={bracketHeight}
-            style={{ display: "block" }}
-          >
-            {children}
-          </svg>
-        )}
-      />
+      <div style={{
+        background: "#fff",
+        borderRadius: "12px",
+        padding: "24px",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+        overflowX: "auto",
+      }}>
+        <SingleEliminationBracket
+          matches={matches}
+          matchComponent={CustomMatch}
+          svgWrapper={({ children, bracketWidth: bw, bracketHeight: bh, startAt, ...props }) => (
+            <svg
+              {...props}
+              width={bracketWidth}
+              height={bracketHeight}
+              style={{ display: "block" }}
+            >
+              {children}
+            </svg>
+          )}
+        />
+      </div>
     </div>
   );
 }

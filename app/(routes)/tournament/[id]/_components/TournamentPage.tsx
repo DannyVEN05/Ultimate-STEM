@@ -46,6 +46,11 @@ const TournamentPage = ({ id }: { id: string }) => {
   const [conceptSubmissions, setConceptSubmissions] = useState<ConceptSubmission[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const truncateText = (text: string, maxLength: number) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
   const getTimeLeft = (endDate?: string) => {
     if (!endDate) {
       return { days: 0, hours: 0, minutes: 0 };
@@ -146,7 +151,7 @@ const TournamentPage = ({ id }: { id: string }) => {
       <div className="mx-auto max-w-6xl">
 
         <section className="rounded-2xl bg-[#baffe5af] px-10 py-12 shadow-lg">
-          <div className="mb-4 inline-block rounded-full bg-orange-300 px-4 py-1 text-s font-bold text-orange-900">
+          <div className="mb-4 inline-block rounded-full bg-tertiary px-4 py-1 text-s font-bold text-orange-900">
             Active Tournament
           </div>
 
@@ -157,6 +162,9 @@ const TournamentPage = ({ id }: { id: string }) => {
           <div className="mb-4 inline-block rounded-full bg-purple-300 px-4 py-1 text-s font-bold text-purple-900">
             {tournamentData.tournament_status.charAt(0).toUpperCase() + tournamentData.tournament_status.slice(1)}
           </div>
+
+
+          <p className="max-w-3xl text-md text-gray-700"> Join as the most creative concepts face off in the utlimate STEM showdown! Vote for your favourite concepts to shape their future.</p>
 
         </section>
 
@@ -188,10 +196,12 @@ const TournamentPage = ({ id }: { id: string }) => {
 
         <section className="mt-10">
           <div className="flex justify-between items-start mb-6">
-            <h2 className="text-2xl font-bold text-gray-600">
+            <div>
+            <h2 className="text-2xl font-bold text-black-600">
               Concept Submissions
             </h2>
-
+            <p className="text-md text-gray-600"> Review the latest {tournament?.tournament_genre} submissions from our community!</p>
+            </div>
             <Button className="bg-white hover:bg-slate-100 text-sm font-medium text-slate-700" onClick={() => { router.push(`/tournament/${id}/submissions`) }}>
               View all submissions →
             </Button>
@@ -219,30 +229,27 @@ const TournamentPage = ({ id }: { id: string }) => {
                 }
 
                 return (
-                  <div key={submission.tournamentsub_id} className="w-[300px] h-[400px] rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col">
-                    <img src={coverUrl} alt={`${submission.concept.concept_title} Book Cover`} className="w-full h-50 object-cover rounded-lg mb-3" />
+                  <div key={submission.tournamentsub_id} className="w-[300px] h-[350px] rounded-lg border border-gray-200 bg-[#baffe5af] p-4 shadow-lg hover:shadow-md transition-shadow flex flex-col">
+                    <img src={coverUrl} alt={`${submission.concept.concept_title} Book Cover`} className="w-full h-48 object-cover rounded-lg mb-3" />
                     
                     <div className="flex-1 flex flex-col">
                       <div className="flex items-start justify-between mb-2">
-                        <h3 className="text-lg font-bold text-gray-900 flex-1 pr-2 leading-tight">{submission.concept.concept_title}</h3>
-                        <span className="text-sm font-semibold text-purple-600 flex-shrink-0">❤️ {submission.tournamentsub_likes}</span>
+                        <h3 className="text-lg font-bold text-gray-900 flex-1 pr-2 leading-tight truncate">{truncateText(submission.concept.concept_title, 50)}</h3>
+                        <span className="inline-block rounded-full bg-blue-200 px-2 py-1 text-xs font-semibold text-blue-700">
+                          {submission.concept.concept_genre}</span>
                       </div>
 
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2 flex-1">{submission.concept.concept_description}</p>
+                        <p className="text-sm text-gray-700 mb-4 flex-1">{truncateText(submission.concept.concept_description, 150)}</p>
 
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="inline-block rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
-                          {submission.concept.concept_genre}
-                        </span>
+                      <div className="flex items-center justify-between mb-3  mt-auto">
+                        <span className="text-lg font-semibold text-purple-600 flex-shrink-0">❤️ {submission.tournamentsub_likes}</span>
+
+                      <Button onClick={() => router.push(`/tournament/${id}/submissions`)}
+                        className="rounded-full bg-purple-600 text-sm py-2 hover:bg-primary text-white font-medium px-4"
+                      >View
+                      </Button>
                       </div>
 
-                      <UsButton 
-                        variant="blue" 
-                        onClick={() => router.push(`/tournament/${id}/submissions`)}
-                        className="w-full text-sm py-2"
-                      >
-                        View
-                      </UsButton>
                     </div>
                   </div>
                 );
@@ -255,6 +262,15 @@ const TournamentPage = ({ id }: { id: string }) => {
           )}
         </section>
 
+        <section className="mt-10 rounded-2xl bg-primary px-10 py-12 shadow-lg text-center">
+          <div className=" flex flex-col mb-4 text-left">
+          <h2 className="text-3xl font-bold text-white mb-4">Ready to enter the Tournament Bracket?</h2>
+          <p className="text-md text-gray-100 mb-6">Join the fun and vote for your favourite concepts!</p>
+          </div>
+          <Button className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-6" onClick={() => router.push(`/tournament/${id}/tournamentbracket`)}>
+            Enter Tournament
+          </Button>
+        </section>
       </div>
     </div>
   );

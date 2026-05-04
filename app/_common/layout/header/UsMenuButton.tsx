@@ -11,9 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import AuthContext from "@/app/_context/auth/AuthContext";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -64,7 +63,7 @@ const UsMenuButton: React.FC = ({ }) => {
           </DropdownMenuItem>
           {pathname === "/profile" && (
             <>
-              <DropdownMenuItem className="cursor-pointer text-red-500 focus:text-red-500 focus:font-bold" onSelect={(e: any) => { e.preventDefault(); setConfirmOpen(true); }}>
+              <DropdownMenuItem className="cursor-pointer text-red-500 focus:text-red-500 focus:font-bold" onSelect={(e: Event) => { e.preventDefault(); setConfirmOpen(true); }}>
                 Delete Account
               </DropdownMenuItem>
 

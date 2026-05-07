@@ -127,13 +127,35 @@ const TournamentPage = ({ id }: { id: string }) => {
       return;
     }
 
-    setTimeLeft(getTimeLeft(tournamentData.tournament_end_date));
+    let timeoutId: number | undefined;
 
-    const timer = window.setInterval(() => {
-      setTimeLeft(getTimeLeft(tournamentData.tournament_end_date));
-    }, 1000);
+    const scheduleNextUpdate = () => {
+      const nextTimeLeft = getTimeLeft(tournamentData.tournament_end_date);
+      setTimeLeft(nextTimeLeft);
 
-    return () => window.clearInterval(timer);
+      if (
+        nextTimeLeft.days === 0 &&
+        nextTimeLeft.hours === 0 &&
+        nextTimeLeft.minutes === 0
+      ) {
+        return;
+      }
+
+      const endDate = new Date(tournamentData.tournament_end_date).getTime();
+      const now = Date.now();
+      const diff = endDate - now;
+      const delay = diff > 0 ? Math.max(diff % 60000, 1000) : 1000;
+
+      timeoutId = window.setTimeout(scheduleNextUpdate, delay);
+    };
+
+    scheduleNextUpdate();
+
+    return () => {
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
   }, [tournamentData?.tournament_end_date]);
 
   if (loading) return <p>Loading tournament...</p>;

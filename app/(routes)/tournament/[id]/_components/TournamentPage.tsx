@@ -216,7 +216,7 @@ const TournamentPage = ({ id }: { id: string }) => {
             <h2 className="text-2xl font-bold text-black">
               Concept Submissions
             </h2>
-            <p className="text-md text-gray-600"> Review the latest {tournament?.tournament_genre} submissions from our community!</p>
+            <p className="text-md text-gray-600"> Review the latest {tournamentData.tournament_genre} submissions from our community!</p>
             </div>
             <Button className="bg-white hover:bg-slate-100 text-sm font-medium text-slate-700" onClick={() => { router.push(`/tournament/${id}/submissions`) }}>
               View all submissions →

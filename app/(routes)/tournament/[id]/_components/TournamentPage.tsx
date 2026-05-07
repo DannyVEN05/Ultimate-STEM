@@ -146,6 +146,11 @@ const TournamentPage = ({ id }: { id: string }) => {
 
   if (!tournamentData) return <p>Tournament not found.</p>;
 
+   const isExpired =
+  timeLeft.days === 0 &&
+  timeLeft.hours === 0 &&
+  timeLeft.minutes === 0;
+
   return (
     <div className="min-h-screen bg-white px-6 py-10">
       <div className="mx-auto max-w-6xl">
@@ -209,7 +214,7 @@ const TournamentPage = ({ id }: { id: string }) => {
 
           {conceptSubmissions.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {conceptSubmissions.map((submission) => {
+              {conceptSubmissions.slice(0, 4).map((submission) => {
                 // Calculate coverUrl here (copied from ProfileBookCard logic)
                 const fallbackCoverUrl = '/covers/engineering.png';
                 const styling = typeof submission.concept.concept_styling === 'string'
@@ -242,7 +247,7 @@ const TournamentPage = ({ id }: { id: string }) => {
                         <p className="text-sm text-gray-700 mb-4 flex-1">{truncateText(submission.concept.concept_description, 150)}</p>
 
                       <div className="flex items-center justify-between mb-3  mt-auto">
-                        <span className="text-lg font-semibold text-purple-600 flex-shrink-0">❤️ {submission.tournamentsub_likes}</span>
+                        <span className="text-lg font-semibold text-purple-600 flex-shrink-0">❤️</span>
 
                       <Button onClick={() => router.push(`/tournament/${id}/submissions`)}
                         className="rounded-full bg-purple-600 text-sm py-2 hover:bg-primary text-white font-medium px-4"
@@ -267,9 +272,14 @@ const TournamentPage = ({ id }: { id: string }) => {
           <h2 className="text-3xl font-bold text-white mb-4">Ready to enter the Tournament Bracket?</h2>
           <p className="text-md text-gray-100 mb-6">Join the fun and vote for your favourite concepts!</p>
           </div>
-          <Button className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-6" onClick={() => router.push(`/tournament/${id}/tournamentbracket`)}>
-            Enter Tournament
-          </Button>
+ 
+        <Button
+        
+        className="py-2 px-6 text-white bg-purple-600 hover:bg-purple-700"
+        onClick={() => router.push(`/tournament/${id}/tournamentbracket`)}
+        >
+        Enter Tournament
+    </Button>
         </section>
       </div>
     </div>

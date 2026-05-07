@@ -158,7 +158,7 @@ const TournamentPage = ({ id }: { id: string }) => {
           </div>
 
 
-          <p className="max-w-3xl text-md text-gray-700"> Join as the most creative concepts face off in the utlimate STEM showdown! Vote for your favourite concepts to shape their future.</p>
+          <p className="max-w-3xl text-md text-gray-700"> Join as the most creative concepts face off in the ultimate STEM showdown! Vote for your favourite concepts to shape their future.</p>
 
         </section>
 

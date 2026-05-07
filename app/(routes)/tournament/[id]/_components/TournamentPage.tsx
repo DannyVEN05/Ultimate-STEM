@@ -106,6 +106,8 @@ const TournamentPage = ({ id }: { id: string }) => {
           )
         `)
         .eq("tournament_id", Number(id))
+        .eq("tournamentsub_status", "approved")
+        .order("tournamentsub_created_at", { ascending: false })
         .limit(3);
 
       if (error) {

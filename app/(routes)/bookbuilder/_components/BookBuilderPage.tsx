@@ -30,6 +30,28 @@ const BookBuilderPage = () => {
 
   const fontOptions = ["sans-serif", "serif", "monospace", "cursive", "fantasy"];
 
+  //make it so when theres a long title, it makes it smaller
+  const calculateFontSize = (text: string) => {
+    const baseSize = 60;
+    const maxWidth = 240;
+    //make it so it is shrinking after each space
+    const words = text.split(/\s+/);
+    //finding long words
+    const longestWordLength = Math.max(...words.map(word => word.length));
+    //estimated width of long word
+    const estimatedWidth = longestWordLength * 20;
+
+    if (estimatedWidth > longestWordLength) {
+      const scaleSize = Math.floor((maxWidth / estimatedWidth) * 20);
+
+      return Math.max(25, scaleSize);
+    }
+    return baseSize;
+
+  };
+
+  const dynamicSize = calculateFontSize(title);
+
   const { user } = useContext(AuthContext);
 
   const profanity = new Profanity();
@@ -111,16 +133,15 @@ const BookBuilderPage = () => {
 
   const router = useRouter();
   return (
-    <div className="text-4xl">
+    <div className="flex items-left">
       <Button variant="outline" onClick={() => router.back()}>
         Back
       </Button>
-
-      <div className="flex w-full flex-col items-center mt-2 font-bold overflow-hidden">
+      <div className="flex w-full flex-col items-center font-bold overflow-hidden">
         {/* Book Submissions */}
         <div className="flex w-full h-full justify-center gap-25 text-center font-bold text-2xl overflow-hidden">
 
-          <div className="flex flex-col w-full max-w-md border-2 border-gray-300 rounded-lg shadow-sm p-6 space-y-4 overflow-y-auto">
+          <div className="flex flex-col w-full max-w-md border-2 border-gray-300 rounded-lg shadow-sm p-6 space-y-2 overflow-y-auto">
             {/* Make it center */}
             <div className="flex items-center justify-center">
 
@@ -145,8 +166,8 @@ const BookBuilderPage = () => {
                     <Rect width={(title || "Book Title").length * 15} height={40} cornerRadius={4} />
                     {/* was confusing konva text with our text so I change to KonvaText */}
                     <KonvaText text={(title || "Book Title").toUpperCase()}
-                      x={55} y={20}
-                      fontSize={50}
+                      x={55} y={60}
+                      fontSize={dynamicSize}
                       fontFamily="sans-serif"
                       fontStyle="bold"
                       width={240}
@@ -179,8 +200,8 @@ const BookBuilderPage = () => {
 
             </div>
 
-            <div className="block mb-2 text-sm ">
-              Select Icon here
+            <div className="mb-2 text-sm">
+              Select Cover Icon
               <UsAutofillBox
                 options={[
                   { value: "/covers/Icon1.png", label: "STEM" },
@@ -211,25 +232,26 @@ const BookBuilderPage = () => {
 
 
           {/* <form>  cant have form has it refresh the page and cancels handlesubmit*/}
-          <div className="w-full max-w-2xl border-2 border-gray-300 rounded-lg shadow-sm p-6 space-y-4 overflow-hidden">
-            <div className="text-base text-left text-black">
+          <div className="flex w-full max-w-2xl border-2 space-between border-gray-300 rounded-lg shadow-sm p-6 space-y-4 overflow-hidden">
+            <div className="flex flex-col text-base text-left space-y-10 text-black">
+              <div className="flex flex-col space-y-2">
+                Title
 
-              Title
+                <div className="flex items-center justify-start gap-20 mb-2">
+                  <UsInput placeholder="Enter title..." sizeOptions={{ width: 300 }} maxLength={35} value={title} onChange={(e: any) => setTitle(e.target.value)} />
 
-              <div className="flex items-center justify-start gap-20 mb-2">
-                <UsInput placeholder="Enter title..." sizeOptions={{ width: 300 }} maxLength={35} value={title} onChange={(e: any) => setTitle(e.target.value)} />
-
-                {/* title colour */}
-                <div className="flex items-center gap-3">
-                  <label htmlFor="colour-picker" className="text-sm font-bold">Colour</label>
-                  <input id="colour-picker" type="color" value={titTextColor} onChange={(e) => setTitColor(e.target.value)}
-                    className="w-16 h-10 cursor-pointer rounded-full" />
+                  {/* title colour */}
+                  <div className="flex items-center gap-3">
+                    <label htmlFor="colour-picker" className="text-sm font-bold">Colour</label>
+                    <input id="colour-picker" type="color" value={titTextColor} onChange={(e) => setTitColor(e.target.value)}
+                      className="w-16 h-10 cursor-pointer rounded-full" />
+                  </div>
                 </div>
 
               </div>
+              <div className="flex flex-col space-y-2">
 
-              Genres
-              <div className="flex items-center justify-start gap-20 mb-2">
+                Genres
                 <UsAutofillBox
                   options={[
                     { value: "Science", label: "Science" },
@@ -238,6 +260,7 @@ const BookBuilderPage = () => {
                     { value: "Mathematics", label: "Mathematics" },
                   ]} sizeOptions={{ width: 600 }} value={genre} onChange={(e: any) => setGenre(e.target.value)} />
               </div>
+
 
               Description
 
@@ -251,7 +274,6 @@ const BookBuilderPage = () => {
 
 
           </div>
-          {/* </form>  */}
         </div>
 
       </div>

@@ -145,15 +145,15 @@ const TournamentPage = ({ id }: { id: string }) => {
       <div className="mx-auto max-w-6xl">
 
         <section className="rounded-2xl bg-[#baffe5af] px-10 py-12 shadow-lg">
-          <div className="mb-4 inline-block rounded-full bg-tertiary px-4 py-1 text-s font-bold text-orange-900">
+          <div className="mb-4 inline-block rounded-full bg-tertiary px-4 py-1 text-sm font-bold text-orange-900">
             Active Tournament
           </div>
 
           <h1 className="max-w-2xl text-4xl font-bold leading-tight text-purple-950">{tournamentData.tournament_title}</h1>
-          <div className="mb-4 inline-block rounded-full bg-green-300 my-3 px-4 py-1 mr-4 text-s font-bold text-green-900">
+          <div className="mb-4 inline-block rounded-full bg-green-300 my-3 px-4 py-1 mr-4 text-sm font-bold text-green-900">
             {tournamentData.tournament_genre}
           </div>
-          <div className="mb-4 inline-block rounded-full bg-purple-300 px-4 py-1 text-s font-bold text-purple-900">
+          <div className="mb-4 inline-block rounded-full bg-purple-300 px-4 py-1 text-sm font-bold text-purple-900">
             {tournamentData.tournament_status.charAt(0).toUpperCase() + tournamentData.tournament_status.slice(1)}
           </div>
 

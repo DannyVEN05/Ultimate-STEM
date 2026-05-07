@@ -206,10 +206,26 @@ const TournamentPage = ({ id }: { id: string }) => {
               {conceptSubmissions.slice(0, 4).map((submission) => {
                 // Calculate coverUrl here (copied from ProfileBookCard logic)
                 const fallbackCoverUrl = '/covers/engineering.png';
-                const styling = typeof submission.concept.concept_styling === 'string'
-                  ? JSON.parse(submission.concept.concept_styling)
-                  : submission.concept.concept_styling as unknown as BookCover;
-                const bookCover = styling.book_cover;
+                const fallbackStyling = { book_cover: fallbackCoverUrl } as BookCover;
+                const rawConceptStyling = submission.concept.concept_styling as unknown;
+                let styling: BookCover = fallbackStyling;
+
+                if (typeof rawConceptStyling === 'string') {
+                  try {
+                    const parsedStyling = JSON.parse(rawConceptStyling) as unknown;
+                    if (parsedStyling && typeof parsedStyling === 'object') {
+                      styling = parsedStyling as BookCover;
+                    }
+                  } catch {
+                    styling = fallbackStyling;
+                  }
+                } else if (rawConceptStyling && typeof rawConceptStyling === 'object') {
+                  styling = rawConceptStyling as BookCover;
+                }
+
+                const bookCover = typeof styling.book_cover === 'string'
+                  ? styling.book_cover
+                  : fallbackStyling.book_cover;
                 let coverUrl = fallbackCoverUrl;
                 if (bookCover) {
                   const isLocalPath = bookCover.startsWith('/');

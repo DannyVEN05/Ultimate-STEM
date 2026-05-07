@@ -3,6 +3,7 @@ import { BookCover } from "@/app/_types/model/Concept";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { Heart } from "lucide-react";
+import CoverImage from "./CoverImage";
 import { useState, useContext, useEffect, useMemo } from "react";
 import { MouseEvent } from "react";
 
@@ -13,21 +14,28 @@ type BookCardProps = {
   tournamentsub_id: string;
   styling: BookCover;
   isLiked: boolean;
+  showLikeButton?: boolean;
 }
 
-const BookCard = (props: BookCardProps) => {
-  const [isLiked, setIsLiked] = useState(props.isLiked);
+// Perhaps 
+
+const BookCard: React.FC<BookCardProps> = ({
+  title,
+  description,
+  genre,
+  tournamentsub_id,
+  styling,
+  isLiked: initialIsLiked,
+  showLikeButton = false,
+}) => {
+  const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { updateLikes } = useContext(BookContext);
 
-  const coverUrl = useMemo(() => {
-    return supabase.storage.from('book-covers').getPublicUrl(props.styling.book_cover).data.publicUrl || '/covers/engineering.png';
-  }, [props.styling.book_cover]);
-
   useEffect(() => {
-    setIsLiked(props.isLiked)
-  }, [props.isLiked])
+    setIsLiked(isLiked)
+  }, [isLiked])
 
   async function handleClickLike(e: MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
@@ -38,7 +46,7 @@ const BookCard = (props: BookCardProps) => {
     const nextLiked = !isLiked;
     setIsLiked(nextLiked);
 
-    const success = await updateLikes(props.tournamentsub_id, nextLiked);
+    const success = await updateLikes(tournamentsub_id, nextLiked);
     if (!success) {
       setIsLiked(!nextLiked); // Rollback UI state if update fails
     }
@@ -61,14 +69,18 @@ const BookCard = (props: BookCardProps) => {
         >
           <div className="w-full bg-secondary/50 rounded-xl shadow-md hover:bg-secondary/60">
             <div className="p-4 h-full rounded-xl border border-gray-200 z-[8]">
-              <div className="absolute -top-3 -right-3 z-10">
-                <Button variant="default" className="group min-h-12 min-w-12 rounded-full hover:bg-primary/90" onClick={handleClickLike}>
-                  <Heart className={`size-7 cursor-pointer transition-all ${isLiked ? " text-red-500 fill-red-500" : "fill-transparent"} `}>
-                  </Heart>
-                </Button>
-              </div>
-              <img src={coverUrl} alt={`${props.title} cover`} className="aspect-[3/4] object-cover w-full bg-white shadow-md rounded-lg"></img>
-              <h3 className="mt-3 text-sm text-gray-600 font-bold line-clamp-2">{props.title}</h3>
+
+              {showLikeButton && (
+                <div className="absolute -top-3 -right-3 z-10">
+                  <Button variant="default" className="group min-h-12 min-w-12 rounded-full hover:bg-primary/90" onClick={handleClickLike}>
+                    <Heart className={`size-7 cursor-pointer transition-all ${isLiked ? " text-red-500 fill-red-500" : "fill-transparent"} `}>
+                    </Heart>
+                  </Button>
+                </div>
+              )}
+
+              <CoverImage styling={styling} title={title}></CoverImage>
+              <h3 className="mt-3 text-sm text-gray-600 font-bold line-clamp-2">{title}</h3>
             </div>
           </div>
         </div>
@@ -82,7 +94,7 @@ const BookCard = (props: BookCardProps) => {
           <div className="flex flex-col h-full">
             <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
               <p className="text-[10px] text-gray-600 leading-snug">
-                {props.description}
+                {description}
               </p>
             </div>
             <div className="mt-4 pt-4">

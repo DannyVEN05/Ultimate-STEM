@@ -1,19 +1,13 @@
 "use client";
 
-import UsMenuButton from "@/app/_common/layout/header/UsMenuButton";
-import UsButton from "@/app/_common/ui/buttons/UsButton";
 import TournamentContext from "@/app/_context/tournament/TournamentContext";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Concept } from "@/app/_types/model/Concept";
 import { BookCover } from "@/app/_types/model/Concept";
 
-type Props = {
-  className?: string;
-  concept: Concept;
-}
+
 
 type Tournament = {
   tournament_id: number;

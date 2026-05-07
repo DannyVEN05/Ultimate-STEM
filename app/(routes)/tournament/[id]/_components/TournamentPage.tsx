@@ -146,11 +146,6 @@ const TournamentPage = ({ id }: { id: string }) => {
 
   if (!tournamentData) return <p>Tournament not found.</p>;
 
-   const isExpired =
-  timeLeft.days === 0 &&
-  timeLeft.hours === 0 &&
-  timeLeft.minutes === 0;
-
   return (
     <div className="min-h-screen bg-white px-6 py-10">
       <div className="mx-auto max-w-6xl">

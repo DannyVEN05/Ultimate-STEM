@@ -191,7 +191,7 @@ const TournamentPage = ({ id }: { id: string }) => {
         <section className="mt-10">
           <div className="flex justify-between items-start mb-6">
             <div>
-            <h2 className="text-2xl font-bold text-black-600">
+            <h2 className="text-2xl font-bold text-black">
               Concept Submissions
             </h2>
             <p className="text-md text-gray-600"> Review the latest {tournament?.tournament_genre} submissions from our community!</p>

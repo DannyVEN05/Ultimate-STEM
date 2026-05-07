@@ -225,7 +225,7 @@ const TournamentPage = ({ id }: { id: string }) => {
 
           {conceptSubmissions.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {conceptSubmissions.slice(0, 4).map((submission) => {
+              {conceptSubmissions.map((submission) => {
                 // Calculate coverUrl here (copied from ProfileBookCard logic)
                 const fallbackCoverUrl = '/covers/engineering.png';
                 const fallbackStyling = { book_cover: fallbackCoverUrl } as BookCover;

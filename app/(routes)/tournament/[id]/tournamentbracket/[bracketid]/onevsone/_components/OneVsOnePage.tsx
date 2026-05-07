@@ -65,59 +65,49 @@ const OneVsOnePage = () => {
     
 
     
-    <div className="min-h-screen bg-white px-4 py-5 pt-1">
-      <Button className="bg-white hover:bg-slate-100 mb-3 text-sm font-medium text-slate-700" onClick={() => {router.push("./")}}>
+    <div className="bg-white px-4 pt-1">
+      <Button className="bg-white hover:bg-slate-100 text-sm font-medium text-slate-700 pb-3" onClick={() => {router.push("./")}}>
         ← Back to Bracket
       </Button>
 
       <div className= "flex justify-between items-start">
-      <h1 className=" md:text-5xl font-headline font-bold text-on-surface tracking-tighter mb-2">
+      <h1 className=" md:text-5xl font-headline font-bold text-on-surface tracking-tighter pt-3 ">
         Tournament Title</h1>      
       
       <div className="rounded-full bg-green-100 px-5 py-3 text-sm font-semibold text-blue-800 shadow-lg mb-3 ">
       Voting Ends in {formatTime(timeLeft)}
      </div> 
   </div>
-    <p className="mb-2 max-w-4xl text-base font-bold text-gray-500 sm:text-xl">Round: 02 One vs One</p>
+    <p className="mb-2 max-w-4xl text-base font-bold text-gray-500 sm:text-xl pt-3">Round: 02 One vs One</p>
 
   {/* Book section */}
   
   
-  <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-1 mt-1 items-center text-center justify-items-center">
-          
-
+  
+<div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 mt-6 items-center justify-items-center">
   {/* book 1 item */}
 
-  <div className="perspective-[1000px] mt-4">
+  <div className="perspective-[1000px] w-[400px]">
     <div
-      className={`relative h-[550px] w-[400px] transition-transform duration-500 [transform-style:preserve-3d] ${
-      book1Flipped ? "[transform:rotateY(180deg)]" : "hover:[transform:rotateY(15deg)_scale(1.02)]" }`}
+      className={`relative h-[460px] w-full transition-transform duration-500 [transform-style:preserve-3d] ${
+      book1Flipped ? "[transform:rotateY(180deg)]" : "hover:-translate-y-3" }`}
     >
 
     {/* Front */}
     <div
-      onClick={(e) => {
-        const target = e.target as HTMLElement;
-        if (target.closest("button")) return;
-        setBook1Flipped(!book1Flipped)
-      }}
-      className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
+      className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-purple-100  hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
     >
       <img
         src={book1.cover}
         alt={book1.title}
-        className="w-[360px] h-[400px] object-cover overflow-hidden rounded-[1.75rem] mx-auto shadow-md"
+        className="w-full flex-1 min-h-0 object-cover rounded-[1.75rem] shadow-md cursor-pointer"
+        onClick={() => setBook1Flipped(!book1Flipped)}
       />
 
-
-      <h2 className="text-xl text-gray-600 font-semibold text-left mt-3 mx-auto">
-        By: {book1.author}
-      </h2>
-
       
-      <div className="mt-auto flex justify-center">
+      <div className="mt-5 flex justify-center">
         <Button
-          className="bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-[22px] text-lg rounded-[1.75rem] shadow-lg"
+          className="pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
           onClick={(e) => {
             e.stopPropagation();
             setSelectedBook(book1.title);
@@ -131,16 +121,12 @@ const OneVsOnePage = () => {
 
 {/* Back */}
     <div
-      onClick={() => setBook1Flipped(!book1Flipped)}
+      onClick={() => setBook1Flipped(!book1Flipped)} 
       className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
     >
-      <h2 className="text-2xl font-bold text-gray-800 mb-3">
+      <h2 className="text-2xl font-bold text-gray-800">
         {book1.title}
       </h2>
-
-      <h3 className="text-lg text-gray-600 font-semibold mb-4">
-        By: {book1.author}
-      </h3>
 
       <p className="text-base text-gray-700 leading-relaxed overflow-y-auto">
         {book1.description}
@@ -159,33 +145,29 @@ const OneVsOnePage = () => {
             </div>
         </div>
 
+{/* Book 2 item */}
 
-    <div className="perspective-[1000px] mt-4">
+    <div className="perspective-[1000px] w-[400px]">
       <div
-      className={`relative h-[550px] w-[400px] transition-transform duration-500 [transform-style:preserve-3d] ${
-      book2Flipped ? "[transform:rotateY(180deg)]" : "hover:[transform:rotateY(15deg)_scale(1.02)]"}`}
+      className={`relative h-[460px] w-full transition-transform duration-500 [transform-style:preserve-3d] ${
+      book2Flipped ? "[transform:rotateY(180deg)]" : "hover:-translate-y-3"}`}
       >
     
     {/* Front */}
 
     <div
-      onClick={() => setBook2Flipped(!book2Flipped)}
-      className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
+      className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-purple-100 hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
     >
       <img
         src={book2.cover}
         alt={book2.title}
-        className="w-90 h-100 object-cover overflow-hidden rounded-[1.75rem] mx-auto shadow-md"
+        className="w-full flex-1 min-h-0 object-cover rounded-[1.75rem] shadow-md cursor-pointer"
+        onClick={() => setBook2Flipped(!book2Flipped)}
       />
 
-      <h2 className="text-xl text-gray-600 font-semibold text-left mt-3 mx-auto">
-        By: {book2.author}
-      </h2>
-
-      <div className="mt-auto flex justify-center">
-      
-      <Button
-          className="bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
+      <div className="mt-5 flex justify-center">
+        <Button
+          className=" pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
           onClick={(e) => {
             e.stopPropagation();
             setIsVoting(true);
@@ -195,7 +177,7 @@ const OneVsOnePage = () => {
           }}
         >
           Vote
-      </Button>
+        </Button>
 
       </div>
     </div>
@@ -206,13 +188,9 @@ const OneVsOnePage = () => {
       className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
     >
     
-    <h2 className="text-2xl font-bold text-gray-800 mb-3">
+    <h2 className="text-2xl font-bold text-gray-800">
         {book2.title}
       </h2>
-
-    <h3 className="text-lg text-gray-600 font-semibold mb-4">
-        By: {book2.author}
-    </h3>
 
     <p className="text-base text-gray-700 leading-relaxed overflow-y-auto">
       {book2.description}

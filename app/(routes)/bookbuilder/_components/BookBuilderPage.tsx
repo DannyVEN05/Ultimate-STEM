@@ -13,25 +13,44 @@ import useImage from 'use-image'
 
 const BookBuilderPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedCover, setSelectedCover] = useState("/covers/space.jpg");
+  const [selectedCover, setSelectedCover] = useState("/covers/STEM.png");
+  const [selectedSpine, setSelectedSpine] = useState("/covers/spine.png");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [author, setAuthor] = useState("");
   const [genre, setGenre] = useState("");
   const [spineColor, setSpineColor] = useState("#000000");
-  const [titTextColor, setTitColor] = useState("#000000");
-  const [titBackColor, setTitBackColor] = useState("#FFFFFF");
-  const [titlePos, setTitlePos] = useState({ x: 20, y: 40 });
-  const [autTextColor, setAutTextColor] = useState("#000000");
-  const [autBackColor, setAutBackColor] = useState("#FFFFFF");
-  const [authorPos, setAuthorPos] = useState({ x: 20, y: 100 });
-  const [titleFont, setTitleFont] = useState("sans-serif");
-  const [autFont, setAutFont] = useState("serif");
+  const [titTextColor, setTitColor] = useState("#FFFFFF");
+  const [coverColor, setCoverColor] = useState(("#000000"));
+  const [icon, setIcon] = useState("/covers/Icon1.png");
   const stageRef = useRef<any>(null);
 
   const [image] = useImage(selectedCover, 'anonymous');
+  const [iconImage] = useImage(icon);
+  const [spineImage] = useImage(selectedSpine);
 
   const fontOptions = ["sans-serif", "serif", "monospace", "cursive", "fantasy"];
+
+  //make it so when theres a long title, it makes it smaller
+  const calculateFontSize = (text: string) => {
+    const baseSize = 60;
+    const maxWidth = 240;
+    //make it so it is shrinking after each space
+    const words = text.split(/\s+/);
+    //finding long words
+    const longestWordLength = Math.max(...words.map(word => word.length));
+    //estimated width of long word
+    const estimatedWidth = longestWordLength * 20;
+
+    if (estimatedWidth > longestWordLength) {
+      const scaleSize = Math.floor((maxWidth / estimatedWidth) * 20);
+
+      return Math.max(25, scaleSize);
+    }
+    return baseSize;
+
+  };
+
+  const dynamicSize = calculateFontSize(title);
 
   const { user } = useContext(AuthContext);
 
@@ -39,9 +58,14 @@ const BookBuilderPage = () => {
 
   const handleSubmit = async () => {
     if (isProcessing) return; // Prevents multiple submissions
-    if (profanity.exists(title) || profanity.exists(description) || profanity.exists(author)) {
+    if (profanity.exists(title) || profanity.exists(description)) {
       alert("Please remove profanity.");
       return; //stop the submission
+    }
+
+    if (!title.trim() || !description.trim()) {
+      alert("Please fill in title, description and author");
+      return;
     }
 
     setIsProcessing(true);
@@ -75,19 +99,7 @@ const BookBuilderPage = () => {
         concept_styling: {
           spine_color: spineColor,
           book_cover: storageData?.path,
-          title: title,
-          author: author,
-          title_color: titTextColor,
-          title_bg_color: titBackColor,
-          author_color: autTextColor,
-          author_bg_color: autBackColor,
-          title_font: titleFont,
-          author_font: autFont,
-
-          title_x: titlePos.x,
-          title_y: titlePos.y,
-          author_x: authorPos.x,
-          author_y: authorPos.y,
+          title: title
         },
         concept_genre: genre,
         // cover: selectedCover,
@@ -121,173 +133,125 @@ const BookBuilderPage = () => {
 
   const router = useRouter();
   return (
-    <div className="text-4xl">
+    <div className="flex items-left">
       <Button variant="outline" onClick={() => router.back()}>
         Back
       </Button>
+      <div className="flex w-full flex-col items-center font-bold overflow-hidden">
+        {/* Book Submissions */}
+        <div className="flex w-full h-full justify-center gap-25 text-center font-bold text-2xl overflow-hidden">
 
-      <div className="flex w-full flex-col items-center mt-10 font-bold space-y-10">
-        <h1 className="mb-25 text-4xl">{'Book Submissions'}
-
-        </h1>
-        <div className="flex w-full justify-center gap-25 text-center font-bold text-2xl">
-
-          <div className="w-full max-w-md border-2 border-gray-300 rounded-lg shadow-sm p-10 space-y-6 ">
-            {/* Spine */}
+          <div className="flex flex-col w-full max-w-md border-2 border-gray-300 rounded-lg shadow-sm p-6 space-y-2 overflow-y-auto">
+            {/* Make it center */}
             <div className="flex items-center justify-center">
 
-              <div
-                className="h-96 w-5 flex items-center justify-center text-white text-xs font-bold"
-                style={{ backgroundColor: spineColor }}>
-                <span className="rotate-90 ">
-                  {title || "Book Title"}
-                </span>
-              </div>
-
               {/* Cover */}
-              <div className="relative w-64 h-96 border-black">
-                {/* for later */}
-                {/*To use images in Konva, use - useImage hook, layer the Stage over the img tag for now */}
-                {/* image */}
-                {/* <img
-                src={selectedCover}
-                className="absolute top-0 left-0 w-full h-full object-cover -z-10"
-                /> */}
+              <div className="relative w-69 h-96 border-black " >
                 {/* konva stage */}
                 {/* background */}
-                <Stage ref={stageRef} width={256} height={384} className="absolute top-0 left-0">
+                <Stage ref={stageRef} width={306} height={384} className="absolute top-0 left-0">
+                  <Layer>
+
+                    <Rect x={0} y={0} width={52} height={384} fill={spineColor} />
+                    {spineImage && (<KonvaImage image={spineImage} x={0} y={0} width={52} height={384} />)}
+
+                  </Layer>
+
                   <Layer listening={false}>
-                    {image && <KonvaImage image={image} width={256} height={384} />}
+                    <Rect x={50} y={0} width={256} height={384} fill={coverColor} />
+                    {image && <KonvaImage image={image} x={50} width={256} height={384} opacity={0.2} />}
                   </Layer>
 
                   <Layer>
-                    <Group x={titlePos.x} y={titlePos.y} draggable onDragEnd={(e) => setTitlePos({ x: e.target.x(), y: e.target.y() })}
-                      dragBoundFunc={(pos) => {
-                        const stageWidth = 256;
-                        const stageHeight = 384;
+                    <Rect width={(title || "Book Title").length * 15} height={40} cornerRadius={4} />
+                    {/* was confusing konva text with our text so I change to KonvaText */}
+                    <KonvaText text={(title || "Book Title").toUpperCase()}
+                      x={55} y={60}
+                      fontSize={dynamicSize}
+                      fontFamily="sans-serif"
+                      fontStyle="bold"
+                      width={240}
+                      wrap="word"
+                      fill={titTextColor}
+                      padding={5} />
 
-                        const boxWidth = (title || "Book Title").length * 15 + 20;
-                        // max width is based on the title length ig
-                        const boxHeight = 40;
-
-                        return {
-                          x: Math.max(0, Math.min(pos.x, stageWidth - boxWidth)),
-                          y: Math.max(0, Math.min(pos.y, stageHeight - boxHeight)),
-                        };
-                      }}
-                    >
-                      {/* title */}
-                      <Rect width={(title || "Book Title").length * 15 + 20} height={40} cornerRadius={4} />
-
-                      {/* was confusing konva text with our text so I change to KonvaText */}
-                      <KonvaText text={title || "Book Title"} fontSize={30} fontFamily={titleFont} fill={titTextColor} padding={5} />
-                    </Group>
-
-                    {/* Author  */}
-                    <Group x={authorPos.x} y={authorPos.y} draggable onDragEnd={(e) => setAuthorPos({ x: e.target.x(), y: e.target.y() })}
-                      dragBoundFunc={(pos) => {
-                        const stageWidth = 256;
-                        const stageHeight = 384;
-
-                        const boxWidth = (author || "Author").length * 12;
-                        // max width is based on the title length ig
-                        const boxHeight = 40;
-
-                        return {
-                          x: Math.max(0, Math.min(pos.x, stageWidth - boxWidth)),
-                          y: Math.max(0, Math.min(pos.y, stageHeight - boxHeight)),
-                        };
-                      }}
-                    >
-                      <Rect width={(author || "Author").length * 12} height={40} cornerRadius={4} />
-
-                      <KonvaText text={author || "Author"} fontSize={20} fontFamily={autFont} fill={autTextColor} padding={5} />
-                    </Group>
                   </Layer>
+
+                  <Layer>
+                    {iconImage && (<KonvaImage image={iconImage} x={180} y={250} width={100} height={100} />)}
+                  </Layer>
+
+
                 </Stage>
 
               </div>
             </div>
-            {/* cover image display */}
-            {/* this was annoying to fix */}
-            <div className="flex flex-row items-end gap-5 mb-6 " >
-              {[
-                "/covers/engineering.png",
-                "/covers/mathematics.jpg",
-                "/covers/space.jpg",
-                "/covers/technology.jpg",
-              ].map((cover) => (
-                <img
-                  key={cover}
-                  src={cover}
-                  onClick={() => setSelectedCover(cover)}
-                  className={` block h-20 cursor-pointer border-4 ${selectedCover === cover ? "border-blue-500" : "border-transparent"}`} />
-              ))
-              }
+
+            {/* Spine Cover */}
+            <div className="block mb-2 text-sm ">
+              Select Spine Cover
+              <UsAutofillBox
+                options={[
+                  { value: "/covers/spine.png", label: "Spine 1" },
+                  { value: "/covers/spine2.png", label: "Spine 2" },
+                  { value: "/covers/spine3.png", label: "Spine 3" },
+                  { value: "/covers/spine4.png", label: "Spine 4" },
+                ]} sizeOptions={{ width: 300 }} value={selectedSpine} onChange={(e: any) => setSelectedSpine(e.target.value)} />
+
+            </div>
+
+            <div className="mb-2 text-sm">
+              Select Cover Icon
+              <UsAutofillBox
+                options={[
+                  { value: "/covers/Icon1.png", label: "STEM" },
+                  { value: "/covers/Icon2.png", label: "Technology" },
+                  { value: "/covers/Icon3.png", label: "Maths" },
+                  { value: "/covers/Icon4.png", label: "Engineering" },
+                  { value: "/covers/Icon5.png", label: "Physics" },
+                  { value: "/covers/Icon6.png", label: "Biology" },
+                  { value: "/covers/Icon7.png", label: "Robot" },
+                  { value: "/covers/Icon8.png", label: "Books" },
+
+                ]} sizeOptions={{ width: 300 }} value={icon} onChange={(e: any) => setIcon(e.target.value)} />
 
             </div>
 
             {/*colour wheel */}
             {/* needed to have flex items - center and gap together to make it have a gap for some reasons */}
-            <div className="text-base gap-5 flex items-center">
+            <div className="text-sm gap-5 flex items-center">
               Spine Colour
               <input type="color" value={spineColor} onChange={(e) => setSpineColor(e.target.value)}
                 className="w-16 h-10 cursor-pointer" />
+              Cover Colour
+              <input type="color" value={coverColor} onChange={(e) => setCoverColor(e.target.value)}
+                className="w-16 h-10 cursor-pointer" />
             </div>
+
           </div>
 
 
           {/* <form>  cant have form has it refresh the page and cancels handlesubmit*/}
-          <div className="w-full max-w-2xl border-2 border-gray-300 rounded-lg shadow-sm p-10 space-y-6 ">
-            <div className="mb-25 text-base text-left text-black">
+          <div className="flex w-full max-w-2xl border-2 space-between border-gray-300 rounded-lg shadow-sm p-6 space-y-4 overflow-hidden">
+            <div className="flex flex-col text-base text-left space-y-10 text-black">
+              <div className="flex flex-col space-y-2">
+                Title
 
-              Title
+                <div className="flex items-center justify-start gap-20 mb-2">
+                  <UsInput placeholder="Enter title..." sizeOptions={{ width: 300 }} maxLength={35} value={title} onChange={(e: any) => setTitle(e.target.value)} />
 
-              <div className="flex items-center justify-start gap-20 mb-2">
-                <UsInput placeholder="Enter title..." sizeOptions={{ width: 300 }} maxLength={30} value={title} onChange={(e: any) => setTitle(e.target.value)} />
-
-                {/* title colour */}
-                <div className="flex items-center gap-3">
-                  <label htmlFor="colour-picker" className="text-sm font-bold">Colour</label>
-                  <input id="colour-picker" type="color" value={titTextColor} onChange={(e) => setTitColor(e.target.value)}
-                    className="w-16 h-10 cursor-pointer rounded-full" />
+                  {/* title colour */}
+                  <div className="flex items-center gap-3">
+                    <label htmlFor="colour-picker" className="text-sm font-bold">Colour</label>
+                    <input id="colour-picker" type="color" value={titTextColor} onChange={(e) => setTitColor(e.target.value)}
+                      className="w-16 h-10 cursor-pointer rounded-full" />
+                  </div>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  {/* add a form option for font styles */}
-                  <label htmlFor="font-select" className="text-sm font-bold">Font</label>
-                  <select id="font-select" value={titleFont} onChange={(e) => setTitleFont(e.target.value)} className="text-sm border border-gray-300 rounded h-8">
-                    {fontOptions.map(font => <option key={font} value={font}>{font}</option>)}
-                  </select>
-                </div>
-              </div>
-              Author
-
-
-              <div className="flex items-center justify-start gap-20 mb-2">
-                <UsInput placeholder="Enter author..." sizeOptions={{ width: 300 }} maxLength={30} value={author} onChange={(e: any) => setAuthor(e.target.value)} />
-
-
-                {/* font colour */}
-                <div className="flex items-center gap-3">
-                  <label htmlFor="colour-picker" className="text-sm font-bold">Colour</label>
-                  <input id="font-select" type="color" value={autTextColor} onChange={(e) => setAutTextColor(e.target.value)}
-                    className="w-16 h-10 cursor-pointer rounded-full" />
-                </div>
-
-
-                <div className="flex items-center gap-3">
-                  {/* add a form option for font styles */}
-                  <label htmlFor="font-select" className="text-sm font-bold">Font</label>
-                  <select id="font-select" value={autFont} onChange={(e) => setAutFont(e.target.value)} className="text-sm border border-gray-300 rounded h-8">
-                    {fontOptions.map(font => <option key={font} value={font}>{font}</option>)}
-                  </select>
-                </div>
-
 
               </div>
-              Genres
-              <div className="flex items-center justify-start gap-20 mb-2">
+              <div className="flex flex-col space-y-2">
+
+                Genres
                 <UsAutofillBox
                   options={[
                     { value: "Science", label: "Science" },
@@ -296,6 +260,7 @@ const BookBuilderPage = () => {
                     { value: "Mathematics", label: "Mathematics" },
                   ]} sizeOptions={{ width: 600 }} value={genre} onChange={(e: any) => setGenre(e.target.value)} />
               </div>
+
 
               Description
 
@@ -309,7 +274,6 @@ const BookBuilderPage = () => {
 
 
           </div>
-          {/* </form>  */}
         </div>
 
       </div>

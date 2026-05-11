@@ -8,6 +8,7 @@ import { BookActionKind } from "@/app/_types/context";
 import BookContext from "./BookContext";
 import { BookCover } from "@/app/_types/model/Concept";
 import AuthContext from "../auth/AuthContext";
+import { useRouter } from "next/navigation";
 
 type Props = {
   children?: React.ReactNode | React.ReactNode[];
@@ -22,6 +23,7 @@ const BookState = ({ children }: Props) => {
   }
 
   const [state, dispatch] = useReducer(bookReducer, initialState);
+  const router = useRouter();
   const { user } = useContext(AuthContext);
 
   const mapToBookCover = (styling: string | BookCover | any): BookCover => {
@@ -72,8 +74,8 @@ const BookState = ({ children }: Props) => {
       mapToBookCover(row.concept.concept_styling),
       row.concept.concept_genre,
       row.concept.user_id,
-    )
-
+      !!(row.submission_likes && row.submission_likes.length > 0)
+    );
     return book;
   }
 
@@ -89,10 +91,12 @@ const BookState = ({ children }: Props) => {
         .from("tournament_submission")
         .select(`
           *,
-          concept!inner(*)
+          concept!inner(*),
+          submission_likes!left(user_id)
         `)
         .eq("tournament_id", tournament_id)
         .eq("tournamentsub_status", "approved")
+        .filter("submission_likes.user_id", "eq", user?.user_id || '00000000-0000-0000-0000-000000000000')
 
       if (error) {
         console.warn("Error fetching data: ", error);
@@ -117,13 +121,31 @@ const BookState = ({ children }: Props) => {
   }
 
 
-  const updateLikes = async (tournamentsub_id: string, isLiked: boolean) => {
-    const { error } = await supabase
-      .rpc(isLiked ? "increment_tournamentsub_likes" : "decrement_tournamentsub_likes", { id: tournamentsub_id }
-      );
+  const updateLikes = async (tournamentsub_id: string, isLiked: boolean): Promise<boolean> => {
+    if (!user?.user_id) {
+      alert("User must be logged in to like submissions!")
+      router.push("/login")
+      return false;
+    }
 
-    if (error) {
-      console.warn(`Error: ${isLiked ? "incrementing" : "decrementing"}, Likes`, error)
+    try {
+      const { error } = isLiked
+        ? await supabase.from("submission_likes").upsert(
+          { user_id: user?.user_id, tournamentsub_id: tournamentsub_id },
+          { onConflict: 'user_id,tournamentsub_id' })
+        : await supabase.from("submission_likes").delete()
+          .eq("user_id", user?.user_id)
+          .eq("tournamentsub_id", tournamentsub_id)
+
+      if (error) {
+        console.warn("Error updating likes: ", error)
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.warn("Unexpected error while updating likes: ", err)
+      return false;
     }
   }
 

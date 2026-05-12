@@ -2,7 +2,7 @@
 
 import BookContext from "@/app/_context/book/BookContext";
 import { useContext, useEffect, useRef } from "react";
-import BookCard from "./BookCard";
+import BookCard from "./GridBookCard";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -45,6 +45,7 @@ const GridViewPage = () => {
           styling={book.concept_styling}
           isLiked={book.isLiked}
           showLikeButton={true}
+          aspectRatio="aspect-[3/4]"
         />
       ))}
     </div>

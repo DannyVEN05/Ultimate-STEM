@@ -142,6 +142,11 @@ const BookState = ({ children }: Props) => {
         return false;
       }
 
+      dispatch({
+        type: BookActionKind.UPDATE_LIKED,
+        payload: { tournamentsub_id, isLiked: isLiked }
+      });
+
       return true;
     } catch (err) {
       console.warn("Unexpected error while updating likes: ", err)

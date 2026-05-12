@@ -15,9 +15,8 @@ type BookCardProps = {
   styling: BookCover;
   isLiked: boolean;
   showLikeButton?: boolean;
+  aspectRatio?: string;
 }
-
-// Perhaps 
 
 const BookCard: React.FC<BookCardProps> = ({
   title,
@@ -27,6 +26,7 @@ const BookCard: React.FC<BookCardProps> = ({
   styling,
   isLiked: initialIsLiked,
   showLikeButton = false,
+  aspectRatio = "",
 }) => {
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -54,7 +54,7 @@ const BookCard: React.FC<BookCardProps> = ({
   }
 
   return (
-    <div className={`perspective-[1200px] ${isFlipped ? "z-50" : "z-10"}`}>
+    <div className={`perspective-[1200px] ${isFlipped ? "z-50" : "z-10"} w-full ${aspectRatio} max-h-full mx-auto`}>
       <div
         className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] will-change-transform ${isFlipped
           ? "[transform:rotateY(180deg)]"
@@ -65,23 +65,27 @@ const BookCard: React.FC<BookCardProps> = ({
         <div
           onClick={() => setIsFlipped(true)}
           role="button"
-          className="relative w-full h-full [backface-visibility:hidden] z-20"
+          className="absolute inset-0 [backface-visibility:hidden] z-20"
         >
-          <div className="w-full bg-secondary/50 rounded-xl shadow-md hover:bg-secondary/60">
-            <div className="p-4 h-full rounded-xl border border-gray-200 z-[8]">
+          <div className="p-3 flex flex-col h-full w-full bg-secondary/50 rounded-xl shadow-md border border-gray-200 overflow-hidden hover:bg-secondary/60">
 
-              {showLikeButton && (
-                <div className="absolute -top-3 -right-3 z-10">
-                  <Button variant="default" className="group min-h-12 min-w-12 rounded-full hover:bg-primary/90" onClick={handleClickLike}>
-                    <Heart className={`size-7 cursor-pointer transition-all ${isLiked ? " text-red-500 fill-red-500" : "fill-transparent"} `}>
-                    </Heart>
-                  </Button>
-                </div>
-              )}
+            {showLikeButton && (
+              <div className="absolute -top-3 -right-3 z-10">
+                <Button variant="default" className="group min-h-12 min-w-12 rounded-full hover:brightness-120 transition" onClick={handleClickLike}>
+                  <Heart className={`size-7 cursor-pointer transition-all ${isLiked ? " text-red-500 fill-red-500" : "fill-transparent"} `}>
+                  </Heart>
+                </Button>
+              </div>
+            )}
 
+            <div className="flex-1 min-h-0 relative">
               <CoverImage styling={styling} title={title}></CoverImage>
-              <h3 className="mt-3 text-sm text-gray-600 font-bold line-clamp-2">{title}</h3>
             </div>
+
+            <div className="mt-3 h-12">
+              <h3 className="text-sm text-gray-600 font-bold line-clamp-2">{title}</h3>
+            </div>
+
           </div>
         </div>
 

@@ -12,12 +12,12 @@ const CoverImage: React.FC<CoverImageProps> = ({
   styling,
 }) => {
 
-  const coverUrl = useMemo(() => {
+  let coverUrl = useMemo(() => {
     return supabase.storage.from('book-covers').getPublicUrl(styling.book_cover).data.publicUrl || '/covers/engineering.png';
   }, [styling.book_cover]);
 
   return (
-    <img src={coverUrl} alt={`${title} cover`} className="aspect-[3/4] w-full bg-white shadow-md rounded-lg hover:shadow-xl transform transition"></img>
+    <img src={coverUrl} alt={`${title} cover`} className={`h-full object-fill w-full bg-white shadow-md rounded-lg hover:shadow-xl transform transition`}></img>
   );
 }
 

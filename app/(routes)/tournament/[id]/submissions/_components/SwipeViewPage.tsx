@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import BookContext from "@/app/_context/book/BookContext";
 import AuthContext from "@/app/_context/auth/AuthContext";
@@ -41,10 +41,8 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
 
     const success = await updateLikes(currentBook.tournamentsub_id, true);
 
-    if (success) {
-      // Advance to next book — liked book naturally leaves browseBooks
-      // on next render since isLiked flips in context
-      setCurrentIndex(prev => Math.min(prev + 1, activeBooks.length));
+    if (!success) {
+      console.warn("Updating like was unsuccessful")
     }
     window.setTimeout(() => setFeedback(null), 900);
     setIsProcessing(false);
@@ -54,7 +52,6 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
     if (!user || isProcessing || !currentBook) return;
 
     setFeedback("no");
-    // Just skip — no DB call in browse mode
     setCurrentIndex(prev => Math.min(prev + 1, activeBooks.length));
     window.setTimeout(() => setFeedback(null), 900);
   };
@@ -67,8 +64,9 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
 
     const success = await updateLikes(currentBook.tournamentsub_id, false);
 
-    if (success) {
-      setCurrentIndex(prev => Math.min(prev + 1, activeBooks.length));
+    if (!success) {
+      // setCurrentIndex(prev => Math.min(prev + 1, activeBooks.length));
+      console.warn("Unliking was unsuccessful, Book Title: ", currentBook.concept_title)
     }
 
     window.setTimeout(() => setFeedback(null), 900);
@@ -76,22 +74,29 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
   };
 
   const restartSwipe = () => {
+    // console.log("restartSwipe called");
+    // console.log("currentIndex before:", currentIndex);
+    // console.log("activeBooks.length:", activeBooks.length);
+    // console.log("browseBooks.length:", browseBooks.length);
+    // console.log("showingLiked:", showingLiked);
+    if (showingLiked) {
+      onLikedToggle();
+    }
     setCurrentIndex(0);
     setFeedback(null);
+    // console.log("after reset, activeBooks[0]:", activeBooks[0]);
   };
 
+  useEffect(() => {
+    if (showingLiked && likedBooks.length === 0) {
+      onLikedToggle();
+      setCurrentIndex(0);
+    }
+  }, [likedBooks.length])
 
   return (
     <>
       <div className="flex h-full w-full">
-
-        {/* Book 1 of 1 ------ Book Genre Components */}
-        {/* <div className="p-2 grid grid-cols-2 gap-4 text-sm text-muted-foreground">
-        <span>{`Book ${currentIndex + 1} of ${books.length}`}</span>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-sm">{currentBook.concept_genre || "Unknown"}</span>
-      </div> */}
-
-
         <div className="flex-1 grid grid-cols-3 items-center w-full h-full">
           <div className="flex justify-center gap-4">
             <Button
@@ -111,9 +116,13 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
             </div>
           ) : !hasBook ? (
             <div className="rounded-3xl border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
-              <p className="text-xl font-semibold">No more books to vote on right now.</p>
-              <p className="mt-2 text-gray-600">You’ve finished voting on the current queue. Please return to Grid.</p>
-              <Button variant="secondary" className="mt-2 px-8 py-3" onClick={restartSwipe}>Restart voting</Button>
+              <p className="text-xl font-semibold">
+                {showingLiked ? "No more liked books." : "No more books to vote on right now."}
+              </p>
+              <p className="mt-2 text-gray-600">Please return to Grid.</p>
+              {!showingLiked && (
+                <Button variant="secondary" className="mt-2 px-8 py-3" onClick={restartSwipe}>Restart voting</Button>
+              )}
             </div>
           ) : (
             <div className="relative w-full h-full flex flex-col items-center justify-center min-h-0">

@@ -34,8 +34,8 @@ const BookCard: React.FC<BookCardProps> = ({
   const { updateLikes } = useContext(BookContext);
 
   useEffect(() => {
-    setIsLiked(isLiked)
-  }, [isLiked])
+    setIsLiked(initialIsLiked)
+  }, [initialIsLiked])
 
   async function handleClickLike(e: MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();

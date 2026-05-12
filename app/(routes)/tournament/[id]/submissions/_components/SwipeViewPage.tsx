@@ -12,7 +12,6 @@ type SwipeViewProps = {
   onLikedToggle: () => void;
 }
 
-
 const SwipeViewPage: React.FC<SwipeViewProps> = ({
   showingLiked,
   onLikedToggle,
@@ -74,17 +73,11 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
   };
 
   const restartSwipe = () => {
-    // console.log("restartSwipe called");
-    // console.log("currentIndex before:", currentIndex);
-    // console.log("activeBooks.length:", activeBooks.length);
-    // console.log("browseBooks.length:", browseBooks.length);
-    // console.log("showingLiked:", showingLiked);
     if (showingLiked) {
       onLikedToggle();
     }
     setCurrentIndex(0);
     setFeedback(null);
-    // console.log("after reset, activeBooks[0]:", activeBooks[0]);
   };
 
   useEffect(() => {
@@ -92,7 +85,11 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
       onLikedToggle();
       setCurrentIndex(0);
     }
-  }, [likedBooks.length])
+  }, [likedBooks.length, showingLiked, onLikedToggle])
+
+  useEffect(() => {
+    setCurrentIndex(0); // reset when user manually toggles mode
+  }, [showingLiked]);
 
   return (
     <>

@@ -12,7 +12,7 @@ const CoverImage: React.FC<CoverImageProps> = ({
   styling,
 }) => {
 
-  let coverUrl = useMemo(() => {
+  const coverUrl = useMemo(() => {
     return supabase.storage.from('book-covers').getPublicUrl(styling.book_cover).data.publicUrl || '/covers/engineering.png';
   }, [styling.book_cover]);
 

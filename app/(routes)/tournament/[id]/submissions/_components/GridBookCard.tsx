@@ -1,10 +1,9 @@
 import BookContext from "@/app/_context/book/BookContext";
 import { BookCover } from "@/app/_types/model/Concept";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
 import { Heart } from "lucide-react";
 import CoverImage from "./CoverImage";
-import { useState, useContext, useEffect, useMemo } from "react";
+import { useState, useContext, useEffect } from "react";
 import { MouseEvent } from "react";
 
 type BookCardProps = {

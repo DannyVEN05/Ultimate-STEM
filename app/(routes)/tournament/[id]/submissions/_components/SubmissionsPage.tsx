@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import GridViewPage from "./GridViewPage";
 import SwipeViewPage from "./SwipeViewPage";
 import BookContext from "@/app/_context/book/BookContext";
@@ -19,14 +19,14 @@ const SubmissionsPage = () => {
   const likedBooks = books.filter(book => book.isLiked);
   const hasLikedBooks = likedBooks.length > 0;
 
-  const handleLikedToggle = () => {
+  const handleLikedToggle = useCallback(() => {
     setShowingLiked(prev => !prev)
-  }
+  }, []);
 
-  const handleModeToggle = () => {
+  const handleModeToggle = useCallback(() => {
     setShowingLiked(false);
     setIsGridMode(!isGridMode);
-  };
+  }, [isGridMode]);
 
   useEffect(() => {
     const fetchTournamentTitle = async () => {

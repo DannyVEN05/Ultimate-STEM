@@ -6,8 +6,22 @@ export const metadata: Metadata = {
   description: "Ultimate STEM",
 };
 
-const OneVsOne: NextPage = () => {
-  return <OneVsOnePage />;
+type PageProps = {
+  params: Promise<{
+    id: string;
+    bracketid: string;
+  }>;
 };
+
+const OneVsOne = async ({params}: PageProps) => {
+  const { id, bracketid} = await params;
+  return (
+  <OneVsOnePage 
+    tournamentId={id}
+    bracketId={bracketid}
+  />
+  );
+};
+
 
 export default OneVsOne;

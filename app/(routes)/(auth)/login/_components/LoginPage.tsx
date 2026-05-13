@@ -4,6 +4,7 @@ import UsButton from "@/app/_common/ui/buttons/UsButton";
 import { Input } from "@/components/ui/input";
 import UsWidget from "@/app/_common/ui/other/UsWidget";
 import AuthContext from "@/app/_context/auth/AuthContext";
+import type { AuthFailure } from "@/app/_context/auth/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import React, { useContext, useEffect } from "react";
@@ -29,6 +30,14 @@ const LoginPage: React.FC = () => {
   const [resendMessage, setResendMessage] = React.useState<string | null>(null);
   const [showResendLink, setShowResendLink] = React.useState(false);
   const isBusy = isSubmitting || isResending;
+
+  const shouldOfferResend = (authFailure: AuthFailure) => {
+    return (
+      authFailure.code === "email_not_confirmed" ||
+      authFailure.status === 401 ||
+      authFailure.status === 403
+    );
+  };
 
   useEffect(() => {
     if (user) router.push('/dashboard');
@@ -65,8 +74,8 @@ const LoginPage: React.FC = () => {
         setSuccess("Login successful! Redirecting...");
         router.push('/dashboard');
       } else {
-        const errorMessage = "Login failed: " + response;
-        const shouldShowResend = response.toLowerCase().includes("email not confirmed");
+        const errorMessage = "Login failed: " + response.message;
+        const shouldShowResend = shouldOfferResend(response);
         setError(errorMessage);
         setShowResendLink(shouldShowResend);
       }

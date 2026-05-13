@@ -3,6 +3,7 @@
 import React, { useReducer, useEffect } from "react";
 import authReducer, { AuthReducerState } from "./AuthReducer";
 import AuthContext from "./AuthContext";
+import type { AuthFailure } from "./AuthContext";
 import { supabase } from "@/lib/supabase";
 import { AuthActionKind } from "@/app/_types/context";
 import { User } from "@/app/_types/model/User";
@@ -258,10 +259,17 @@ const AuthState = ({ children }: Props) => {
     }
   };
 
-  const logIn = async (logInData: LogInData) => {
+  const logIn = async (logInData: LogInData): Promise<null | AuthFailure> => {
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword(logInData);
-      if (signInError) return signInError.message;
+      if (signInError) {
+        const authError = signInError as AuthError & { code?: string; status?: number };
+        return {
+          message: signInError.message,
+          code: authError.code,
+          status: authError.status,
+        };
+      }
 
       const { data: user, error: profileError } = await supabase
         .from('user')
@@ -272,13 +280,13 @@ const AuthState = ({ children }: Props) => {
       if (profileError) {
         await supabase.auth.signOut();
         dispatch({ type: AuthActionKind.SET_USER, payload: null });
-        return "Could not fetch user profile.";
+        return { message: "Could not fetch user profile." };
       }
 
       if (user.user_role === "deleted") {
         await supabase.auth.signOut();
         dispatch({ type: AuthActionKind.SET_USER, payload: null });
-        return "Invalid login credentials.";
+        return { message: "Invalid login credentials." };
       }
 
       dispatch({
@@ -287,7 +295,7 @@ const AuthState = ({ children }: Props) => {
       });
       return null;
     } catch (err) {
-      return err instanceof Error ? err.message : String(err);
+      return { message: err instanceof Error ? err.message : String(err) };
     }
   };
 

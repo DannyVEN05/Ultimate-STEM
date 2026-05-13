@@ -35,6 +35,9 @@ const ConfirmPage = () => {
               token_hash: tokenHash,
             });
             if (error) console.error("Error confirming email:", error.message);
+          } else {
+            setStatus("This confirmation link is invalid or expired.");
+            return;
           }
         } else if (accessToken && refreshToken) {
           const { error } = await supabase.auth.setSession({

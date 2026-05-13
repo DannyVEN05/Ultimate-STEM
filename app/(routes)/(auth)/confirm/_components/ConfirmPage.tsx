@@ -2,13 +2,13 @@
 
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
 
 const ConfirmPage = () => {
   const router = useRouter();
   const hasProcessedRef = useRef(false);
-  const status = "Confirming your email...";
+  const [status, setStatus] = useState("Confirming your email...");
 
   useEffect(() => {
     if (hasProcessedRef.current) return;
@@ -19,7 +19,9 @@ const ConfirmPage = () => {
       const code = url.searchParams.get("code");
       const tokenHash = url.searchParams.get("token_hash");
       const otpType = url.searchParams.get("type");
-      const hasHashToken = url.hash.includes("access_token=") || url.hash.includes("refresh_token=");
+      const hashParams = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
 
       try {
         if (code) {
@@ -34,15 +36,29 @@ const ConfirmPage = () => {
             });
             if (error) console.error("Error confirming email:", error.message);
           }
-        } else if (hasHashToken) {
-          const { error } = await supabase.auth.getSession();
-          if (error) console.error("Error loading session:", error.message);
+        } else if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) console.error("Error setting session:", error.message);
+        } else {
+          setStatus("This confirmation link is invalid or expired.");
+          return;
         }
 
-        const { error: userError } = await supabase.auth.getUser();
-        if (userError) console.error("Error fetching user:", userError.message);
-      } finally {
-        router.replace("/dashboard");
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) console.error("Error loading session:", sessionError.message);
+
+        if (session) {
+          setStatus("Email confirmed. Redirecting...");
+          router.replace("/dashboard");
+        } else {
+          setStatus("Email confirmed, but we could not sign you in. Please log in.");
+        }
+      } catch (error) {
+        setStatus("We could not confirm your email. Please try again.");
+        console.error("Error confirming email:", error);
       }
     };
 

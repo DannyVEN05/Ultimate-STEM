@@ -4,6 +4,7 @@ import UsButton from "@/app/_common/ui/buttons/UsButton";
 import { Input } from "@/components/ui/input";
 import UsWidget from "@/app/_common/ui/other/UsWidget";
 import AuthContext from "@/app/_context/auth/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import React, { useContext, useEffect } from "react";
 
@@ -22,8 +23,12 @@ const LoginPage: React.FC = () => {
     user_password: "",
   });
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isResending, setIsResending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
+  const [resendMessage, setResendMessage] = React.useState<string | null>(null);
+  const [showResendLink, setShowResendLink] = React.useState(false);
+  const isBusy = isSubmitting || isResending;
 
   useEffect(() => {
     if (user) router.push('/dashboard');
@@ -36,9 +41,12 @@ const LoginPage: React.FC = () => {
 
   const onSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (isBusy) return;
 
     setSuccess(null);
+    setResendMessage(null);
+    setShowResendLink(false);
+    setError(null);
 
     if (!form.user_email.trim()) {
       setError("Email is required.");
@@ -51,14 +59,54 @@ const LoginPage: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    const response = await logIn({ email: form.user_email.trim(), password: form.user_password });
-    if (response === null) {
-      setSuccess("Login successful! Redirecting...");
-      router.push('/dashboard');
-    } else {
-      setError("Login failed: " + response);
+    try {
+      const response = await logIn({ email: form.user_email.trim(), password: form.user_password });
+      if (response === null) {
+        setSuccess("Login successful! Redirecting...");
+        router.push('/dashboard');
+      } else {
+        const errorMessage = "Login failed: " + response;
+        const shouldShowResend = response.toLowerCase().includes("email not confirmed");
+        setError(errorMessage);
+        setShowResendLink(shouldShowResend);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
+  };
+
+  const onResendConfirmation = async () => {
+    if (isBusy) return;
+    const email = form.user_email.trim().toLowerCase();
+    if (!email) {
+      setError("Email is required.");
+      setShowResendLink(false);
+      return;
+    }
+
+    setIsResending(true);
+    try {
+      const emailRedirectTo = `${window.location.origin}/confirm`;
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: {
+          emailRedirectTo,
+        },
+      });
+
+      if (resendError) {
+        setError("Resend failed: " + resendError.message);
+        setShowResendLink(true);
+        return;
+      }
+
+      setError(null);
+      setShowResendLink(false);
+      setResendMessage("An email has been sent to you.\nPlease click the link to confirm your account.");
+    } finally {
+      setIsResending(false);
+    }
   };
 
   return (
@@ -69,11 +117,30 @@ const LoginPage: React.FC = () => {
         ) : (
           <form className="grid grid-cols-2 gap-3" onSubmit={onSubmit}>
 
-            {error && (
+            {resendMessage && (
               <div className="flex justify-center col-span-2">
-                <p className="text-red-500 text-sm mb-2">
+                <p className="text-green-500 text-sm mb-2 text-center whitespace-pre-line">
+                  {resendMessage}
+                </p>
+              </div>
+            )}
+
+            {error && !resendMessage && (
+              <div className="flex flex-col items-center col-span-2">
+                <p className="text-red-500 text-sm mb-2 text-center">
                   {error}
                 </p>
+                {showResendLink && (
+                  <UsButton
+                    variant="white"
+                    type="button"
+                    className="w-full"
+                    disabled={isBusy}
+                    onClick={onResendConfirmation}
+                  >
+                    {isResending ? "Resending..." : "Resend Link"}
+                  </UsButton>
+                )}
               </div>
             )}
 
@@ -109,7 +176,7 @@ const LoginPage: React.FC = () => {
                 variant="blue"
                 className="w-full"
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isBusy}
               >
                 {isSubmitting ? "Logging in..." : "Login"}
               </UsButton>

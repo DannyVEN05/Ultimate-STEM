@@ -7,7 +7,6 @@ import type { AuthFailure } from "./AuthContext";
 import { supabase } from "@/lib/supabase";
 import { AuthActionKind } from "@/app/_types/context";
 import { User } from "@/app/_types/model/User";
-import type { AuthError } from "@supabase/supabase-js";
 
 export type LogInData = {
   email: string;
@@ -263,11 +262,16 @@ const AuthState = ({ children }: Props) => {
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword(logInData);
       if (signInError) {
-        const authError = signInError as AuthError & { code?: string; status?: number };
+        const code = "code" in signInError && typeof signInError.code === "string"
+          ? signInError.code
+          : undefined;
+        const status = "status" in signInError && typeof signInError.status === "number"
+          ? signInError.status
+          : undefined;
         return {
           message: signInError.message,
-          code: authError.code,
-          status: authError.status,
+          code,
+          status,
         };
       }
 

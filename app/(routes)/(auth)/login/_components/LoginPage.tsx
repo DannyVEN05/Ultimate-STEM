@@ -32,11 +32,7 @@ const LoginPage: React.FC = () => {
   const isBusy = isSubmitting || isResending;
 
   const shouldOfferResend = (authFailure: AuthFailure) => {
-    return (
-      authFailure.code === "email_not_confirmed" ||
-      authFailure.status === 401 ||
-      authFailure.status === 403
-    );
+    return authFailure.code === "email_not_confirmed";
   };
 
   useEffect(() => {

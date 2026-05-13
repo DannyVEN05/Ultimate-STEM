@@ -13,8 +13,6 @@
     "@elyasasmad/react-tournament-brackets": "^1.1.1",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.98.0",
-    "brackets-manager": "^1.9.1",
-    "brackets-viewer": "^1.9.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "konva": "^10.2.3",

@@ -3,10 +3,11 @@
 import React, { useReducer, useEffect } from "react";
 import authReducer, { AuthReducerState } from "./AuthReducer";
 import AuthContext from "./AuthContext";
+import type { AuthFailure } from "./AuthContext";
+import type { AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { AuthActionKind } from "@/app/_types/context";
 import { User } from "@/app/_types/model/User";
-import type { AuthError } from "@supabase/supabase-js";
 
 export type LogInData = {
   email: string;
@@ -156,7 +157,8 @@ const AuthState = ({ children }: Props) => {
 
   const signUp = async (signUpData: SignUpData) => {
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const emailRedirectTo = `${window.location.origin}/confirm`;
+      const { error: signUpError } = await supabase.auth.signUp({
         email: signUpData.email.trim(),
         password: signUpData.password,
         options: {
@@ -166,26 +168,11 @@ const AuthState = ({ children }: Props) => {
             user_phone_number: signUpData.user_phone_number.trim(),
             user_dob: signUpData.user_dob.trim(),
           },
+          emailRedirectTo,
         },
       });
 
       if (signUpError) return signUpError.message;
-
-      const { data: user, error: profileError } = await supabase
-        .from("user")
-        .select("*")
-        .eq("user_id", data.user?.id)
-        .single();
-
-      if (profileError) {
-        await supabase.auth.signOut();
-        dispatch({ type: AuthActionKind.SET_USER, payload: null });
-        return "Could not fetch user profile.";
-      }
-      dispatch({
-        type: AuthActionKind.SET_USER,
-        payload: mapToAppUser(user),
-      });
       return null;
     } catch (err) {
       return err instanceof Error ? err.message : String(err);
@@ -272,10 +259,22 @@ const AuthState = ({ children }: Props) => {
     }
   };
 
-  const logIn = async (logInData: LogInData) => {
+  const logIn = async (logInData: LogInData): Promise<null | AuthFailure> => {
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword(logInData);
-      if (signInError) return signInError.message;
+      if (signInError) {
+        const code = "code" in signInError && typeof signInError.code === "string"
+          ? signInError.code
+          : undefined;
+        const status = "status" in signInError && typeof signInError.status === "number"
+          ? signInError.status
+          : undefined;
+        return {
+          message: signInError.message,
+          code,
+          status,
+        };
+      }
 
       const { data: user, error: profileError } = await supabase
         .from('user')
@@ -286,13 +285,13 @@ const AuthState = ({ children }: Props) => {
       if (profileError) {
         await supabase.auth.signOut();
         dispatch({ type: AuthActionKind.SET_USER, payload: null });
-        return "Could not fetch user profile.";
+        return { message: "Could not fetch user profile." };
       }
 
       if (user.user_role === "deleted") {
         await supabase.auth.signOut();
         dispatch({ type: AuthActionKind.SET_USER, payload: null });
-        return "Invalid login credentials.";
+        return { message: "Invalid login credentials." };
       }
 
       dispatch({
@@ -301,7 +300,7 @@ const AuthState = ({ children }: Props) => {
       });
       return null;
     } catch (err) {
-      return err instanceof Error ? err.message : String(err);
+      return { message: err instanceof Error ? err.message : String(err) };
     }
   };
 

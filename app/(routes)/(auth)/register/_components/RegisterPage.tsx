@@ -49,6 +49,8 @@ const RegisterPage: React.FC = () => {
   const [reactivateOldPassword, setReactivateOldPassword] = React.useState("");
   const [reactivateError, setReactivateError] = React.useState<string | null>(null);
 
+  const isFormDisabled = isSubmitting || Boolean(success);
+
   const updateField = (key: keyof RegisterFormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -56,7 +58,7 @@ const RegisterPage: React.FC = () => {
 
   const onSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (isFormDisabled) return;
 
     setSuccess(null);
     setError(null);
@@ -120,8 +122,7 @@ const RegisterPage: React.FC = () => {
         return;
       }
 
-      setSuccess("Account created!");
-      router.push('/dashboard');
+      setSuccess("An email has been sent to you.\nPlease click the link to confirm your account.");
     } catch (err) {
       setError("An unexpected error occurred: " + err);
     } finally {
@@ -174,128 +175,136 @@ const RegisterPage: React.FC = () => {
 
   return (
     <div className="w-full h-full flex items-center justify-center">
-      <UsWidget title={`${success ? 'Account Created' : 'Create an account'}`}>
-        {success ? (
-          <p className="text-green-500">{success}</p>
-        ) : (
-          <form className="grid grid-cols-2 gap-3" onSubmit={onSubmit}>
-
-            {error && (
-              <div className="flex justify-center col-span-2">
-                <p className="text-red-500 text-sm mb-2">
-                  {error}
-                </p>
-              </div>
-            )}
-
-            <div className="col-span-1">
-              <label htmlFor="firstName" className="block text-sm font-medium ml-1">First Name:</label>
-              <UsInput
-                id="firstName"
-                name="firstName"
-                autoComplete="given-name"
-                required
-                className="w-full"
-                value={form.user_firstname}
-                onChange={updateField("user_firstname")}
-              />
+      <UsWidget title={`${success ? "Check your email" : "Create an account"}`}>
+        <form className="grid grid-cols-2 gap-3" onSubmit={onSubmit}>
+          {success && (
+            <div className="flex justify-center col-span-2">
+              <p className="text-green-500 text-sm mb-2 text-center whitespace-pre-line">{success}</p>
             </div>
+          )}
 
-            <div className="col-span-1">
-              <label htmlFor="lastName" className="block text-sm font-medium ml-1">Last Name:</label>
-              <UsInput
-                id="lastName"
-                name="lastName"
-                autoComplete="family-name"
-                required
-                className="w-full"
-                value={form.user_lastname}
-                onChange={updateField("user_lastname")}
-              />
+          {error && (
+            <div className="flex justify-center col-span-2">
+              <p className="text-red-500 text-sm mb-2">
+                {error}
+              </p>
             </div>
+          )}
 
-            <div className="col-span-2">
-              <label htmlFor="email" className="block text-sm font-medium ml-1">Email:</label>
-              <UsInput
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="w-full"
-                value={form.user_email}
-                onChange={updateField("user_email")}
-                onBlur={() => setForm((prev) => ({ ...prev, user_email: form.user_email.trim().toLowerCase() }))}
-              />
-            </div>
+          <div className="col-span-1">
+            <label htmlFor="firstName" className="block text-sm font-medium ml-1">First Name:</label>
+            <UsInput
+              id="firstName"
+              name="firstName"
+              autoComplete="given-name"
+              required
+              disabled={isFormDisabled}
+              className="w-full"
+              value={form.user_firstname}
+              onChange={updateField("user_firstname")}
+            />
+          </div>
 
-            <div className="col-span-1">
-              <label htmlFor="phoneNumber" className="block text-sm font-medium ml-1">Phone Number:</label>
-              <UsInput
-                id="phoneNumber"
-                name="phoneNumber"
-                type="tel"
-                autoComplete="tel"
-                className="w-full"
-                value={form.user_phone_number}
-                onChange={updateField("user_phone_number")}
-              />
-            </div>
+          <div className="col-span-1">
+            <label htmlFor="lastName" className="block text-sm font-medium ml-1">Last Name:</label>
+            <UsInput
+              id="lastName"
+              name="lastName"
+              autoComplete="family-name"
+              required
+              disabled={isFormDisabled}
+              className="w-full"
+              value={form.user_lastname}
+              onChange={updateField("user_lastname")}
+            />
+          </div>
 
-            <div className="col-span-1">
-              <label htmlFor="dateOfBirth" className="block text-sm font-medium ml-1">Date of Birth:</label>
-              <UsInput
-                id="dateOfBirth"
-                name="dateOfBirth"
-                type="date"
-                autoComplete="bday"
-                required
-                className="w-full"
-                value={form.user_dob}
-                onChange={updateField("user_dob")}
-              />
-            </div>
+          <div className="col-span-2">
+            <label htmlFor="email" className="block text-sm font-medium ml-1">Email:</label>
+            <UsInput
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              disabled={isFormDisabled}
+              className="w-full"
+              value={form.user_email}
+              onChange={updateField("user_email")}
+              onBlur={() => setForm((prev) => ({ ...prev, user_email: form.user_email.trim().toLowerCase() }))}
+            />
+          </div>
 
-            <div className="col-span-1">
-              <label htmlFor="password" className="block text-sm font-medium ml-1">Password:</label>
-              <UsInput
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="w-full"
-                value={form.user_password}
-                onChange={updateField("user_password")}
-              />
-            </div>
+          <div className="col-span-1">
+            <label htmlFor="phoneNumber" className="block text-sm font-medium ml-1">Phone Number:</label>
+            <UsInput
+              id="phoneNumber"
+              name="phoneNumber"
+              type="tel"
+              autoComplete="tel"
+              disabled={isFormDisabled}
+              className="w-full"
+              value={form.user_phone_number}
+              onChange={updateField("user_phone_number")}
+            />
+          </div>
 
-            <div className="col-span-1">
-              <label htmlFor="confirmPassword" className="block text-sm font-medium ml-1">Confirm Password:</label>
-              <UsInput
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="w-full"
-                value={form.confirm_password}
-                onChange={updateField("confirm_password")}
-              />
-            </div>
+          <div className="col-span-1">
+            <label htmlFor="dateOfBirth" className="block text-sm font-medium ml-1">Date of Birth:</label>
+            <UsInput
+              id="dateOfBirth"
+              name="dateOfBirth"
+              type="date"
+              autoComplete="bday"
+              required
+              disabled={isFormDisabled}
+              className="w-full"
+              value={form.user_dob}
+              onChange={updateField("user_dob")}
+            />
+          </div>
 
-            <div className="col-span-2 mt-4">
-              <UsButton
-                variant="blue"
-                className="w-full"
-                type="submit"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Creating..." : "Create Account"}
-              </UsButton>
-            </div>
-          </form>
-        )}
+          <div className="col-span-1">
+            <label htmlFor="password" className="block text-sm font-medium ml-1">Password:</label>
+            <UsInput
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              disabled={isFormDisabled}
+              className="w-full"
+              value={form.user_password}
+              onChange={updateField("user_password")}
+            />
+          </div>
+
+          <div className="col-span-1">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium ml-1">Confirm Password:</label>
+            <UsInput
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              disabled={isFormDisabled}
+              className="w-full"
+              value={form.confirm_password}
+              onChange={updateField("confirm_password")}
+            />
+          </div>
+
+          <div className="col-span-2 mt-4">
+            <UsButton
+              variant="blue"
+              className="w-full"
+              type="submit"
+              disabled={isFormDisabled}
+            >
+              {isSubmitting ? "Creating..." : "Create Account"}
+            </UsButton>
+          </div>
+        </form>
       </UsWidget>
 
       <Dialog

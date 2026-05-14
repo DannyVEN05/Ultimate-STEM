@@ -13,6 +13,7 @@ const SubmissionsPage = () => {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [showingLiked, setShowingLiked] = useState(false);
+  const [loading, setLoading] = useState(true);
   const params = useParams<{ id: string }>();
   const id = params.id;
 
@@ -40,11 +41,13 @@ const SubmissionsPage = () => {
         console.warn("Error fetching tournament title: ", error);
         setTitle("Tournament Submissions");
       }
-
+      setLoading(false);
       if (data) setTitle(data.tournament_title);
     }
     if (id) fetchTournamentTitle();
   }, [id]);
+
+  if (loading) return <p>Loading submissions...</p>
 
   return (
     <div className="flex w-full flex-col items-center font-bold">

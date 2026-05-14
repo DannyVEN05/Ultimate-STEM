@@ -68,6 +68,15 @@ const AuthState = ({ children }: Props) => {
 
     const hydrate = async () => {
       try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          console.warn("Transient error during auth hydration:", sessionError);
+          return;
+        }
+
+        if (!session?.user) return;
+
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
 
         if (authError) {

@@ -18,21 +18,35 @@ const ConfirmPage = () => {
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
       const tokenHash = url.searchParams.get("token_hash");
+      const token = url.searchParams.get("token");
+      const email = url.searchParams.get("email");
       const otpType = url.searchParams.get("type");
       const hashParams = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
+      const allowedTypes = new Set(["signup", "recovery", "magiclink", "invite", "email_change"]);
 
       try {
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) console.error("Error confirming email:", error.message);
         } else if (tokenHash && otpType) {
-          const allowedTypes = new Set(["signup", "recovery", "magiclink", "invite", "email_change"]);
           if (allowedTypes.has(otpType)) {
             const { error } = await supabase.auth.verifyOtp({
               type: otpType as "signup" | "recovery" | "magiclink" | "invite" | "email_change",
               token_hash: tokenHash,
+            });
+            if (error) console.error("Error confirming email:", error.message);
+          } else {
+            setStatus("This confirmation link is invalid or expired.");
+            return;
+          }
+        } else if (token && email && otpType) {
+          if (allowedTypes.has(otpType)) {
+            const { error } = await supabase.auth.verifyOtp({
+              type: otpType as "signup" | "recovery" | "magiclink" | "invite" | "email_change",
+              token,
+              email,
             });
             if (error) console.error("Error confirming email:", error.message);
           } else {
@@ -46,6 +60,13 @@ const ConfirmPage = () => {
           });
           if (error) console.error("Error setting session:", error.message);
         } else {
+          const { data: { session }, error: existingSessionError } = await supabase.auth.getSession();
+          if (existingSessionError) console.error("Error loading session:", existingSessionError.message);
+          if (session) {
+            setStatus("Email confirmed. Redirecting...");
+            router.replace("/dashboard");
+            return;
+          }
           setStatus("This confirmation link is invalid or expired.");
           return;
         }

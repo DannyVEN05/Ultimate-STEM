@@ -81,7 +81,7 @@ const OneVsOnePage = ({tournamentId,bracketId }: Props) => {
       if (String(bracketData.tournament_id) !== String(tournamentId)) {
         router.push(`/tournament/${tournamentId}/tournamentbracket`);
         return;
-      }
+      }  
 
       setBracket(bracketData);
 

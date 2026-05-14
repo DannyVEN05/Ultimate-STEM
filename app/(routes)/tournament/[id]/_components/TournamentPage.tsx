@@ -215,12 +215,15 @@ const TournamentPage = ({ id }: { id: string }) => {
         <section className="mt-10">
           <div className="flex justify-between items-start mb-6">
             <div>
-            <h2 className="text-2xl font-bold text-black">
-              Concept Submissions
-            </h2>
-            <p className="text-md text-gray-600"> Review the latest {tournamentData.tournament_genre} submissions from our community!</p>
+              <h2 className="text-2xl font-bold text-black">
+                Concept Submissions
+              </h2>
+              <p className="text-md text-gray-600"> Review the latest {tournamentData.tournament_genre} submissions from our community!</p>
             </div>
-            <Button className="bg-white hover:bg-slate-100 text-sm font-medium text-slate-700" onClick={() => { router.push(`/tournament/${id}/submissions`) }}>
+            <Button className="bg-white hover:bg-slate-100 text-sm font-medium text-slate-700" onClick={() => {
+              router.push(`/tournament/${id}/submissions`)
+              window.scrollTo(0, 0);
+            }}>
               View all submissions →
             </Button>
           </div>
@@ -265,11 +268,11 @@ const TournamentPage = ({ id }: { id: string }) => {
                 return (
                   <div key={submission.tournamentsub_id} className="w-[280px] rounded-lg border border-gray-200 bg-[#baffe5af] p-4 shadow-lg hover:shadow-md transition-shadow flex flex-col">
                     <div className="w-full h-60 rounded-lg oveflow-hidden mb-3">
-                    <img 
-                    src={coverUrl} 
-                    alt={`${submission.concept.concept_title} Book Cover`} 
-                    className="rounded-lg mb-3 w-full h-full" 
-                    />
+                      <img
+                        src={coverUrl}
+                        alt={`${submission.concept.concept_title} Book Cover`}
+                        className="rounded-lg mb-3 w-full h-full"
+                      />
                     </div>
 
                     <div className="flex-1 flex flex-col">
@@ -279,19 +282,19 @@ const TournamentPage = ({ id }: { id: string }) => {
                           {submission.concept.concept_genre}</span>
                       </div>
 
-                        <p className="text-sm text-gray-700 mb-4 flex-1">{truncateText(submission.concept.concept_description, 25)}</p>
+                      <p className="text-sm text-gray-700 mb-4 flex-1">{truncateText(submission.concept.concept_description, 25)}</p>
 
                       <div className="flex items-center justify-between mb-3  mt-auto">
                         <span className="text-lg font-semibold text-purple-600 flex-shrink-0"></span>
 
-                      <Button onClick={() => router.push(`/tournament/${id}/submissions`)}
-                        className="rounded-full bg-purple-600 text-sm py-2 hover:bg-primary text-white font-medium px-4"
-                      >View
-                      </Button>
+                        <Button onClick={() => router.push(`/tournament/${id}/submissions`)}
+                          className="rounded-full bg-purple-600 text-sm py-2 hover:bg-primary text-white font-medium px-4"
+                        >View
+                        </Button>
                       </div>
 
                     </div>
-                  </div> 
+                  </div>
                 );
               })}
             </div>
@@ -304,17 +307,17 @@ const TournamentPage = ({ id }: { id: string }) => {
 
         <section className="mt-10 rounded-2xl bg-primary px-10 py-12 shadow-lg text-center">
           <div className=" flex flex-col mb-4 text-left">
-          <h2 className="text-3xl font-bold text-white mb-4">Ready to enter the Tournament Bracket?</h2>
-          <p className="text-md text-gray-100 mb-6">Join the fun and vote for your favourite concepts!</p>
+            <h2 className="text-3xl font-bold text-white mb-4">Ready to enter the Tournament Bracket?</h2>
+            <p className="text-md text-gray-100 mb-6">Join the fun and vote for your favourite concepts!</p>
           </div>
- 
-        <Button
-        
-        className="py-2 px-6 text-white bg-purple-600 hover:bg-purple-700"
-        onClick={() => router.push(`/tournament/${id}/tournamentbracket`)}
-        >
-        Enter Tournament
-    </Button>
+
+          <Button
+
+            className="py-2 px-6 text-white bg-purple-600 hover:bg-purple-700"
+            onClick={() => router.push(`/tournament/${id}/tournamentbracket`)}
+          >
+            Enter Tournament
+          </Button>
         </section>
       </div>
     </div>

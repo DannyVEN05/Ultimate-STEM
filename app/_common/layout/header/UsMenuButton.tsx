@@ -122,7 +122,7 @@ const UsMenuButton: React.FC = ({ }) => {
           )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer" onClick={logOut}>
+        <DropdownMenuItem className="cursor-pointer" onClick={() => logOut().then(() => window.location.href = "/login")}>
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>

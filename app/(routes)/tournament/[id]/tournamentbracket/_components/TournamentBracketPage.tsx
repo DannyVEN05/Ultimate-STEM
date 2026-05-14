@@ -41,11 +41,11 @@ const TournamentBracketPage = ({ id }: { id: string }) => {
   }, [id]);
   return (
     <div className="flex text-4xl w-full">
-      <UsButton variant="red" onClick={() => { router.push("./") }}>
+      <UsButton variant="red" onClick={() => { router.push(`/tournament/${id}`) }}>
         Back
       </UsButton>
       <h1>This is the tournament bracket page.</h1>
-      <UsButton variant="blue" onClick={() => { router.push("./tournamentbracket/onevsone") }}>
+      <UsButton variant="blue" onClick={() => { router.push(`/tournament/${id}/tournamentbracket/onevsone`) }}>
         Enter stage
       </UsButton>
     </div>

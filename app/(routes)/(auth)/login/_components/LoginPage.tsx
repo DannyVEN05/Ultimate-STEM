@@ -25,11 +25,13 @@ const LoginPage: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isResending, setIsResending] = React.useState(false);
+  const [isResetting, setIsResetting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
   const [resendMessage, setResendMessage] = React.useState<string | null>(null);
+  const [resetMessage, setResetMessage] = React.useState<string | null>(null);
   const [showResendLink, setShowResendLink] = React.useState(false);
-  const isBusy = isSubmitting || isResending;
+  const isBusy = isSubmitting || isResending || isResetting;
 
   const shouldOfferResend = (authFailure: AuthFailure) => {
     return authFailure.code === "email_not_confirmed";
@@ -50,6 +52,7 @@ const LoginPage: React.FC = () => {
 
     setSuccess(null);
     setResendMessage(null);
+    setResetMessage(null);
     setShowResendLink(false);
     setError(null);
 
@@ -89,6 +92,7 @@ const LoginPage: React.FC = () => {
       return;
     }
 
+    setResetMessage(null);
     setIsResending(true);
     try {
       const emailRedirectTo = `${window.location.origin}/confirm`;
@@ -114,6 +118,51 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const onForgotPassword = async () => {
+    if (isBusy) return;
+    const email = form.user_email.trim().toLowerCase();
+
+    setSuccess(null);
+    setResendMessage(null);
+    setResetMessage(null);
+    setShowResendLink(false);
+    setError(null);
+
+    if (!email) {
+      setError("Email is required.");
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const { data: exists, error: existsError } = await supabase.rpc("email_exists", {
+        email_to_check: email,
+      });
+
+      if (existsError) {
+        setError("An error occurred while checking the email: " + existsError.message);
+        return;
+      }
+
+      if (!exists) {
+        setError("No account found for this email.");
+        return;
+      }
+
+      const redirectTo = `${window.location.origin}/reset`;
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+
+      if (resetError) {
+        setError("Reset failed: " + resetError.message);
+        return;
+      }
+
+      setResetMessage("An email has been sent to you.\nPlease click the link to reset your password.");
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <div className="w-full h-full flex items-center justify-center">
       <UsWidget title="Login" sizeOptions={{ width: 350 }}>
@@ -130,7 +179,15 @@ const LoginPage: React.FC = () => {
               </div>
             )}
 
-            {error && !resendMessage && (
+            {resetMessage && (
+              <div className="flex justify-center col-span-2">
+                <p className="text-green-500 text-sm mb-2 text-center whitespace-pre-line">
+                  {resetMessage}
+                </p>
+              </div>
+            )}
+
+            {error && !resendMessage && !resetMessage && (
               <div className="flex flex-col items-center col-span-2">
                 <p className="text-red-500 text-sm mb-2 text-center">
                   {error}
@@ -176,7 +233,18 @@ const LoginPage: React.FC = () => {
               />
             </div>
 
-            <div className="col-span-2 mt-4">
+            <div className="col-span-2 flex justify-end">
+              <button
+                type="button"
+                className="text-sm text-blue-500 hover:underline hover:cursor-pointer disabled:opacity-50 disabled:cursor-default disabled:no-underline"
+                disabled={isBusy || form.user_email.trim() === ""}
+                onClick={onForgotPassword}
+              >
+                {isResetting ? "Sending..." : "Forgot password?"}
+              </button>
+            </div>
+
+            <div className="col-span-2">
               <UsButton
                 variant="blue"
                 className="w-full"

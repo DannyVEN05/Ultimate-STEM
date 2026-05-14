@@ -16,6 +16,9 @@ const UsNavigationButtons = () => {
       <button onClick={() => router.push("/past-tournaments")} className="hover:cursor-pointer hover:text-primary transition-colors">
         Past Tournaments
       </button>
+      <button onClick={() => router.push("/leaderboard")} className="hover:cursor-pointer hover:text-primary transition-colors">
+        Leaderboard
+      </button>
       {user?.user_role == "admin" && (
         <button onClick={() => router.push("/admin")} className="hover:cursor-pointer hover:text-primary transition-colors">
           Admin

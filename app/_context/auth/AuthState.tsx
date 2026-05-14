@@ -4,6 +4,7 @@ import React, { useReducer, useEffect } from "react";
 import authReducer, { AuthReducerState } from "./AuthReducer";
 import AuthContext from "./AuthContext";
 import type { AuthFailure } from "./AuthContext";
+import type { AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { AuthActionKind } from "@/app/_types/context";
 import { User } from "@/app/_types/model/User";

@@ -263,9 +263,15 @@ const TournamentPage = ({ id }: { id: string }) => {
                 }
 
                 return (
-                  <div key={submission.tournamentsub_id} className="w-[300px] h-[350px] rounded-lg border border-gray-200 bg-[#baffe5af] p-4 shadow-lg hover:shadow-md transition-shadow flex flex-col">
-                    <img src={coverUrl} alt={`${submission.concept.concept_title} Book Cover`} className="w-full h-48 object-cover rounded-lg mb-3" />
-                    
+                  <div key={submission.tournamentsub_id} className="w-[280px] rounded-lg border border-gray-200 bg-[#baffe5af] p-4 shadow-lg hover:shadow-md transition-shadow flex flex-col">
+                    <div className="w-full h-60 rounded-lg oveflow-hidden mb-3">
+                    <img 
+                    src={coverUrl} 
+                    alt={`${submission.concept.concept_title} Book Cover`} 
+                    className="rounded-lg mb-3 w-full h-full" 
+                    />
+                    </div>
+
                     <div className="flex-1 flex flex-col">
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="text-lg font-bold text-gray-900 flex-1 pr-2 leading-tight truncate">{truncateText(submission.concept.concept_title, 50)}</h3>
@@ -273,10 +279,10 @@ const TournamentPage = ({ id }: { id: string }) => {
                           {submission.concept.concept_genre}</span>
                       </div>
 
-                        <p className="text-sm text-gray-700 mb-4 flex-1">{truncateText(submission.concept.concept_description, 150)}</p>
+                        <p className="text-sm text-gray-700 mb-4 flex-1">{truncateText(submission.concept.concept_description, 25)}</p>
 
                       <div className="flex items-center justify-between mb-3  mt-auto">
-                        <span className="text-lg font-semibold text-purple-600 flex-shrink-0">❤️</span>
+                        <span className="text-lg font-semibold text-purple-600 flex-shrink-0"></span>
 
                       <Button onClick={() => router.push(`/tournament/${id}/submissions`)}
                         className="rounded-full bg-purple-600 text-sm py-2 hover:bg-primary text-white font-medium px-4"
@@ -285,7 +291,7 @@ const TournamentPage = ({ id }: { id: string }) => {
                       </div>
 
                     </div>
-                  </div>
+                  </div> 
                 );
               })}
             </div>

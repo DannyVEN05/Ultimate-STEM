@@ -8,18 +8,23 @@ import type { JSX } from "react";
 // ----------------------------
 // CONSTANTS
 // ----------------------------
-const MW = 180; // match width
-const MH = 56; // match height
-const RG = 70; // round gap
-const VG = 20; // vertical gap between matches
-const RL = 36; // round label height
-const FG = 50; // final gap from sides
+const MW = 180;
+const MH = 56;
+const RG = 70;
+const VG = 20;
+const RL = 36;
+const FG = 50;
 
 // ----------------------------
 // TYPES
 // ----------------------------
 interface BracketMatch {
   id: number | string;
+
+  // NEW:
+  // Used for OneVsOne routing
+  bmatchId: string;
+
   roundNumber: number;
 
   nameA: string;
@@ -36,9 +41,7 @@ interface BracketMatch {
 
   indexInRound: number;
 
-  // NOTE:
-  // These are tournament_submission IDs,
-  // NOT concept_ids.
+  // tournament_submission IDs
   tournamentSubAId: string;
   tournamentSubBId: string;
 }
@@ -46,7 +49,9 @@ interface BracketMatch {
 // ----------------------------
 // FETCH BRACKET
 // ----------------------------
-async function fetchBracket(tournamentId: string) {
+async function fetchBracket(
+  tournamentId: string
+) {
   const { data, error } = await supabase
     .from("bracket")
     .select("*")
@@ -61,66 +66,185 @@ async function fetchBracket(tournamentId: string) {
 // ----------------------------
 // FETCH BRACKET MATCHES
 // ----------------------------
-async function fetchBracketMatches(bracketId: string) {
-  const { data: matches, error } = await supabase
-    .from("bracket_match")
-    .select("*")
-    .eq("bracket_id", bracketId);
+async function fetchBracketMatches(
+  bracketId: string
+) {
+  const { data: matches, error } =
+    await supabase
+      .from("bracket_match")
+      .select("*")
+      .eq("bracket_id", bracketId);
 
   if (error || !matches) return [];
 
   const subIds = new Set<string>();
 
   matches.forEach((m: any) => {
-    if (m.bmatch_concept_a)
-      subIds.add(String(m.bmatch_concept_a));
+    if (m.bmatch_concept_a) {
+      subIds.add(
+        String(m.bmatch_concept_a)
+      );
+    }
 
-    if (m.bmatch_concept_b)
-      subIds.add(String(m.bmatch_concept_b));
+    if (m.bmatch_concept_b) {
+      subIds.add(
+        String(m.bmatch_concept_b)
+      );
+    }
   });
 
-  if (subIds.size === 0) return matches;
+  if (subIds.size === 0)
+    return matches;
 
   const { data: subs } = await supabase
-    .from("tournament_submission")
-    .select(`
-      tournamentsub_id,
-      concept (
-        concept_id,
-        concept_title
-      )
-    `)
-    .in("tournamentsub_id", Array.from(subIds));
+  .from("tournament_submission")
+  .select(`
+    tournamentsub_id,
+    concept (
+      concept_id,
+      concept_title
+    )
+  `)
+  .in("tournamentsub_id", Array.from(subIds))
+  .eq("tournamentsub_status", "approved");
 
-  const subMap: Record<string, any> = {};
+  const subMap: Record<string, any> =
+    {};
 
   subs?.forEach((s: any) => {
-    subMap[String(s.tournamentsub_id)] = s.concept;
+    subMap[
+      String(s.tournamentsub_id)
+    ] = s.concept;
   });
 
   return matches.map((m: any) => ({
     ...m,
+
     concept_a:
-      subMap[String(m.bmatch_concept_a)] ?? null,
+      subMap[
+        String(m.bmatch_concept_a)
+      ] ?? null,
 
     concept_b:
-      subMap[String(m.bmatch_concept_b)] ?? null,
+      subMap[
+        String(m.bmatch_concept_b)
+      ] ?? null,
   }));
 }
 
 // ----------------------------
-// BUILD FROM BRACKET MATCHES
+// SHUFFLE ARRAY
 // ----------------------------
-function buildFromBracket(raw: any[]): BracketMatch[] {
-  const sorted = [...raw].sort((a, b) =>
-    a.bmatch_round_number !== b.bmatch_round_number
-      ? a.bmatch_round_number - b.bmatch_round_number
-      : a.bmatch_id - b.bmatch_id
+function shuffleArray<T>(
+  array: T[]
+): T[] {
+  const arr = [...array];
+
+  for (
+    let i = arr.length - 1;
+    i > 0;
+    i--
+  ) {
+    const j = Math.floor(
+      Math.random() * (i + 1)
+    );
+
+    [arr[i], arr[j]] = [
+      arr[j],
+      arr[i],
+    ];
+  }
+
+  return arr;
+}
+
+// ----------------------------
+// SORT WITH RANDOM TIES
+// ----------------------------
+function sortWithRandomTies(
+  subs: any[]
+) {
+  const grouped = new Map<
+    number,
+    any[]
+  >();
+
+  subs.forEach((s) => {
+    const likes =
+      s.tournamentsub_likes ?? 0;
+
+    if (!grouped.has(likes)) {
+      grouped.set(likes, []);
+    }
+
+    grouped.get(likes)!.push(s);
+  });
+
+  const sortedLikes = [
+    ...grouped.keys(),
+  ].sort((a, b) => b - a);
+
+  const result: any[] = [];
+
+  sortedLikes.forEach((likes) => {
+    result.push(
+      ...shuffleArray(
+        grouped.get(likes)!
+      )
+    );
+  });
+
+  return result;
+}
+
+// ----------------------------
+// STANDARD TOURNAMENT SEEDING
+// Example for 8:
+// [1,8,4,5,2,7,3,6]
+// ----------------------------
+function generateSeedOrder(
+  size: number
+): number[] {
+  let seeds = [1, 2];
+
+  while (seeds.length < size) {
+    const next: number[] = [];
+
+    const sum =
+      seeds.length * 2 + 1;
+
+    seeds.forEach((seed) => {
+      next.push(seed);
+      next.push(sum - seed);
+    });
+
+    seeds = next;
+  }
+
+  return seeds;
+}
+
+// ----------------------------
+// BUILD FROM BRACKET
+// ----------------------------
+function buildFromBracket(
+  raw: any[]
+): BracketMatch[] {
+  const sorted = [...raw].sort(
+    (a, b) =>
+      a.bmatch_round_number !==
+      b.bmatch_round_number
+        ? a.bmatch_round_number -
+          b.bmatch_round_number
+        : a.bmatch_id -
+          b.bmatch_id
   );
 
   const rounds = [
     ...new Set(
-      sorted.map((m) => m.bmatch_round_number)
+      sorted.map(
+        (m) => m.bmatch_round_number
+      )
     ),
   ].sort((a, b) => a - b);
 
@@ -137,10 +261,13 @@ function buildFromBracket(raw: any[]): BracketMatch[] {
   // ----------------------------
   const r1 = sorted.filter(
     (m) =>
-      m.bmatch_round_number === rounds[0]
+      m.bmatch_round_number ===
+      rounds[0]
   );
 
-  const half = Math.ceil(r1.length / 2);
+  const half = Math.ceil(
+    r1.length / 2
+  );
 
   r1.forEach((m, i) => {
     sideMap.set(
@@ -150,15 +277,18 @@ function buildFromBracket(raw: any[]): BracketMatch[] {
   });
 
   // ----------------------------
-  // PROPAGATE SIDES FORWARD
+  // PROPAGATE SIDES
   // ----------------------------
   rounds.forEach((round, rIdx) => {
-    if (round === finalRound) return;
+    if (round === finalRound)
+      return;
 
-    const currentRound = sorted.filter(
-      (m) =>
-        m.bmatch_round_number === round
-    );
+    const currentRound =
+      sorted.filter(
+        (m) =>
+          m.bmatch_round_number ===
+          round
+      );
 
     const nextRound = sorted.filter(
       (m) =>
@@ -166,36 +296,44 @@ function buildFromBracket(raw: any[]): BracketMatch[] {
         rounds[rIdx + 1]
     );
 
-    currentRound.forEach((match, idx) => {
-      const nextIdx = Math.floor(idx / 2);
-
-      const nextMatch =
-        nextRound[nextIdx];
-
-      if (!nextMatch) return;
-
-      const currentSide =
-        sideMap.get(match.bmatch_id) ??
-        "left";
-
-      if (
-        !sideMap.has(nextMatch.bmatch_id)
-      ) {
-        sideMap.set(
-          nextMatch.bmatch_id,
-          currentSide
+    currentRound.forEach(
+      (match, idx) => {
+        const nextIdx = Math.floor(
+          idx / 2
         );
+
+        const nextMatch =
+          nextRound[nextIdx];
+
+        if (!nextMatch) return;
+
+        const currentSide =
+          sideMap.get(
+            match.bmatch_id
+          ) ?? "left";
+
+        if (
+          !sideMap.has(
+            nextMatch.bmatch_id
+          )
+        ) {
+          sideMap.set(
+            nextMatch.bmatch_id,
+            currentSide
+          );
+        }
       }
-    });
+    );
   });
 
   // ----------------------------
   // BUILD MATCH OBJECTS
   // ----------------------------
   return sorted.map((match) => {
-    const roundIdx = rounds.indexOf(
-      match.bmatch_round_number
-    );
+    const roundIdx =
+      rounds.indexOf(
+        match.bmatch_round_number
+      );
 
     const currentRoundMatches =
       sorted.filter(
@@ -229,11 +367,17 @@ function buildFromBracket(raw: any[]): BracketMatch[] {
       match.bmatch_round_number ===
       finalRound
         ? "final"
-        : sideMap.get(match.bmatch_id) ??
-          "left";
+        : sideMap.get(
+            match.bmatch_id
+          ) ?? "left";
 
     return {
       id: match.bmatch_id,
+
+      // NEW
+      bmatchId: String(
+        match.bmatch_id
+      ),
 
       roundNumber:
         match.bmatch_round_number,
@@ -282,87 +426,17 @@ function buildFromBracket(raw: any[]): BracketMatch[] {
 async function fetchSubmissions(
   tournamentId: string
 ) {
-  const { data, error } = await supabase
-    .from("tournament_submission")
-    .select("*, concept(*)")
-    .eq("tournament_id", tournamentId)
-    .order("tournamentsub_likes", {
-      ascending: false,
-    });
+  const { data, error } =
+    await supabase
+      .from("tournament_submission")
+      .select("*, concept(*)")
+      .eq("tournament_id", tournamentId)
+      .eq("tournamentsub_status", "approved")
+      .order("tournamentsub_likes", { ascending: false });
 
   if (error || !data) return [];
 
   return data;
-}
-
-// ----------------------------
-// SHUFFLE ARRAY
-// ----------------------------
-function shuffleArray<T>(array: T[]): T[] {
-  const arr = [...array];
-
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-
-  return arr;
-}
-
-// ----------------------------
-// SORT WITH RANDOM TIEBREAKS
-// ----------------------------
-function sortWithRandomTies(subs: any[]) {
-  const grouped = new Map<number, any[]>();
-
-  subs.forEach((s) => {
-    const likes = s.tournamentsub_likes ?? 0;
-
-    if (!grouped.has(likes)) {
-      grouped.set(likes, []);
-    }
-
-    grouped.get(likes)!.push(s);
-  });
-
-  const sortedLikes = [...grouped.keys()].sort(
-    (a, b) => b - a
-  );
-
-  const result: any[] = [];
-
-  sortedLikes.forEach((likes) => {
-    result.push(
-      ...shuffleArray(grouped.get(likes)!)
-    );
-  });
-
-  return result;
-}
-
-// ----------------------------
-// STANDARD TOURNAMENT SEEDING
-// Example for 8:
-// [1,8,4,5,2,7,3,6]
-// ----------------------------
-function generateSeedOrder(size: number): number[] {
-  let seeds = [1, 2];
-
-  while (seeds.length < size) {
-    const next: number[] = [];
-
-    const sum = seeds.length * 2 + 1;
-
-    seeds.forEach((seed) => {
-      next.push(seed);
-      next.push(sum - seed);
-    });
-
-    seeds = next;
-  }
-
-  return seeds;
 }
 
 function buildFromSubmissions(
@@ -374,17 +448,21 @@ function buildFromSubmissions(
   // SORT BY LIKES
   // RANDOMISE TIES
   // ----------------------------
-  const seeded = sortWithRandomTies(subs);
+  const seeded =
+    sortWithRandomTies(subs);
 
   // ----------------------------
   // POWER OF TWO
   // ----------------------------
   const size = Math.pow(
     2,
-    Math.ceil(Math.log2(seeded.length))
+    Math.ceil(
+      Math.log2(seeded.length)
+    )
   );
 
-  const totalRounds = Math.log2(size);
+  const totalRounds =
+    Math.log2(size);
 
   // ----------------------------
   // PAD WITH BYES
@@ -396,13 +474,15 @@ function buildFromSubmissions(
   // ----------------------------
   // TRUE TOURNAMENT SEED ORDER
   // ----------------------------
-  const seedOrder = generateSeedOrder(size);
+  const seedOrder =
+    generateSeedOrder(size);
 
   // ----------------------------
   // APPLY SEED ORDER
   // ----------------------------
   const padded = seedOrder.map(
-    (seed) => seeded[seed - 1] ?? null
+    (seed) =>
+      seeded[seed - 1] ?? null
   );
 
   let matchId = 1;
@@ -411,7 +491,11 @@ function buildFromSubmissions(
 
   let count = size / 2;
 
-  for (let r = 0; r < totalRounds; r++) {
+  for (
+    let r = 0;
+    r < totalRounds;
+    r++
+  ) {
     roundIds.push(
       Array.from(
         { length: count },
@@ -426,13 +510,21 @@ function buildFromSubmissions(
 
   const matches: BracketMatch[] = [];
 
-  const finalRound = totalRounds - 1;
+  const finalRound =
+    totalRounds - 1;
 
-  const r1Count = roundIds[0].length;
+  const r1Count =
+    roundIds[0].length;
 
-  const half = Math.ceil(r1Count / 2);
+  const half = Math.ceil(
+    r1Count / 2
+  );
 
-  for (let r = 0; r < totalRounds; r++) {
+  for (
+    let r = 0;
+    r < totalRounds;
+    r++
+  ) {
     roundIds[r].forEach((id, i) => {
       const nextMatchId =
         roundIds[r + 1]?.[
@@ -440,7 +532,9 @@ function buildFromSubmissions(
         ] ?? null;
 
       const teamA =
-        r === 0 ? padded[i * 2] : null;
+        r === 0
+          ? padded[i * 2]
+          : null;
 
       const teamB =
         r === 0
@@ -456,7 +550,9 @@ function buildFromSubmissions(
         side = "final";
       else if (r === 0)
         side =
-          i < half ? "left" : "right";
+          i < half
+            ? "left"
+            : "right";
       else
         side =
           i <
@@ -468,6 +564,10 @@ function buildFromSubmissions(
 
       matches.push({
         id,
+
+        // IMPORTANT:
+        // Preview mode IDs
+        bmatchId: `preview-${id}`,
 
         roundNumber: r + 1,
 
@@ -490,13 +590,19 @@ function buildFromSubmissions(
 
         indexInRound: i,
 
-        tournamentSubAId: teamA
-          ? String(teamA.tournamentsub_id)
-          : "",
+        tournamentSubAId:
+          teamA
+            ? String(
+                teamA.tournamentsub_id
+              )
+            : "",
 
-        tournamentSubBId: teamB
-          ? String(teamB.tournamentsub_id)
-          : "",
+        tournamentSubBId:
+          teamB
+            ? String(
+                teamB.tournamentsub_id
+              )
+            : "",
       });
     });
   }
@@ -508,7 +614,10 @@ function buildFromSubmissions(
 // HELPERS
 // ----------------------------
 function trunc(
-  s: string | null | undefined,
+  s:
+    | string
+    | null
+    | undefined,
   n: number
 ) {
   if (!s) return "TBD";
@@ -535,7 +644,9 @@ function BracketSVG({
 
   const rounds = [
     ...new Set(
-      matches.map((m) => m.roundNumber)
+      matches.map(
+        (m) => m.roundNumber
+      )
     ),
   ].sort((a, b) => a - b);
 
@@ -561,7 +672,8 @@ function BracketSVG({
   const sideWidth =
     nonFinal.length * (MW + RG);
 
-  const finalX = sideWidth + FG;
+  const finalX =
+    sideWidth + FG;
 
   const totalW =
     finalX * 2 + MW;
@@ -576,35 +688,43 @@ function BracketSVG({
       1.5 +
     120;
 
-  // ----------------------------
-  // POSITIONS
-  // ----------------------------
   const pos: Record<
     string | number,
     { x: number; y: number }
   > = {};
 
+  // ----------------------------
+  // POSITIONS
+  // ----------------------------
   nonFinal.forEach((round, rIdx) => {
-    const leftMs = matches.filter(
-      (m) =>
-        m.roundNumber === round &&
-        m.side === "left"
-    );
+    const leftMs =
+      matches.filter(
+        (m) =>
+          m.roundNumber === round &&
+          m.side === "left"
+      );
 
-    const rightMs = matches.filter(
-      (m) =>
-        m.roundNumber === round &&
-        m.side === "right"
-    );
+    const rightMs =
+      matches.filter(
+        (m) =>
+          m.roundNumber === round &&
+          m.side === "right"
+      );
 
     const lSpacing =
       ((totalH - RL) /
-        Math.max(leftR1.length, 1)) *
+        Math.max(
+          leftR1.length,
+          1
+        )) *
       Math.pow(2, rIdx);
 
     const rSpacing =
       ((totalH - RL) /
-        Math.max(rightR1.length, 1)) *
+        Math.max(
+          rightR1.length,
+          1
+        )) *
       Math.pow(2, rIdx);
 
     const lX =
@@ -618,6 +738,7 @@ function BracketSVG({
     leftMs.forEach((m, i) => {
       pos[m.id] = {
         x: lX,
+
         y:
           RL +
           i * lSpacing +
@@ -629,6 +750,7 @@ function BracketSVG({
     rightMs.forEach((m, i) => {
       pos[m.id] = {
         x: rX,
+
         y:
           RL +
           i * rSpacing +
@@ -645,28 +767,35 @@ function BracketSVG({
   if (finalMatch) {
     pos[finalMatch.id] = {
       x: finalX,
-      y: totalH / 2 - MH / 2,
+      y:
+        totalH / 2 - MH / 2,
     };
   }
 
   // ----------------------------
   // CONNECTORS
   // ----------------------------
-  const connectors: JSX.Element[] = [];
+  const connectors: JSX.Element[] =
+    [];
 
   matches.forEach((m) => {
     if (!m.nextMatchId) return;
 
     const from = pos[m.id];
-    const to = pos[m.nextMatchId];
+    const to =
+      pos[m.nextMatchId];
 
     if (!from || !to) return;
 
-    const fy = from.y + MH / 2;
+    const fy =
+      from.y + MH / 2;
+
     const ty = to.y + MH / 2;
 
     if (m.side === "left") {
-      const fx = from.x + MW;
+      const fx =
+        from.x + MW;
+
       const tx = to.x;
 
       const mx =
@@ -681,10 +810,13 @@ function BracketSVG({
           strokeWidth={1.5}
         />
       );
-    } else if (m.side === "right") {
+    } else if (
+      m.side === "right"
+    ) {
       const fx = from.x;
 
-      const tx = to.x + MW;
+      const tx =
+        to.x + MW;
 
       const mx =
         fx - (fx - tx) / 2;
@@ -704,7 +836,8 @@ function BracketSVG({
   // ----------------------------
   // LABELS
   // ----------------------------
-  const labels: JSX.Element[] = [];
+  const labels: JSX.Element[] =
+    [];
 
   nonFinal.forEach((round, rIdx) => {
     const lX =
@@ -771,28 +904,21 @@ function BracketSVG({
         m.votesB > 0);
 
     const aWins =
-      done && m.votesA > m.votesB;
+      done &&
+      m.votesA > m.votesB;
 
     const bWins =
-      done && m.votesB > m.votesA;
+      done &&
+      m.votesB > m.votesA;
 
     cards.push(
       <g
         key={`m-${m.id}`}
-        onClick={() => {
-          if (
-            m.tournamentSubAId &&
-            m.tournamentSubBId
-          ) {
-            onMatchClick(m);
-          }
-        }}
+        onClick={() =>
+          onMatchClick(m)
+        }
         style={{
-          cursor:
-            m.tournamentSubAId &&
-            m.tournamentSubBId
-              ? "pointer"
-              : "default",
+          cursor: "pointer",
         }}
       >
         {/* Card */}
@@ -843,7 +969,9 @@ function BracketSVG({
         {/* Name A */}
         <text
           x={p.x + 10}
-          y={p.y + MH / 4 + 4}
+          y={
+            p.y + MH / 4 + 4
+          }
           fontSize={11}
           fontFamily="sans-serif"
           fill={
@@ -864,7 +992,9 @@ function BracketSVG({
         {showVotes && (
           <text
             x={p.x + MW - 8}
-            y={p.y + MH / 4 + 4}
+            y={
+              p.y + MH / 4 + 4
+            }
             fontSize={11}
             fontFamily="sans-serif"
             fill={
@@ -1061,18 +1191,16 @@ export default function BracketPage({
     load();
   }, [tournamentId]);
 
+  // ----------------------------
+  // MATCH CLICK
+  // ----------------------------
   const handleMatchClick = (
     m: BracketMatch
   ) => {
-    if (
-      !m.tournamentSubAId ||
-      !m.tournamentSubBId
-    ) {
-      return;
-    }
+    if (!m.bmatchId) return;
 
     router.push(
-      `./onevsone?subA=${m.tournamentSubAId}&subB=${m.tournamentSubBId}`
+      `./onevsone?bmatch=${m.bmatchId}`
     );
   };
 

@@ -22,14 +22,14 @@ const ConfirmPage = () => {
       const hashParams = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
+      let confirmationError = false;
 
       try {
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
             console.error("Error confirming email:", error.message);
-            setStatus("This confirmation link is invalid or expired.");
-            return;
+            confirmationError = true;
           }
         } else if (tokenHash && otpType) {
           const allowedTypes = new Set(["signup", "recovery", "magiclink", "invite", "email_change"]);
@@ -40,8 +40,7 @@ const ConfirmPage = () => {
             });
             if (error) {
               console.error("Error confirming email:", error.message);
-              setStatus("This confirmation link is invalid or expired.");
-              return;
+              confirmationError = true;
             }
           } else {
             setStatus("This confirmation link is invalid or expired.");
@@ -54,8 +53,7 @@ const ConfirmPage = () => {
           });
           if (error) {
             console.error("Error setting session:", error.message);
-            setStatus("This confirmation link is invalid or expired.");
-            return;
+            confirmationError = true;
           }
         } else {
           setStatus("This confirmation link is invalid or expired.");
@@ -72,6 +70,8 @@ const ConfirmPage = () => {
         if (session) {
           setStatus("Email confirmed. Redirecting...");
           router.replace("/dashboard");
+        } else if (confirmationError) {
+          setStatus("This confirmation link is invalid or expired.");
         } else {
           setStatus("Email confirmed, but we could not sign you in. Please log in.");
         }

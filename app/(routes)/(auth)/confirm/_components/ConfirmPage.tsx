@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
 
+const ALLOWED_OTP_TYPES = new Set(["signup", "recovery", "magiclink", "invite", "email_change"]);
+
 const ConfirmPage = () => {
   const router = useRouter();
   const hasProcessedRef = useRef(false);
@@ -24,14 +26,12 @@ const ConfirmPage = () => {
       const hashParams = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
-      const allowedTypes = new Set(["signup", "recovery", "magiclink", "invite", "email_change"]);
-
       try {
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) console.error("Error confirming email:", error.message);
         } else if (tokenHash && otpType) {
-          if (allowedTypes.has(otpType)) {
+          if (ALLOWED_OTP_TYPES.has(otpType)) {
             const { error } = await supabase.auth.verifyOtp({
               type: otpType as "signup" | "recovery" | "magiclink" | "invite" | "email_change",
               token_hash: tokenHash,
@@ -42,7 +42,7 @@ const ConfirmPage = () => {
             return;
           }
         } else if (token && email && otpType) {
-          if (allowedTypes.has(otpType)) {
+          if (ALLOWED_OTP_TYPES.has(otpType)) {
             const { error } = await supabase.auth.verifyOtp({
               type: otpType as "signup" | "recovery" | "magiclink" | "invite" | "email_change",
               token,

@@ -63,7 +63,7 @@ const ConfirmPage = () => {
           const { data: { session }, error: existingSessionError } = await supabase.auth.getSession();
           if (existingSessionError) console.error("Error loading session:", existingSessionError.message);
           if (session) {
-            setStatus("Email confirmed. Redirecting...");
+            setStatus("Session active. Redirecting...");
             router.replace("/dashboard");
             return;
           }

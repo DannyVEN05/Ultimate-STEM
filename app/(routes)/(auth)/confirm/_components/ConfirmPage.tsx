@@ -30,6 +30,9 @@ const ConfirmPage = () => {
         for (let attemptNumber = 0; attemptNumber < MAX_USER_CHECK_ATTEMPTS; attemptNumber++) {
           const { data: { user }, error } = await supabase.auth.getUser();
           if (!error && user) return user;
+          if (error && attemptNumber === MAX_USER_CHECK_ATTEMPTS - 1) {
+            console.warn("Unable to load signed-in user during confirmation:", error.message);
+          }
           if (attemptNumber < MAX_USER_CHECK_ATTEMPTS - 1) {
             await new Promise((resolve) => setTimeout(resolve, USER_CHECK_RETRY_DELAY_MS));
           }

@@ -31,7 +31,7 @@ type Tournament = {
   tournament_end_date: string;
 };
 
-const OneVsOnePage = ({ tournamentId, bracketId }: Props) => {
+const OneVsOnePage = ({tournamentId,bracketId }: Props) => {
   const router = useRouter();
 
   const [selectedBook, setSelectedBook] = useState<string| null>(null);
@@ -58,18 +58,18 @@ const OneVsOnePage = ({ tournamentId, bracketId }: Props) => {
   useEffect(() => {
 
     const fetchMatchup = async () => {
-      setLoading(true);
-      try{
-
+    setLoading(true);
+    try {
+      // 1. Fetch the match
       const { data: match, error: matchError } = await supabase
         .from("bracket_match")
         .select("*")
         .eq("bmatch_id", Number(bracketId))
         .single();
 
+      if (matchError) throw matchError;
 
-      if (matchError) throw matchError
-
+      // 2. Fetch the bracket and validate tournament_id matches the URL
       const { data: bracketData, error: bracketError } = await supabase
         .from("bracket")
         .select("bracket_round_number, tournament_id")
@@ -78,8 +78,14 @@ const OneVsOnePage = ({ tournamentId, bracketId }: Props) => {
 
       if (bracketError) throw bracketError;
 
+      if (String(bracketData.tournament_id) !== String(tournamentId)) {
+        router.push(`/tournament/${tournamentId}/tournamentbracket`);
+        return;
+      }
+
       setBracket(bracketData);
 
+      // 3. Fetch tournament data
       const { data: tournamentData, error: tournamentError } = await supabase
         .from("tournament")
         .select("tournament_title, tournament_end_date")
@@ -89,6 +95,7 @@ const OneVsOnePage = ({ tournamentId, bracketId }: Props) => {
       if (tournamentError) throw tournamentError;
       setTournament(tournamentData);
 
+      // 4. Fetch submissions
       const { data: submissions, error: subError } = await supabase
         .from("tournament_submission")
         .select("tournamentsub_id, concept_id")
@@ -101,6 +108,7 @@ const OneVsOnePage = ({ tournamentId, bracketId }: Props) => {
 
       const conceptIds = submissions.map((sub) => sub.concept_id);
 
+      // 5. Fetch concepts
       const { data: concepts, error: conceptError } = await supabase
         .from("concept")
         .select("*")
@@ -108,11 +116,9 @@ const OneVsOnePage = ({ tournamentId, bracketId }: Props) => {
 
       if (conceptError) throw conceptError;
 
-
       const subA = submissions.find(
         (sub) => sub.tournamentsub_id === match.bmatch_concept_a
       );
-
       const subB = submissions.find(
         (sub) => sub.tournamentsub_id === match.bmatch_concept_b
       );
@@ -120,24 +126,24 @@ const OneVsOnePage = ({ tournamentId, bracketId }: Props) => {
       const bookA = concepts.find(
         (concept) => concept.concept_id === subA?.concept_id
       );
-
       const bookB = concepts.find(
         (concept) => concept.concept_id === subB?.concept_id
       );
 
       setBook1(bookA ?? null);
       setBook2(bookB ?? null);
-      setLoading(false);
-      
-  } catch (error) {
+
+    } catch (error) {
       console.error("Fetch matchup failed:", error);
+      router.push(`/tournament/${tournamentId}/tournamentbracket`);
     } finally {
       setLoading(false);
     }
-    };
+  };
+     
 
     fetchMatchup();
-  }, [bracketId]);
+  }, [bracketId, tournamentId]);
 
 
 
@@ -165,6 +171,13 @@ const OneVsOnePage = ({ tournamentId, bracketId }: Props) => {
   return;
   }
 
+  
+  if (userVote === selectedSide) {
+  setIsVoting(false);
+  setIsSubmittingVote(false);
+  return;
+}
+
   setIsSubmittingVote(true);
 
   const voteColumn =
@@ -184,14 +197,6 @@ const OneVsOnePage = ({ tournamentId, bracketId }: Props) => {
     return;
   }
 
-
-  const currentVotes = match[voteColumn] ?? 0;
-
-  if (userVote === selectedSide) {
-  setIsVoting(false);
-  setIsSubmittingVote(false);
-  return;
-}
 
   let updates = {};
 
@@ -279,7 +284,7 @@ const OneVsOnePage = ({ tournamentId, bracketId }: Props) => {
                   .getPublicUrl(book1.concept_styling.book_cover)
                   .data.publicUrl}
                   alt={book1.concept_title}
-                  className="w-full flex-1 min-h-0 object-cover rounded-[1.75rem] shadow-md cursor-pointer"
+                  className="w-full flex-1 min-h-0 rounded-[1.75rem] shadow-md cursor-pointer"
                   onClick={() => setBook1Flipped(!book1Flipped)}
                 />
 
@@ -344,7 +349,7 @@ const OneVsOnePage = ({ tournamentId, bracketId }: Props) => {
                     .data.publicUrl}
 
                   alt={book2.concept_title}
-                  className="w-full flex-1 min-h-0 object-cover rounded-[1.75rem] shadow-md cursor-pointer"
+                  className="w-full flex-1 min-h-0 rounded-[1.75rem] shadow-md cursor-pointer"
                   onClick={() => setBook2Flipped(!book2Flipped)}
                 />
 

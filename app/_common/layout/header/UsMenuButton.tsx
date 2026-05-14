@@ -122,7 +122,17 @@ const UsMenuButton: React.FC = ({ }) => {
           )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer" onClick={() => logOut().then(() => window.location.href = "/login")}>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onClick={async () => {
+            const error = await logOut();
+            if (error) {
+              alert(error);
+              return;
+            }
+            window.location.href = "/login";
+          }}
+        >
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>

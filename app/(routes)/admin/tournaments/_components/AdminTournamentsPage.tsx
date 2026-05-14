@@ -44,6 +44,8 @@ async function getTournaments(): Promise<Tournament[]> {
   const { data, error } = await supabase
     .from("tournament")
     .select("tournament_id, tournament_title, tournament_genre, tournament_start_date, tournament_s2_start_date, tournament_end_date, tournament_user_limit, tournament_status, tournament_submission(count)")
+    .not("tournament_submission.tournamentsub_status", "eq", "terminated")
+    .not("tournament_submission.tournamentsub_status", "eq", "rejected")
     .order("tournament_start_date", { ascending: false });
 
   if (error) throw new Error(error.message);

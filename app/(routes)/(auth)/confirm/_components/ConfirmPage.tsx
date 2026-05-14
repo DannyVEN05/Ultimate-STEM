@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
 
+const MAX_USER_CHECK_ATTEMPTS = 4;
+const USER_CHECK_RETRY_DELAY_MS = 250;
+
 const ConfirmPage = () => {
   const router = useRouter();
   const hasProcessedRef = useRef(false);
@@ -24,10 +27,12 @@ const ConfirmPage = () => {
       const refreshToken = hashParams.get("refresh_token");
       let authOperationFailed = false;
       const waitForSignedInUser = async () => {
-        for (let attempt = 0; attempt < 4; attempt++) {
+        for (let attemptNumber = 0; attemptNumber < MAX_USER_CHECK_ATTEMPTS; attemptNumber++) {
           const { data: { user }, error } = await supabase.auth.getUser();
           if (!error && user) return user;
-          if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 250));
+          if (attemptNumber < MAX_USER_CHECK_ATTEMPTS - 1) {
+            await new Promise((resolve) => setTimeout(resolve, USER_CHECK_RETRY_DELAY_MS));
+          }
         }
         return null;
       };

@@ -26,7 +26,11 @@ const ConfirmPage = () => {
       try {
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) console.error("Error confirming email:", error.message);
+          if (error) {
+            console.error("Error confirming email:", error.message);
+            setStatus("This confirmation link is invalid or expired.");
+            return;
+          }
         } else if (tokenHash && otpType) {
           const allowedTypes = new Set(["signup", "recovery", "magiclink", "invite", "email_change"]);
           if (allowedTypes.has(otpType)) {
@@ -34,7 +38,11 @@ const ConfirmPage = () => {
               type: otpType as "signup" | "recovery" | "magiclink" | "invite" | "email_change",
               token_hash: tokenHash,
             });
-            if (error) console.error("Error confirming email:", error.message);
+            if (error) {
+              console.error("Error confirming email:", error.message);
+              setStatus("This confirmation link is invalid or expired.");
+              return;
+            }
           } else {
             setStatus("This confirmation link is invalid or expired.");
             return;
@@ -44,14 +52,22 @@ const ConfirmPage = () => {
             access_token: accessToken,
             refresh_token: refreshToken,
           });
-          if (error) console.error("Error setting session:", error.message);
+          if (error) {
+            console.error("Error setting session:", error.message);
+            setStatus("This confirmation link is invalid or expired.");
+            return;
+          }
         } else {
           setStatus("This confirmation link is invalid or expired.");
           return;
         }
 
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) console.error("Error loading session:", sessionError.message);
+        if (sessionError) {
+          console.error("Error loading session:", sessionError.message);
+          setStatus("This confirmation link is invalid or expired.");
+          return;
+        }
 
         if (session) {
           setStatus("Email confirmed. Redirecting...");

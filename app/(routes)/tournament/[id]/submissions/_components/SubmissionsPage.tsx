@@ -73,7 +73,7 @@ const SubmissionsPage = () => {
               className="rounded-lg bg-primary p-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors cursor-pointer"
               onClick={handleLikedToggle}
             >
-              {showingLiked ? "Browse Books" : `Liked Books (${likedBooks.length})`}
+              {showingLiked ? "Browse Books" : `View Liked Books (${likedBooks.length})`}
 
             </button>
           )

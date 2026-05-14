@@ -7,25 +7,25 @@ import { useState, useContext, useEffect } from "react";
 import { MouseEvent } from "react";
 
 type BookCardProps = {
-  title: string;
+  title: string,
   description: string;
-  genre: string;
   tournamentsub_id: string;
   styling: BookCover;
   isLiked: boolean;
   showLikeButton?: boolean;
   aspectRatio?: string;
+  minHeight?: string;
 }
 
 const BookCard: React.FC<BookCardProps> = ({
   title,
   description,
-  genre,
   tournamentsub_id,
   styling,
   isLiked: initialIsLiked,
   showLikeButton = false,
   aspectRatio = "",
+  minHeight = "min-h-[35vh]",
 }) => {
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -53,7 +53,8 @@ const BookCard: React.FC<BookCardProps> = ({
   }
 
   return (
-    <div className={`perspective-[1200px] ${isFlipped ? "z-50" : "z-10"} w-full ${aspectRatio} max-h-full mx-auto`}>
+    // min-h-[35vh] ensures this 
+    <div className={`perspective-[1200px] ${isFlipped ? "z-50" : "z-10"} ${minHeight} ${aspectRatio} mx-auto`}>
       <div
         className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] will-change-transform ${isFlipped
           ? "[transform:rotateY(180deg)]"
@@ -78,13 +79,8 @@ const BookCard: React.FC<BookCardProps> = ({
             )}
 
             <div className="flex-1 min-h-0 relative">
-              <CoverImage styling={styling} title={title}></CoverImage>
+              <CoverImage title={title} styling={styling} ratio={aspectRatio}></CoverImage>
             </div>
-
-            <div className="mt-3 h-12">
-              <h3 className="text-sm text-gray-600 font-bold line-clamp-2">{title}</h3>
-            </div>
-
           </div>
         </div>
 
@@ -109,7 +105,7 @@ const BookCard: React.FC<BookCardProps> = ({
         </div>
 
       </div>
-    </div>
+    </div >
   )
 };
 

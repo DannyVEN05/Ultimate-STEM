@@ -33,6 +33,7 @@ const UsMenuButton: React.FC = ({ }) => {
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [disableError, setDisableError] = useState<string | null>(null);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
   return (
     <DropdownMenu>
@@ -124,10 +125,12 @@ const UsMenuButton: React.FC = ({ }) => {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="cursor-pointer"
-          onClick={async () => {
+          onSelect={async (e) => {
+            e.preventDefault();
+            setLogoutError(null);
             const error = await logOut();
             if (error) {
-              alert(error);
+              setLogoutError(error);
               return;
             }
             window.location.href = "/login";
@@ -136,6 +139,19 @@ const UsMenuButton: React.FC = ({ }) => {
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
+      <Dialog open={!!logoutError} onOpenChange={(open) => { if (!open) setLogoutError(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Unable to log out</DialogTitle>
+            <DialogDescription>{logoutError}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" className="rounded-full">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DropdownMenu >
   )
 };

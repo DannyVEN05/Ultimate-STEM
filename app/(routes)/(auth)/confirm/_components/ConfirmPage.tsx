@@ -23,14 +23,6 @@ const ConfirmPage = () => {
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
       let authOperationFailed = false;
-      const waitForSignedInUser = async () => {
-        for (let attempt = 0; attempt < 4; attempt++) {
-          const { data: { user }, error } = await supabase.auth.getUser();
-          if (!error && user) return user;
-          if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 250));
-        }
-        return null;
-      };
 
       try {
         if (code) {
@@ -68,9 +60,14 @@ const ConfirmPage = () => {
           return;
         }
 
-        const user = await waitForSignedInUser();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error("Error loading session:", sessionError.message);
+          setStatus("This confirmation link is invalid or expired.");
+          return;
+        }
 
-        if (user) {
+        if (session) {
           setStatus("Email confirmed. Redirecting...");
           router.replace("/dashboard");
         } else if (authOperationFailed) {

@@ -135,27 +135,8 @@ const LoginPage: React.FC = () => {
 
     setIsResetting(true);
     try {
-      const { data: exists, error: existsError } = await supabase.rpc("email_exists", {
-        email_to_check: email,
-      });
-
-      if (existsError) {
-        setError("An error occurred while checking the email: " + existsError.message);
-        return;
-      }
-
-      if (!exists) {
-        setError("No account found for this email.");
-        return;
-      }
-
       const redirectTo = `${window.location.origin}/reset`;
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-
-      if (resetError) {
-        setError("Reset failed: " + resetError.message);
-        return;
-      }
+      await supabase.auth.resetPasswordForEmail(email, { redirectTo });
 
       setResetMessage("An email has been sent to you.\nPlease click the link to reset your password.");
     } finally {

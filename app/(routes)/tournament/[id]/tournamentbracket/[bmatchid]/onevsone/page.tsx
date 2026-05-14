@@ -9,16 +9,16 @@ export const metadata: Metadata = {
 type PageProps = {
   params: Promise<{
     id: string;
-    bracketid: string;
+    bmatchid: string;
   }>;
 };
 
 const OneVsOne = async ({params}: PageProps) => {
-  const { id, bracketid} = await params;
+  const { id, bmatchid} = await params;
   return (
   <OneVsOnePage 
     tournamentId={id}
-    bracketId={bracketid}
+    bmatchId={bmatchid}
   />
   );
 };

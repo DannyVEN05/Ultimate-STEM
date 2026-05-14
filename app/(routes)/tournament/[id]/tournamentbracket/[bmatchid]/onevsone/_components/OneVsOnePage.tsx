@@ -19,7 +19,7 @@ import {
 
 type Props = {
   tournamentId: string;
-  bracketId: string;
+  bmatchId: string;
 };
 
 type Bracket = {
@@ -31,21 +31,21 @@ type Tournament = {
   tournament_end_date: string;
 };
 
-const OneVsOnePage = ({tournamentId,bracketId }: Props) => {
+const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
   const router = useRouter();
 
-  const [selectedBook, setSelectedBook] = useState<string| null>(null);
+  const [selectedBook, setSelectedBook] = useState<string | null>(null);
   const [selectedSide, setSelectedSide] = useState<"a" | "b" | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const [isSubmittingVote, setIsSubmittingVote] = useState(false);
-  const [hasVoted, setHasVoted] = useState<string| null>(null);
+  const [hasVoted, setHasVoted] = useState<string | null>(null);
   const [userVote, setUserVote] = useState<"a" | "b" | null>(null);
 
 
   const [book1Flipped, setBook1Flipped] = useState(false);
   const [book2Flipped, setBook2Flipped] = useState(false);
 
-  
+
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [bracket, setBracket] = useState<Bracket | null>(null);
@@ -56,103 +56,103 @@ const OneVsOnePage = ({tournamentId,bracketId }: Props) => {
 
 
   useEffect(() => {
-
+    
     const fetchMatchup = async () => {
-    setLoading(true);
-    try {
-      // 1. Fetch the match
-      const { data: match, error: matchError } = await supabase
-        .from("bracket_match")
-        .select("*")
-        .eq("bmatch_id", Number(bracketId))
-        .single();
+      setLoading(true);
+      try {
+        // 1. Fetch the match
+        const { data: match, error: matchError } = await supabase
+          .from("bracket_match")
+          .select("*")
+          .eq("bmatch_id", bmatchId)
+          .single();
 
-      if (matchError) throw matchError;
+        if (matchError) throw matchError;
 
-      // 2. Fetch the bracket and validate tournament_id matches the URL
-      const { data: bracketData, error: bracketError } = await supabase
-        .from("bracket")
-        .select("bracket_round_number, tournament_id")
-        .eq("bracket_id", match.bracket_id)
-        .single();
+        // 2. Fetch the bracket and validate tournament_id matches the URL
+        const { data: bracketData, error: bracketError } = await supabase
+          .from("bracket")
+          .select("bracket_round_number, tournament_id")
+          .eq("bracket_id", match.bracket_id)
+          .single();
 
-      if (bracketError) throw bracketError;
+        if (bracketError) throw bracketError;
 
-      if (String(bracketData.tournament_id) !== String(tournamentId)) {
+        if (String(bracketData.tournament_id) !== String(tournamentId)) {
+          router.push(`/tournament/${tournamentId}/tournamentbracket`);
+          return;
+        }
+
+        setBracket(bracketData);
+
+        // 3. Fetch tournament data
+        const { data: tournamentData, error: tournamentError } = await supabase
+          .from("tournament")
+          .select("tournament_title, tournament_end_date")
+          .eq("tournament_id", bracketData.tournament_id)
+          .single();
+
+        if (tournamentError) throw tournamentError;
+        setTournament(tournamentData);
+
+        // 4. Fetch submissions
+        const { data: submissions, error: subError } = await supabase
+          .from("tournament_submission")
+          .select("tournamentsub_id, concept_id")
+          .in("tournamentsub_id", [
+            match.bmatch_submission_a,
+            match.bmatch_submission_b,
+          ]);
+
+        if (subError) throw subError;
+
+        const conceptIds = submissions.map((sub) => sub.concept_id);
+
+        // 5. Fetch concepts
+        const { data: concepts, error: conceptError } = await supabase
+          .from("concept")
+          .select("*")
+          .in("concept_id", conceptIds);
+
+        if (conceptError) throw conceptError;
+
+        const subA = submissions.find(
+          (sub) => sub.tournamentsub_id === match.bmatch_submission_a
+        );
+        const subB = submissions.find(
+          (sub) => sub.tournamentsub_id === match.bmatch_submission_b
+        );
+
+        const bookA = concepts.find(
+          (concept) => concept.concept_id === subA?.concept_id
+        );
+        const bookB = concepts.find(
+          (concept) => concept.concept_id === subB?.concept_id
+        );
+
+        setBook1(bookA ?? null);
+        setBook2(bookB ?? null);
+
+      } catch (error) {
+        console.error("Fetch matchup failed:", error);
         router.push(`/tournament/${tournamentId}/tournamentbracket`);
-        return;
-      }  
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      setBracket(bracketData);
-
-      // 3. Fetch tournament data
-      const { data: tournamentData, error: tournamentError } = await supabase
-        .from("tournament")
-        .select("tournament_title, tournament_end_date")
-        .eq("tournament_id", bracketData.tournament_id)
-        .single();
-
-      if (tournamentError) throw tournamentError;
-      setTournament(tournamentData);
-
-      // 4. Fetch submissions
-      const { data: submissions, error: subError } = await supabase
-        .from("tournament_submission")
-        .select("tournamentsub_id, concept_id")
-        .in("tournamentsub_id", [
-          match.bmatch_concept_a,
-          match.bmatch_concept_b,
-        ]);
-
-      if (subError) throw subError;
-
-      const conceptIds = submissions.map((sub) => sub.concept_id);
-
-      // 5. Fetch concepts
-      const { data: concepts, error: conceptError } = await supabase
-        .from("concept")
-        .select("*")
-        .in("concept_id", conceptIds);
-
-      if (conceptError) throw conceptError;
-
-      const subA = submissions.find(
-        (sub) => sub.tournamentsub_id === match.bmatch_concept_a
-      );
-      const subB = submissions.find(
-        (sub) => sub.tournamentsub_id === match.bmatch_concept_b
-      );
-
-      const bookA = concepts.find(
-        (concept) => concept.concept_id === subA?.concept_id
-      );
-      const bookB = concepts.find(
-        (concept) => concept.concept_id === subB?.concept_id
-      );
-
-      setBook1(bookA ?? null);
-      setBook2(bookB ?? null);
-
-    } catch (error) {
-      console.error("Fetch matchup failed:", error);
-      router.push(`/tournament/${tournamentId}/tournamentbracket`);
-    } finally {
-      setLoading(false);
-    }
-  };
-     
 
     fetchMatchup();
-  }, [bracketId, tournamentId]);
+  }, [bmatchId, tournamentId]);
 
 
 
 
-  const calculateTimeLeft = (endDate:string) => {
+  const calculateTimeLeft = (endDate: string) => {
     const difference = new Date(endDate).getTime() - new Date().getTime();
 
     if (difference <= 0) return "Voting ended";
-    
+
     const days = Math.floor(difference / (1000 * 60 * 60 * 24));
     const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
     const minutes = Math.floor((difference / (1000 * 60)) % 60);
@@ -160,85 +160,85 @@ const OneVsOnePage = ({tournamentId,bracketId }: Props) => {
     return `${days}d ${hours}h ${minutes}m`;
   };
 
-  
+
   if (loading) return <p>Loading matchup...</p>;
   if (!book1 || !book2) return <p>No matchup found.</p>;
 
 
- const handleConfirmVote = async () => {
-  if (!selectedSide) {
-    console.error("No selected side");
-  return;
-  }
+  const handleConfirmVote = async () => {
+    if (!selectedSide) {
+      console.error("No selected side");
+      return;
+    }
 
-  
-  if (userVote === selectedSide) {
-  setIsVoting(false);
-  setIsSubmittingVote(false);
-  return;
-}
 
-  setIsSubmittingVote(true);
+    if (userVote === selectedSide) {
+      setIsVoting(false);
+      setIsSubmittingVote(false);
+      return;
+    }
 
-  const voteColumn =
-    selectedSide === "a"
-      ? "bmatch_concept_a_votes"
-      : "bmatch_concept_b_votes";
+    setIsSubmittingVote(true);
 
-  const { data: match, error: fetchError } = await supabase
-    .from("bracket_match")
-    .select("bmatch_concept_a_votes, bmatch_concept_b_votes")
-    .eq("bmatch_id", Number(bracketId))
-    .single();
+    const voteColumn =
+      selectedSide === "a"
+        ? "bmatch_submission_a_votes"
+        : "bmatch_submission_b_votes";
 
-  if (fetchError || !match) {
-    console.error(fetchError);
+    const { data: match, error: fetchError } = await supabase
+      .from("bracket_match")
+      .select("bmatch_submission_a_votes, bmatch_submission_b_votes")
+      .eq("bmatch_id", bmatchId)
+      .single();
+
+    if (fetchError || !match) {
+      console.error(fetchError);
+      setIsSubmittingVote(false);
+      return;
+    }
+
+
+    let updates = {};
+
+    if (selectedSide === "a") {
+      updates = {
+        bmatch_submission_a_votes:
+          (match.bmatch_submission_a_votes ?? 0) + 1,
+
+        bmatch_submission_b_votes:
+          userVote === "b"
+            ? Math.max((match.bmatch_submission_b_votes ?? 0) - 1, 0)
+            : match.bmatch_submission_b_votes,
+      };
+    } else {
+      updates = {
+        bmatch_submission_b_votes:
+          (match.bmatch_submission_b_votes ?? 0) + 1,
+
+        bmatch_submission_a_votes:
+          userVote === "a"
+            ? Math.max((match.bmatch_submission_a_votes ?? 0) - 1, 0)
+            : match.bmatch_submission_a_votes,
+      };
+    }
+
+    const { error: updateError } = await supabase
+      .from("bracket_match")
+      .update(updates)
+      .eq("bmatch_id", bmatchId)
+      .select();
+
+    if (updateError) {
+      console.error(updateError);
+      setIsSubmittingVote(false);
+      return;
+    }
+
+    setUserVote(selectedSide);
+    setHasVoted(selectedBook);
+    setIsVoting(false);
     setIsSubmittingVote(false);
-    return;
-  }
-
-
-  let updates = {};
-
-  if (selectedSide === "a") {
-    updates = {
-      bmatch_concept_a_votes:
-        (match.bmatch_concept_a_votes ?? 0) + 1,
-
-      bmatch_concept_b_votes:
-        userVote === "b"
-          ? Math.max((match.bmatch_concept_b_votes ?? 0) - 1, 0)
-          : match.bmatch_concept_b_votes,
-    };
-  } else {
-    updates = {
-      bmatch_concept_b_votes:
-        (match.bmatch_concept_b_votes ?? 0) + 1,
-
-      bmatch_concept_a_votes:
-        userVote === "a"
-          ? Math.max((match.bmatch_concept_a_votes ?? 0) - 1, 0)
-          : match.bmatch_concept_a_votes,
-    };
-}
-
-  const {error: updateError } = await supabase
-    .from("bracket_match")
-    .update(updates)
-    .eq("bmatch_id", Number(bracketId))
-    .select();
-
-  if (updateError) {
-    console.error(updateError);
-    setIsSubmittingVote(false);
-    return;
-  }
-
-  setUserVote(selectedSide);
-  setHasVoted(selectedBook);
-  setIsVoting(false);
-  setIsSubmittingVote(false);
-}; 
+  };
 
   return (
 
@@ -280,9 +280,9 @@ const OneVsOnePage = ({tournamentId,bracketId }: Props) => {
               >
                 <img
                   src={supabase.storage
-                  .from("book-covers")
-                  .getPublicUrl(book1.concept_styling.book_cover)
-                  .data.publicUrl}
+                    .from("book-covers")
+                    .getPublicUrl(book1.concept_styling.book_cover)
+                    .data.publicUrl}
                   alt={book1.concept_title}
                   className="w-full flex-1 min-h-0 rounded-[1.75rem] shadow-md cursor-pointer"
                   onClick={() => setBook1Flipped(!book1Flipped)}
@@ -404,10 +404,10 @@ const OneVsOnePage = ({tournamentId,bracketId }: Props) => {
                   Cancel
                 </Button>
                 <Button
-                    onClick={handleConfirmVote}
-                    disabled={isSubmittingVote}
+                  onClick={handleConfirmVote}
+                  disabled={isSubmittingVote}
                 >
-                {isSubmittingVote ? "Submitting..." : "Confirm"}
+                  {isSubmittingVote ? "Submitting..." : "Confirm"}
                 </Button>
               </DialogFooter>
             </DialogContent>

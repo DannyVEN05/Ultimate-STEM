@@ -2,10 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { Concept } from "@/app/_types/model/Concept";
-
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import {
   Dialog,
@@ -15,6 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+
 
 
 type Props = {
@@ -37,10 +38,12 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
   const [selectedSide, setSelectedSide] = useState<"a" | "b" | null>(null);
   const [isVoting, setIsVoting] = useState(false);
+  const [voteSuccess, setVoteSuccess] = useState(false);
+
+
   const [isSubmittingVote, setIsSubmittingVote] = useState(false);
   const [hasVoted, setHasVoted] = useState<string | null>(null);
   const [userVote, setUserVote] = useState<"a" | "b" | null>(null);
-
 
   const [book1Flipped, setBook1Flipped] = useState(false);
   const [book2Flipped, setBook2Flipped] = useState(false);
@@ -52,11 +55,18 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
   const [book1, setBook1] = useState<Concept | null>(null);
   const [book2, setBook2] = useState<Concept | null>(null);
+  const [submissionAId, setSubmissionAId] = useState<string | null>(null);
+  const [submissionBId, setSubmissionBId] = useState<string | null>(null);
+
+  const submissionAIdRef = useRef<string | null>(null);
+  const submissionBIdRef = useRef<string | null>(null);
+
+
   const [loading, setLoading] = useState(true);
 
 
   useEffect(() => {
-    
+
     const fetchMatchup = async () => {
       setLoading(true);
       try {
@@ -116,12 +126,21 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
         if (conceptError) throw conceptError;
 
+        console.log("submissions returned:", submissions);
+        console.log("match submission_a:", match.bmatch_submission_a, typeof match.bmatch_submission_a);
+        console.log("match submission_b:", match.bmatch_submission_b, typeof match.bmatch_submission_b);
+
+
         const subA = submissions.find(
           (sub) => sub.tournamentsub_id === match.bmatch_submission_a
         );
         const subB = submissions.find(
           (sub) => sub.tournamentsub_id === match.bmatch_submission_b
         );
+
+
+        console.log("subA:", subA);
+        console.log("subB:", subB);
 
         const bookA = concepts.find(
           (concept) => concept.concept_id === subA?.concept_id
@@ -132,6 +151,11 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
         setBook1(bookA ?? null);
         setBook2(bookB ?? null);
+        setSubmissionAId(subA?.tournamentsub_id ?? null);
+        setSubmissionBId(subB?.tournamentsub_id ?? null);
+
+        submissionAIdRef.current = subA?.tournamentsub_id ?? null;  // ← add
+        submissionBIdRef.current = subB?.tournamentsub_id ?? null;  // ← add  
 
       } catch (error) {
         console.error("Fetch matchup failed:", error);
@@ -147,6 +171,43 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
 
 
+  useEffect(() => {
+    if (!submissionAId || !submissionBId) return;
+
+    const loadExistingVote = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data: vote, error } = await supabase
+        .from("vote")
+        .select("tournamentsub_id")
+        .eq("bmatch_id", bmatchId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Failed to load existing vote:", error);
+        return;
+      }
+
+      if (vote) {
+        if (vote.tournamentsub_id === submissionAId) {
+          setUserVote("a");
+          setHasVoted(book1?.concept_title ?? null);
+        } else if (vote.tournamentsub_id === submissionBId) {
+          setUserVote("b");
+          setHasVoted(book2?.concept_title ?? null);
+        }
+      }
+    };
+
+    loadExistingVote();
+  }, [submissionAId, submissionBId, bmatchId, book1, book2]);
+  //________________helpers________________________________________________________
+
 
   const calculateTimeLeft = (endDate: string) => {
     const difference = new Date(endDate).getTime() - new Date().getTime();
@@ -161,9 +222,8 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
   };
 
 
-  if (loading) return <p>Loading matchup...</p>;
-  if (!book1 || !book2) return <p>No matchup found.</p>;
 
+  //_______________handle voting_________________________________
 
   const handleConfirmVote = async () => {
     if (!selectedSide) {
@@ -174,71 +234,66 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
     if (userVote === selectedSide) {
       setIsVoting(false);
-      setIsSubmittingVote(false);
       return;
     }
 
     setIsSubmittingVote(true);
 
-    const voteColumn =
-      selectedSide === "a"
-        ? "bmatch_submission_a_votes"
-        : "bmatch_submission_b_votes";
 
-    const { data: match, error: fetchError } = await supabase
-      .from("bracket_match")
-      .select("bmatch_submission_a_votes, bmatch_submission_b_votes")
-      .eq("bmatch_id", bmatchId)
-      .single();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (fetchError || !match) {
-      console.error(fetchError);
+    if (!user) {
+      router.push("/login");
+      setIsSubmittingVote(false);
+      return;
+    }
+
+    const newSubmissionId =
+      selectedSide === "a" ? submissionAIdRef.current : submissionBIdRef.current;
+
+    if (!newSubmissionId) {
+      console.error("Submission ID missing");
       setIsSubmittingVote(false);
       return;
     }
 
 
-    let updates = {};
+    try {
+      if (userVote) {
+        // ── UPDATE existing vote row ──────────────────────────────────────
+        const { error } = await supabase
+          .from("vote")
+          .upsert({
+            bmatch_id: bmatchId,
+            user_id: user.id,
+            tournamentsub_id: newSubmissionId,
+          }, {
+            onConflict: "bmatch_id,user_id"
+          });
 
-    if (selectedSide === "a") {
-      updates = {
-        bmatch_submission_a_votes:
-          (match.bmatch_submission_a_votes ?? 0) + 1,
+        if (error) throw error;
+      }
 
-        bmatch_submission_b_votes:
-          userVote === "b"
-            ? Math.max((match.bmatch_submission_b_votes ?? 0) - 1, 0)
-            : match.bmatch_submission_b_votes,
-      };
-    } else {
-      updates = {
-        bmatch_submission_b_votes:
-          (match.bmatch_submission_b_votes ?? 0) + 1,
+      setUserVote(selectedSide);
+      setHasVoted(selectedBook);
+      setVoteSuccess(true);
+      setTimeout(() => {
+        setVoteSuccess(false);
+        setIsVoting(false);
+      }, 3000);
 
-        bmatch_submission_a_votes:
-          userVote === "a"
-            ? Math.max((match.bmatch_submission_a_votes ?? 0) - 1, 0)
-            : match.bmatch_submission_a_votes,
-      };
-    }
 
-    const { error: updateError } = await supabase
-      .from("bracket_match")
-      .update(updates)
-      .eq("bmatch_id", bmatchId)
-      .select();
-
-    if (updateError) {
-      console.error(updateError);
+    } catch (err) {
+      console.error("vote failed", err);
+    } finally {
+      setIsVoting(false);
       setIsSubmittingVote(false);
-      return;
     }
-
-    setUserVote(selectedSide);
-    setHasVoted(selectedBook);
-    setIsVoting(false);
-    setIsSubmittingVote(false);
   };
+
+
+  if (loading) return <p>Loading matchup...</p>;
+  if (!book1 || !book2) return <p>No matchup found.</p>;
 
   return (
 
@@ -390,28 +445,35 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
           {/* dialog for voting */}
           <Dialog open={isVoting} onOpenChange={setIsVoting}>
             <DialogContent className="max-w-sm rounded-2xl">
+
               <DialogHeader>
                 <DialogTitle className="text-[#1d2436]">Confirm Your Vote</DialogTitle>
                 <DialogDescription className="text-[#8088a0]">
-                  Are you sure you want to vote for {selectedBook}?
+                  {userVote && userVote !== selectedSide
+                    ? `Switch your vote to ${selectedBook}?`
+                    : `Vote for ${selectedBook}?`}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="gap-2 sm:gap-2">
-                <Button
-                  onClick={() => setIsVoting(false)}
-                  disabled={isSubmittingVote}
-                >
+                <Button onClick={() => setIsVoting(false)} disabled={isSubmittingVote}>
                   Cancel
                 </Button>
-                <Button
-                  onClick={handleConfirmVote}
-                  disabled={isSubmittingVote}
-                >
+                <Button onClick={handleConfirmVote} disabled={isSubmittingVote}>
                   {isSubmittingVote ? "Submitting..." : "Confirm"}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {voteSuccess && (
+            <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50">
+              <Alert className="border-green-200 bg-green-100 shadow-lg px-6 py-4 w-fit">
+                <AlertDescription className="text-green-800 font-medium">
+                  ✓ Your vote for <span className="font-bold">{hasVoted}</span> has been submitted!
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
 
         </div>
       </div>

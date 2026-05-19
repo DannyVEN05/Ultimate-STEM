@@ -449,9 +449,12 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
               <DialogHeader>
                 <DialogTitle className="text-[#1d2436]">Confirm Your Vote</DialogTitle>
                 <DialogDescription className="text-[#8088a0]">
-                  {userVote && userVote !== selectedSide
-                    ? `Switch your vote to ${selectedBook}?`
-                    : `Vote for ${selectedBook}?`}
+                  {userVote === selectedSide
+                  ? `You have already voted for ${selectedBook}.`
+                  : userVote && userVote !== selectedSide
+                  ? `Would you like to switch your vote to ${selectedBook}?`
+                  : `Would you like to vote for ${selectedBook}?`}
+
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="gap-2 sm:gap-2">

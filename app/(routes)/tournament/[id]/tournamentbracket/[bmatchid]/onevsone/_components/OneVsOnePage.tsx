@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Concept } from "@/app/_types/model/Concept";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -42,7 +42,6 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
 
   const [isSubmittingVote, setIsSubmittingVote] = useState(false);
-  const [hasVoted, setHasVoted] = useState<string | null>(null);
   const [userVote, setUserVote] = useState<"a" | "b" | null>(null);
 
   const [book1Flipped, setBook1Flipped] = useState(false);
@@ -58,12 +57,9 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
   const [submissionAId, setSubmissionAId] = useState<string | null>(null);
   const [submissionBId, setSubmissionBId] = useState<string | null>(null);
 
-  const submissionAIdRef = useRef<string | null>(null);
-  const submissionBIdRef = useRef<string | null>(null);
-
-
   const [loading, setLoading] = useState(true);
 
+  const hasVoted = userVote === "a" ? book1?.concept_title : userVote === "b" ? book2?.concept_title : null;
 
   useEffect(() => {
 
@@ -126,21 +122,13 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
         if (conceptError) throw conceptError;
 
-        console.log("submissions returned:", submissions);
-        console.log("match submission_a:", match.bmatch_submission_a, typeof match.bmatch_submission_a);
-        console.log("match submission_b:", match.bmatch_submission_b, typeof match.bmatch_submission_b);
-
-
+        
         const subA = submissions.find(
           (sub) => sub.tournamentsub_id === match.bmatch_submission_a
         );
         const subB = submissions.find(
           (sub) => sub.tournamentsub_id === match.bmatch_submission_b
         );
-
-
-        console.log("subA:", subA);
-        console.log("subB:", subB);
 
         const bookA = concepts.find(
           (concept) => concept.concept_id === subA?.concept_id
@@ -153,9 +141,8 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
         setBook2(bookB ?? null);
         setSubmissionAId(subA?.tournamentsub_id ?? null);
         setSubmissionBId(subB?.tournamentsub_id ?? null);
-
-        submissionAIdRef.current = subA?.tournamentsub_id ?? null;  // ← add
-        submissionBIdRef.current = subB?.tournamentsub_id ?? null;  // ← add  
+        
+        
 
       } catch (error) {
         console.error("Fetch matchup failed:", error);
@@ -167,7 +154,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
 
     fetchMatchup();
-  }, [bmatchId, tournamentId]);
+  }, [bmatchId, tournamentId, router]);
 
 
 
@@ -196,16 +183,15 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
       if (vote) {
         if (vote.tournamentsub_id === submissionAId) {
           setUserVote("a");
-          setHasVoted(book1?.concept_title ?? null);
+          
         } else if (vote.tournamentsub_id === submissionBId) {
           setUserVote("b");
-          setHasVoted(book2?.concept_title ?? null);
         }
       }
     };
 
     loadExistingVote();
-  }, [submissionAId, submissionBId, bmatchId, book1, book2]);
+  }, [submissionAId, submissionBId, bmatchId]);
   //________________helpers________________________________________________________
 
 
@@ -249,7 +235,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
     }
 
     const newSubmissionId =
-      selectedSide === "a" ? submissionAIdRef.current : submissionBIdRef.current;
+      selectedSide === "a" ? submissionAId : submissionBId;
 
     if (!newSubmissionId) {
       console.error("Submission ID missing");
@@ -259,7 +245,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
 
     try {
-      if (userVote) {
+     
         // ── UPDATE existing vote row ──────────────────────────────────────
         const { error } = await supabase
           .from("vote")
@@ -272,10 +258,9 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
           });
 
         if (error) throw error;
-      }
 
       setUserVote(selectedSide);
-      setHasVoted(selectedBook);
+      
       setVoteSuccess(true);
       setTimeout(() => {
         setVoteSuccess(false);
@@ -334,10 +319,14 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-purple-100  hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
               >
                 <img
-                  src={supabase.storage
-                    .from("book-covers")
-                    .getPublicUrl(book1.concept_styling.book_cover)
-                    .data.publicUrl}
+                  src={book1.concept_styling?.book_cover
+                    ? supabase.storage
+                        .from("book-covers")
+                        .getPublicUrl(book1.concept_styling.book_cover)
+                        .data.publicUrl
+                    : "/placeholder-cover.png"
+                  }
+
                   alt={book1.concept_title}
                   className="w-full flex-1 min-h-0 rounded-[1.75rem] shadow-md cursor-pointer"
                   onClick={() => setBook1Flipped(!book1Flipped)}
@@ -398,10 +387,13 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-purple-100 hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
               >
                 <img
-                  src={supabase.storage
-                    .from("book-covers")
-                    .getPublicUrl(book2.concept_styling.book_cover)
-                    .data.publicUrl}
+                  src={book2.concept_styling?.book_cover
+                    ? supabase.storage
+                        .from("book-covers")
+                        .getPublicUrl(book2.concept_styling.book_cover)
+                        .data.publicUrl
+                    : "/placeholder-cover.png"
+                  }
 
                   alt={book2.concept_title}
                   className="w-full flex-1 min-h-0 rounded-[1.75rem] shadow-md cursor-pointer"

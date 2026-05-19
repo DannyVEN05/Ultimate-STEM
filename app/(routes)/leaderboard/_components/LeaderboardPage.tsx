@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Trophy, Calendar, Users } from "lucide-react";
+import { Trophy, Calendar } from "lucide-react";
+import BookCard from "../../tournament/[id]/submissions/_components/SubmissionBookCard";
+import { BookCover } from "@/app/_types/model/Concept";
 
 //needed to have winner name from the concept title which is the book submissions 
 interface Tournament {
@@ -13,6 +15,9 @@ interface Tournament {
   winnerName: string;
   winnerConcept: string;
   likes: number;
+  winnerTournamentSubId: string | null;
+  winnerStyling: BookCover | null;
+  winnerDescription: string | null;
 }
 
 function formatDate(value: string): string {
@@ -27,7 +32,22 @@ const LeaderBoardPage = () => {
   useEffect(() => {
     supabase
       .from("tournament")
-      .select("tournament_id, tournament_title, tournament_genre, tournament_end_date, tournament_submission ( tournamentsub_id, tournamentsub_likes, concept ( concept_title, user ( user_firstname, user_lastname ))) ")
+      .select(`
+        tournament_id,
+        tournament_title,
+        tournament_genre,
+        tournament_end_date,
+        tournament_submission (
+          tournamentsub_id,
+          tournamentsub_likes,
+          concept (
+            concept_title,
+            concept_description,
+            concept_styling,
+            user ( user_firstname, user_lastname )
+          )
+        )
+      `)
       .eq("tournament_status", "concluded")
       .eq("tournament_submission.tournamentsub_status", "approved")
       .order("tournament_end_date", { ascending: false })
@@ -53,6 +73,9 @@ const LeaderBoardPage = () => {
                 : "No winner",
               winnerConcept: winner?.concept?.concept_title ?? "Unknown",
               likes: winner?.tournamentsub_likes ?? 0,
+              winnerTournamentSubId: winner?.tournamentsub_id ?? null,
+              winnerStyling: winner?.concept?.concept_styling ?? null,
+              winnerDescription: winner?.concept?.concept_description ?? null,
             };
           });
           setTournaments(formatted);
@@ -96,16 +119,31 @@ const LeaderBoardPage = () => {
           {tournaments.map((t, i) => (
             <div
               key={t.id}
-              className="rounded-xl border border-gray-100 bg-white p-5 flex items-center gap-5 shadow-sm hover:shadow-md transition-shadow"
+              className="rounded-xl border border-gray-100 bg-white p-5 flex items-stretch gap-5 shadow-sm hover:shadow-md transition-shadow"
             >
-              {/* Season badge could be for profile pic */}
-              <div className="shrink-0 h-14 w-14 rounded-xl bg-purple-50 flex flex-col items-center justify-center border border-purple-100">
-                <span className="text-2xl leading-none">🏆</span>
+              {/* Badge is reserved for the BookCard */}
+              <div className="shrink-0 w-24">
+                {t.winnerTournamentSubId && t.winnerStyling ? (
+                  <BookCard
+                    title={t.winnerConcept}
+                    description={t.winnerDescription ?? ""}
+                    tournamentsub_id={t.winnerTournamentSubId}
+                    styling={t.winnerStyling}
+                    isLiked={false}
+                    showLikeButton={false}
+                    aspectRatio="aspect-[3/4]"
+                    minHeight="min-h-[25vh]"
+                  />
+                ) : (
+                  // Keeping trophy as fallback when tournament has no winner
+                  <div className="h-full w-full rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100 ml-6">
+                    <span className="text-2xl">🏆</span>
+                  </div>
+                )}
               </div>
 
               {/* Info */}
-              <div className="flex-1 min-w-0">
-
+              <div className="flex-1 min-w-0 flex flex-col justify-center pl-15">
                 <h2 className="font-bold text-gray-900 mt-0.5 truncate">Winner: {t.winnerName}</h2>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-bold uppercase tracking-widest text-primary">
@@ -124,7 +162,7 @@ const LeaderBoardPage = () => {
               </div>
 
               {/* Metadata */}
-              <div className="shrink-0 flex flex-col sm:flex-row gap-4 text-xs text-gray-400">
+              <div className="shrink-0 flex flex-col justify-center gap-4 text-xs text-gray-400">
                 {t.endDate && (
                   <span className="flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5" />

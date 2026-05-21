@@ -7,7 +7,7 @@ const UsHeader = () => {
 
   return (
     <div className="h-16 bg-white border-b border-gray-200 px-6 flex items-center gap-8">
-      <a href="/dashboard" className="text-lg font-bold text-primary whitespace-nowrap">STEM Lab Tournament</a>
+      <a href="/dashboard" className="text-lg font-bold text-primary whitespace-nowrap">Ultimate STEM</a>
       <div className="flex-1"><UsNavigationButtons /></div>
       <UsAuthMenu />
     </div>

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 const TournamentBracket = async ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
-  return <TournamentBracketPage id={id} />;
+  return <TournamentBracketPage tournamentId={id} />;
 };
 
 export default TournamentBracket;

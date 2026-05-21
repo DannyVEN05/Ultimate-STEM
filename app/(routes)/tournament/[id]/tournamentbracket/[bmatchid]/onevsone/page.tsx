@@ -1,4 +1,4 @@
-import type { Metadata, NextPage } from "next";
+import type { Metadata } from "next";
 import OneVsOnePage from "./_components/OneVsOnePage";
 
 export const metadata: Metadata = {
@@ -7,21 +7,20 @@ export const metadata: Metadata = {
 };
 
 type PageProps = {
-  params: Promise<{
-    id: string;
-    bmatchid: string;
-  }>;
+  params: Promise<{ id: string; bmatchid: string }>;
 };
 
-const OneVsOne = async ({params}: PageProps) => {
-  const { id, bmatchid} = await params;
+const OneVsOne = async ({ params }: PageProps) => {
+  const { id, bmatchid } = await params;
+
+  if (!bmatchid) return <p>No match selected.</p>;
+
   return (
-  <OneVsOnePage 
-    tournamentId={id}
-    bmatchId={bmatchid}
-  />
+    <OneVsOnePage
+      tournamentId={id}
+      bmatchId={bmatchid}
+    />
   );
 };
-
 
 export default OneVsOne;

@@ -288,7 +288,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
 
       <div className="bg-white px-4 pt-1">
-        <Button className="bg-white hover:bg-slate-100 text-sm font-medium text-slate-700 pb-3" onClick={() => { router.push("./") }}>
+        <Button className="bg-white hover:bg-slate-100 text-sm font-medium text-slate-700 pb-3" onClick={() => { router.push(`/tournament/${tournamentId}/tournamentbracket`) }}>
           ← Back to Bracket
         </Button>
 

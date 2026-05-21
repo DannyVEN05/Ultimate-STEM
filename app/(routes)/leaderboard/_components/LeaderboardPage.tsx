@@ -59,10 +59,13 @@ const LeaderBoardPage = () => {
           const formatted = data.map((row: any) => {
             const submissions = row.tournament_submission || [];
 
-            // Sort by likes descending
-            const winner = submissions.sort(
-              (a: any, b: any) =>
-                (b.tournamentsub_likes || 0) - (a.tournamentsub_likes || 0))[0];
+            // Select the submission with the most likes without mutating the array
+            const winner = submissions.reduce((currentWinner: any, submission: any) => {
+              const currentWinnerLikes = currentWinner?.tournamentsub_likes || 0;
+              const submissionLikes = submission?.tournamentsub_likes || 0;
+
+              return submissionLikes > currentWinnerLikes ? submission : currentWinner;
+            }, null);
 
             //needed to get the winner name from their book submissions (concepts) based on howmuch likes they gotten on their book sub
             return {

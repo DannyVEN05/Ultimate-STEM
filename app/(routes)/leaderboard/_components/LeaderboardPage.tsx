@@ -14,6 +14,7 @@ interface Tournament {
   endDate: string;
   winnerName: string;
   winnerConcept: string;
+  winnerConceptGenre: string;
   likes: number;
   winnerTournamentSubId: string | null;
   winnerStyling: BookCover | null;
@@ -43,6 +44,7 @@ const LeaderBoardPage = () => {
           concept (
             concept_title,
             concept_description,
+            concept_genre,
             concept_styling,
             user ( user_firstname, user_lastname )
           )
@@ -72,6 +74,7 @@ const LeaderBoardPage = () => {
                 ? `${winner.concept?.user?.user_firstname ?? ""} ${winner.concept?.user?.user_lastname ?? ""}`
                 : "No winner",
               winnerConcept: winner?.concept?.concept_title ?? "Unknown",
+              winnerConceptGenre: winner?.concept?.concept_genre ?? "Unknown",
               likes: winner?.tournamentsub_likes ?? 0,
               winnerTournamentSubId: winner?.tournamentsub_id ?? null,
               winnerStyling: winner?.concept?.concept_styling ?? null,
@@ -157,7 +160,10 @@ const LeaderBoardPage = () => {
                   Tournament: <span className="font-semibold">{t.title}</span>
                 </div>
                 <div className="text-xs text-gray-400">
-                  Book Idea: {t.winnerConcept}
+                  Book Title: {t.winnerConcept}
+                </div>
+                <div className="text-xs text-gray-400">
+                  Book Genre: {t.winnerConceptGenre}
                 </div>
               </div>
 

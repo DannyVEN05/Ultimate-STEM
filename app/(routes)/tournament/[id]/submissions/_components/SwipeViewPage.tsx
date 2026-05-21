@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import { useContext, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import BookContext from "@/app/_context/book/BookContext";
@@ -95,14 +96,31 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
       <div className="flex h-full w-full">
         <div className="flex-1 grid grid-cols-3 items-center w-full h-full">
           <div className="flex justify-center gap-4">
-            <Button
-              onClick={showingLiked ? handleUnlike : handleSkip}
-              variant="destructive"
-              disabled={!hasBook || isProcessing}
-              className="w-[40%] rounded-full py-4 text-lg font-semibold">
-              {showingLiked ? "Unlike" : "Skip"}
-            </Button>
+            {hasBook ? (
+              <motion.div
+                drag="x"
+                dragConstraints={{ right: 0, left: -100 }}
+                dragSnapToOrigin={true}
+                dragElastic={0.15}
+                onDragEnd={(event, info) => {
+                  if (isProcessing) return;
+
+                  if (info.offset.x < -60) {
+                    showingLiked ? handleUnlike() : handleSkip();
+                  }
+                }}
+                className="w-[30%] h-[18dvh] z-10 rounded-full"
+              >
+                <Button
+                  variant="destructive"
+                  disabled={isProcessing}
+                  className="w-full h-full rounded-full py-4 text-2xl font-semibold cursor-grab active:cursor-grabbing">
+                  {showingLiked ? "Unlike" : "Skip"}
+                </Button>
+              </motion.div>
+            ) : (<></>)}
           </div>
+
 
           {books.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-gray-300 bg-gray-50 p-4 text-center">
@@ -136,17 +154,35 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
             </div>
           )}
 
-          <div className="gap-4 flex justify-center">
-            {(
-              <Button
-                onClick={showingLiked ? handleSkip : handleYes}
-                variant="secondary"
-                disabled={!hasBook || isProcessing}
-                className="w-[40%] rounded-full font-semibold text-lg bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500">
-                {showingLiked ? "Skip" : "Like"}
-              </Button>
-            )}
-          </div>
+          {hasBook ? (
+            <div className="gap-4 flex justify-center">
+              <motion.div
+                drag="x"
+                dragConstraints={{ right: 100, left: 0 }}
+                dragSnapToOrigin={true}
+                dragElastic={0.15}
+                onDragEnd={(event, info) => {
+                  if (isProcessing) return;
+
+                  if (info.offset.x > 60) {
+                    showingLiked ? handleSkip() : handleYes();
+                  }
+                }}
+                className="w-[30%] h-[18dvh] z-10 rounded-full"
+              >
+                {(
+                  <Button
+                    onClick={showingLiked ? handleSkip : handleYes}
+                    variant="secondary"
+                    disabled={isProcessing}
+                    className="w-full h-full rounded-full text-2xl font-semibold cursor-grab active:cursor-grabbing bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500">
+                    {showingLiked ? "Skip" : "Like"}
+                  </Button>
+                )}
+              </motion.div>
+            </div>
+          ) : (<></>)}
+
         </div>
 
       </div>

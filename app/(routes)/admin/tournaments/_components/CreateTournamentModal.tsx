@@ -133,8 +133,14 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
         setSubmitState("error");
         return;
       }
+
+      // Reschedule (or unschedule) all cron jobs whenever dates change.
+      // Handles both pre-seeding (seeding job) and post-seeding (finalize jobs).
+      await supabase.rpc("reschedule_tournament_jobs", {
+        p_tournament_id: Number(tournament.id),
+      });
     } else {
-      const { error } = await supabase.from("tournament").insert({
+      const { data: inserted, error } = await supabase.from("tournament").insert({
         tournament_title: formData.title,
         tournament_genre: formData.category,
         tournament_start_date: formData.startDate,
@@ -143,12 +149,26 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
         tournament_user_limit: Number(formData.participantLimit),
         tournament_participants: 0,
         tournament_status: newStatus,
-      });
+      }).select("tournament_id").single();
 
       if (error) {
         setSubmitError(error.message);
         setSubmitState("error");
         return;
+      }
+
+      if (inserted) {
+        // Schedule the upcoming → stage1 transition at tournament_start_date.
+        await supabase.rpc("schedule_stage1_start", {
+          p_tournament_id: inserted.tournament_id,
+        });
+
+        // Schedule bracket seeding at the stage-2 start date (stage1 → stage2).
+        if (formData.stage2StartDate) {
+          await supabase.rpc("schedule_stage1_end_seeding", {
+            p_tournament_id: inserted.tournament_id,
+          });
+        }
       }
     };
     setSubmitState("success");
@@ -279,21 +299,21 @@ const CreateTournamentModal = ({ open, onOpenChange, tournament }: CreateTournam
               <p className="text-center text-xs text-[#c0314e]">{submitError}</p>
             )}
             <div className="flex justify-end gap-2">
-            <DialogClose asChild>
-              <Button type="button" variant="outline" className="rounded-full px-6">Cancel</Button>
-            </DialogClose>
-            <Button
-              type="submit"
-              className="rounded-full bg-[linear-gradient(135deg,#8b5cf6_0%,#6d3ef0_100%)] px-6 text-white"
-              disabled={submitState === "submitting"}
-            >
-              {submitState === "success" ? <CheckCircle2 className="h-4 w-4" /> : null}
-              {submitState === "success"
-                ? (isEdit ? "Saved!" : "Created!")
-                : submitState === "submitting"
-                ? (isEdit ? "Saving…" : "Creating…")
-                : (isEdit ? "Save Changes" : "Create Tournament")}
-            </Button>
+              <DialogClose asChild>
+                <Button type="button" variant="outline" className="rounded-full px-6">Cancel</Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                className="rounded-full bg-[linear-gradient(135deg,#8b5cf6_0%,#6d3ef0_100%)] px-6 text-white"
+                disabled={submitState === "submitting"}
+              >
+                {submitState === "success" ? <CheckCircle2 className="h-4 w-4" /> : null}
+                {submitState === "success"
+                  ? (isEdit ? "Saved!" : "Created!")
+                  : submitState === "submitting"
+                    ? (isEdit ? "Saving…" : "Creating…")
+                    : (isEdit ? "Save Changes" : "Create Tournament")}
+              </Button>
             </div>
           </DialogFooter>
         </form>

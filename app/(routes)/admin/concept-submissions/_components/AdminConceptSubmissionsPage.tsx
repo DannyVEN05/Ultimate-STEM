@@ -58,7 +58,7 @@ async function fetchSubmissions(): Promise<Submission[]> {
     const { data: users } = await supabase
       .from("user")
       .select("user_id, user_firstname, user_lastname")
-      .in("user_id", userIds); 
+      .in("user_id", userIds);
     if (users) {
       usersMap = new Map(users.map((u: any) => [u.user_id, `${u.user_firstname} ${u.user_lastname}`.trim()]));
     }
@@ -79,7 +79,7 @@ async function fetchSubmissions(): Promise<Submission[]> {
       category: concept?.concept_genre ?? "—",
       description: concept?.concept_description ?? "",
       submittedAt: row.tournamentsub_created_at?.slice(0, 10) ?? "",
-      status: row.tournamentsub_status as SubmissionStatus,
+      status: (row.tournamentsub_status === "active" || row.tournamentsub_status == null ? "pending" : row.tournamentsub_status) as SubmissionStatus,
       likes: row.tournamentsub_likes ?? 0,
     };
   });
@@ -149,6 +149,8 @@ const AdminConceptSubmissionsPage = () => {
 
   const flaggedCount = submissions.filter((s) => detectBadWords(s.title + " " + s.description).length > 0).length;
   const pendingCount = submissions.filter((s) => s.status === "pending").length;
+  const approvedCount = submissions.filter((s) => s.status === "approved").length;
+  const rejectedCount = submissions.filter((s) => s.status === "rejected").length;
 
   return (
     <div className="min-h-full px-4 py-6 text-[#182033] md:px-8 md:py-8">
@@ -165,40 +167,31 @@ const AdminConceptSubmissionsPage = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Card className="rounded-2xl border-[#ececf6]">
-            <CardContent className="flex items-center justify-between p-5">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9aa0b8]">Pending Review</p>
-                <p className="mt-1 text-3xl font-black tracking-[-0.04em] text-[#1d2436]">{pendingCount}</p>
-              </div>
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff7e6] text-[#b97805]">
-                <AlertTriangle className="h-5 w-5" />
-              </span>
-            </CardContent>
-          </Card>
-          <Card className="rounded-2xl border-[#ececf6]">
-            <CardContent className="flex items-center justify-between p-5">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9aa0b8]">Flagged Content</p>
-                <p className="mt-1 text-3xl font-black tracking-[-0.04em] text-[#c0314e]">{flaggedCount}</p>
-              </div>
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fde8ec] text-[#c0314e]">
-                <XCircle className="h-5 w-5" />
-              </span>
-            </CardContent>
-          </Card>
-          <Card className="rounded-2xl border-[#ececf6]">
-            <CardContent className="flex items-center justify-between p-5">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9aa0b8]">Total Submissions</p>
-                <p className="mt-1 text-3xl font-black tracking-[-0.04em] text-[#1d2436]">{submissions.length}</p>
-              </div>
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ede9fe] text-[#6d3ef0]">
-                <CheckCircle2 className="h-5 w-5" />
-              </span>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {(
+            [
+              { key: "pending" as const, label: "Pending Review", count: pendingCount, numColor: "text-[#1d2436]", iconBg: "bg-[#fff7e6] text-[#b97805]", icon: <AlertTriangle className="h-5 w-5" /> },
+              { key: "approved" as const, label: "Approved", count: approvedCount, numColor: "text-[#1a8a55]", iconBg: "bg-[#e6f9f0] text-[#1a8a55]", icon: <CheckCircle2 className="h-5 w-5" /> },
+              { key: "rejected" as const, label: "Rejected", count: rejectedCount, numColor: "text-[#c0314e]", iconBg: "bg-[#fde8ec] text-[#c0314e]", icon: <XCircle className="h-5 w-5" /> },
+              { key: "flagged" as const, label: "Flagged Content", count: flaggedCount, numColor: "text-[#1d2436]", iconBg: "bg-[#ede9fe] text-[#6d3ef0]", icon: <AlertTriangle className="h-5 w-5" /> },
+            ] as const
+          ).map(({ key, label, count, numColor, iconBg, icon }) => (
+            <Card
+              key={key}
+              className={`cursor-pointer rounded-2xl border-[#ececf6] transition hover:shadow-md ${filterStatus === key ? "ring-2 ring-[#8b5cf6]" : ""}`}
+              onClick={() => setFilterStatus(filterStatus === key ? "all" : key)}
+            >
+              <CardContent className="flex items-center justify-between p-5">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9aa0b8]">{label}</p>
+                  <p className={`mt-1 text-3xl font-black tracking-[-0.04em] ${numColor}`}>{count}</p>
+                </div>
+                <span className={`flex h-10 w-10 items-center justify-center rounded-full ${iconBg}`}>
+                  {icon}
+                </span>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Filters */}

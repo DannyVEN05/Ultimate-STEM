@@ -155,7 +155,7 @@ const DashboardPage = () => {
           setNotifiedIds(new Set(data.map((r: any) => String(r.tournament_id))));
         }
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleNotifyMe = async (tournamentId: string) => {
@@ -193,7 +193,7 @@ const DashboardPage = () => {
             meets <span className="text-tertiary">Science.</span>
           </h1>
           <p className="text-gray-500 text-base leading-relaxed max-w-md">
-            STEM Tournaments is the ultimate battleground for young scientists to design, build, and compete with their own tactile experiments. Join us in revolutionizing STEM education through hands-on creativity and fierce competition.
+            Ultimate STEM is the ultimate battleground for young scientists enthusiasts to promote STEM through literature.
           </p>
         </div>
 
@@ -214,11 +214,9 @@ const DashboardPage = () => {
 
       {/* ── ACTIVE BATTLES ───────────────────────────────────────── */}
       <section>
-        <div className="flex items-end justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Active Battles</h2>
-            <p className="text-gray-500 text-sm mt-0.5">Jump into the heat of the tournament right now.</p>
-          </div>
+        <div className="text-center mb-14">
+          <h2 className="text-3xl font-black text-gray-900">Active Tournaments</h2>
+          <p className="text-gray-500 mt-2 text-sm">Jump into the heat of the tournament right now.</p>
         </div>
 
         {loading ? (
@@ -337,7 +335,7 @@ const DashboardPage = () => {
 
       {/* ── HALL OF CHAMPIONS ────────────────────────────────────── */}
       <section>
-        <div className="text-center mb-10">
+        <div className="text-center mb-14">
           <h2 className="text-3xl font-black text-gray-900">Hall of Past Tournaments</h2>
           <p className="text-gray-500 mt-2 text-sm">Celebrating the brilliant minds who pushed the boundaries of tactile science.</p>
         </div>
@@ -345,12 +343,11 @@ const DashboardPage = () => {
         {!loading && concluded.length === 0 ? (
           <div className="text-center text-gray-400 py-10 text-sm">No concluded tournaments yet — check back soon.</div>
         ) : (
-          <div className={`grid gap-5 grid-cols-1 sm:grid-cols-2 ${
-            concluded.length === 0 ? "lg:grid-cols-1" :
+          <div className={`grid gap-5 grid-cols-1 sm:grid-cols-2 ${concluded.length === 0 ? "lg:grid-cols-1" :
             concluded.length === 1 ? "lg:grid-cols-2" :
-            concluded.length === 2 ? "lg:grid-cols-3" :
-            "lg:grid-cols-4"
-          }`}>
+              concluded.length === 2 ? "lg:grid-cols-3" :
+                "lg:grid-cols-4"
+            }`}>
             {concluded.slice(0, 3).map((t, i) => (
               <div key={t.id} className="rounded-xl overflow-hidden border border-gray-100 bg-white shadow-sm">
                 <div className={`aspect-[4/3] flex items-center justify-center text-5xl ${["bg-orange-100", "bg-slate-700", "bg-stone-200"][i % 3]}`}>
@@ -358,7 +355,7 @@ const DashboardPage = () => {
                 </div>
                 <div className="p-4 space-y-1">
                   <span className={`text-xs font-bold uppercase tracking-widest ${i % 2 === 0 ? "text-primary" : "text-tertiary"}`}>
-                    Season {concluded.length - i} 
+                    Season {concluded.length - i}
                   </span>
                   <h3 className="font-bold text-gray-900 text-sm leading-snug">{t.title}</h3>
                   {t.category && <p className="text-xs text-gray-500">{t.category}</p>}
@@ -390,7 +387,7 @@ const DashboardPage = () => {
             <div>
               <h2 className="text-3xl font-black leading-tight">
                 Got a Brilliant<br />
-                <span className="text-tertiary underline underline-offset-4 decoration-tertiary/70">STEM Idea?</span>
+                <span className="text-tertiary underline underline-offset-4 decoration-tertiary/70">Tournament Idea?</span>
               </h2>
             </div>
             <p className="text-white/80 text-sm leading-relaxed max-w-sm">
@@ -403,7 +400,7 @@ const DashboardPage = () => {
                 className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-white/90 transition-colors"
               >
                 <Mail className="h-4 w-4 text-primary shrink-0" />
-                stemtournaments@info.com.au
+                contact@ultimate-stem.com
               </a>
             </div>
           </div>

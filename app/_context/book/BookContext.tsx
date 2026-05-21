@@ -14,7 +14,7 @@ export type BookContextType = {
   // This function fetches approved submissions for a specific tournament from Supabase and populates the books array. It combines Concept and TournamentSubmission data to create complete Book objects. The `tournament_id` argument should be a string.
   setBooks: (tournament_id: string) => Promise<void>;
 
-  // This function updates the likes count for a specific tournament submission in the database. It takes the tournamentsub_id and a boolean indicating whether to increment or decrement the likes.
+  // This function updates the submission_likes table insçerting or deleting a composite key of user_id and tournamentsub_id. An Agggregate COUNT() can be applied to retrieve the number of likes
   updateLikes: (tournamentsub_id: string, isLiked: boolean) => Promise<boolean>;
 
   setUserConcepts: () => Promise<void>;

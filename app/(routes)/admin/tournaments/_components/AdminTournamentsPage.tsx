@@ -43,7 +43,7 @@ interface Tournament {
 async function getTournaments(): Promise<Tournament[]> {
   const { data, error } = await supabase
     .from("tournament")
-    .select("tournament_id, tournament_title, tournament_genre, tournament_start_date, tournament_s2_start_date, tournament_end_date, tournament_participants, tournament_user_limit, tournament_status")
+    .select("tournament_id, tournament_title, tournament_genre, tournament_start_date, tournament_s2_start_date, tournament_end_date, tournament_user_limit, tournament_status, tournament_submission(count)")
     .order("tournament_start_date", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -54,7 +54,7 @@ async function getTournaments(): Promise<Tournament[]> {
     startDate: row.tournament_start_date,
     stage2StartDate: row.tournament_s2_start_date ?? "",
     endDate: row.tournament_end_date,
-    participants: row.tournament_participants,
+    participants: (row.tournament_submission?.[0]?.count ?? 0) as number,
     participantLimit: row.tournament_user_limit,
     status: row.tournament_status as TournamentStatus,
     // winner: row.tournament_winner ?? undefined,
@@ -98,48 +98,6 @@ const statusConfig: Record<TournamentStatus, { label: string; className: string;
   },
 };
 
-function computeCorrectStatus(t: Tournament): TournamentStatus {
-  if (t.status === "terminated") return "terminated";
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (t.endDate && today >= new Date(t.endDate)) return "concluded";
-  if (t.stage2StartDate && today >= new Date(t.stage2StartDate)) return "stage2";
-  if (t.startDate && today >= new Date(t.startDate)) return "stage1";
-  return "upcoming";
-}
-
-async function autoAdvanceTournaments(tournaments: Tournament[]): Promise<Tournament[]> {
-  const toUpdate = tournaments
-    .map((t) => ({ t, correct: computeCorrectStatus(t) }))
-    .filter(({ t, correct }) => correct !== t.status);
-
-  if (toUpdate.length === 0) return tournaments;
-
-  const results = await Promise.all(
-    toUpdate.map(({ t, correct }) =>
-      supabase
-        .from("tournament")
-        .update({ tournament_status: correct, tournament_updated_at: new Date().toISOString() })
-        .eq("tournament_id", t.id)
-        .then(({ error }) => ({ id: t.id, correct, error }))
-    )
-  );
-
-  const failed = results.filter((r) => r.error);
-  if (failed.length > 0) {
-    throw new Error(
-      `Failed to sync ${failed.length} tournament(s): ${failed.map((r) => r.error!.message).join("; ")}`
-    );
-  }
-
-  const succeededIds = new Set(results.map((r) => r.id));
-  return tournaments.map((t) => {
-    if (!succeededIds.has(t.id)) return t;
-    const found = toUpdate.find(({ t: u }) => u.id === t.id);
-    return found ? { ...t, status: found.correct } : t;
-  });
-}
-
 interface QueueItem {
   id: string;
   submissionId: string;
@@ -153,7 +111,7 @@ async function getQueueItems(): Promise<QueueItem[]> {
   const { data: subs, error: subsError } = await supabase
     .from("tournament_submission")
     .select("tournamentsub_id, tournamentsub_status, tournamentsub_likes, concept_id")
-    .eq("tournamentsub_status", "pending")
+    .not("tournamentsub_status", "eq", "terminated")
     .order("tournamentsub_created_at", { ascending: false });
 
   if (subsError) throw new Error(subsError.message);
@@ -177,7 +135,7 @@ async function getQueueItems(): Promise<QueueItem[]> {
       submissionId: row.tournamentsub_id,
       title: concept?.concept_title ?? "Untitled",
       category: concept?.concept_genre ?? "—",
-      status: row.tournamentsub_status,
+      status: (row.tournamentsub_status === "active" || row.tournamentsub_status == null ? "pending" : row.tournamentsub_status),
       likes: row.tournamentsub_likes ?? 0,
     };
   });
@@ -191,15 +149,18 @@ const AdminTournamentsPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [queueTab, setQueueTab] = useState<"pending" | "approved" | "rejected">("pending");
   const [terminatingId, setTerminatingId] = useState<string | null>(null);
   const [isTerminating, setIsTerminating] = useState(false);
-  const [syncing, setSyncing] = useState(false);
 
   const fetchData = useCallback(() => {
     setError(null);
-    Promise.all([getTournaments(), getQueueItems()])
-      .then(([t, q]) => { setTournaments(t); setQueue(q); })
+    getTournaments()
+      .then(setTournaments)
       .catch((err: Error) => setError(err.message));
+    getQueueItems()
+      .then(setQueue)
+      .catch(() => { });
   }, []);
 
   const openCreate = () => { setEditingTournament(null); setModalOpen(true); };
@@ -224,26 +185,13 @@ const AdminTournamentsPage = () => {
     fetchData();
   }, [fetchData, modalOpen]);
 
-  const handleSyncStatuses = async () => {
-    setSyncing(true);
-    setError(null);
-    try {
-      await autoAdvanceTournaments(tournaments);
-      fetchData();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to sync statuses.");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   const handleQueueAction = async (item: QueueItem, action: "approved" | "rejected") => {
     const { error } = await supabase
       .from("tournament_submission")
       .update({ tournamentsub_status: action, tournamentsub_updated_at: new Date().toISOString() })
       .eq("tournamentsub_id", item.submissionId);
     if (error) { setError(error.message); return; }
-    setQueue((prev) => prev.filter((q) => q.submissionId !== item.submissionId));
+    setQueue((prev) => prev.map((q) => q.submissionId === item.submissionId ? { ...q, status: action } : q));
   };
 
   const filtered = tournaments.filter((t) => {
@@ -269,14 +217,6 @@ const AdminTournamentsPage = () => {
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="outline"
-              className="rounded-sm border-[#ececf6] text-[#48506b]"
-              onClick={handleSyncStatuses}
-              disabled={syncing}
-            >
-              {syncing ? "Syncing…" : "Sync Statuses"}
-            </Button>
             <Button
               className="rounded-sm bg-[linear-gradient(135deg,#8b5cf6_0%,#6d3ef0_100%)] px-6 text-white"
               onClick={() => openCreate()}
@@ -431,45 +371,72 @@ const AdminTournamentsPage = () => {
                       <Link href="/admin/concept-submissions">Pre-screen Queue</Link>
                     </CardTitle>
                     <CardDescription className="mt-1 text-sm text-[#8a92a8]">
-                      {queue.length} pending for review
+                      {queue.filter((q) => q.status === "pending").length} pending for review
                     </CardDescription>
                   </div>
-                  {queue.length > 0 && (
+                  {queue.filter((q) => q.status === "pending").length > 0 && (
                     <span className="rounded-full bg-[#ffe7b8] px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-[#b97805]">
                       Urgent
                     </span>
                   )}
                 </div>
+
+                {/* Filter tabs */}
+                <div className="mt-3 flex gap-1 rounded-xl bg-[#f4f5fa] p-1">
+                  {(["pending", "approved", "rejected"] as const).map((tab) => {
+                    const count = queue.filter((q) => q.status === tab).length;
+                    return (
+                      <button
+                        key={tab}
+                        className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-bold capitalize transition ${queueTab === tab
+                          ? tab === "pending"
+                            ? "bg-white text-[#b97805] shadow-sm"
+                            : tab === "approved"
+                              ? "bg-white text-[#1a8a55] shadow-sm"
+                              : "bg-white text-[#c0314e] shadow-sm"
+                          : "text-[#9aa3b8] hover:text-[#48506b]"
+                          }`}
+                        onClick={() => setQueueTab(tab)}
+                      >
+                        {tab} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
               </CardHeader>
 
               <div className="divide-y divide-[#f0f1f7] overflow-y-auto flex-1">
-                {queue.length === 0 ? (
-                  <p className="px-5 py-8 text-center text-sm text-[#b0b8cc]">All caught up!</p>
+                {queue.filter((q) => q.status === queueTab).length === 0 ? (
+                  <p className="px-5 py-8 text-center text-sm text-[#b0b8cc]">
+                    {queueTab === "pending" ? "All caught up!" : `No ${queueTab} submissions.`}
+                  </p>
                 ) : (
-                  queue.map((item) => (
-                    <div key={item.id} className="px-5 py-4">
+                  queue.filter((q) => q.status === queueTab).map((item) => (
+                    <div key={item.submissionId} className="px-5 py-4">
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#b1b8ca]">{item.category}</p>
                       <p className="mt-1 text-sm font-bold leading-snug text-[#1f2639]">{item.title}</p>
                       <p className="mt-0.5 text-xs leading-5 text-[#8b92a7]">{item.likes} likes</p>
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          size="sm"
-                          className="flex-1 rounded-full bg-[#1a8a55] text-white hover:bg-[#156e44]"
-                          onClick={() => handleQueueAction(item, "approved")}
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 rounded-full border-[#f5b8c4] text-[#c0314e] hover:bg-[#fde8ec]"
-                          onClick={() => handleQueueAction(item, "rejected")}
-                        >
-                          <XCircle className="h-3.5 w-3.5" />
-                          Reject
-                        </Button>
-                      </div>
+                      {queueTab === "pending" && (
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1 rounded-full bg-[#1a8a55] text-white hover:bg-[#156e44]"
+                            onClick={() => handleQueueAction(item, "approved")}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 rounded-full border-[#f5b8c4] text-[#c0314e] hover:bg-[#fde8ec]"
+                            onClick={() => handleQueueAction(item, "rejected")}
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                            Reject
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

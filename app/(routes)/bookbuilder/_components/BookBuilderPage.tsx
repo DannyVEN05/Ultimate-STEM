@@ -14,21 +14,19 @@ import useImage from 'use-image'
 const BookBuilderPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedCover, setSelectedCover] = useState("/covers/STEM.png");
-  const [selectedSpine, setSelectedSpine] = useState("/covers/spine.png");
+  const [selectedSpine, setSelectedSpine] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [genre, setGenre] = useState("");
   const [spineColor, setSpineColor] = useState("#000000");
   const [titTextColor, setTitColor] = useState("#FFFFFF");
   const [coverColor, setCoverColor] = useState(("#000000"));
-  const [icon, setIcon] = useState("/covers/Icon1.png");
+  const [icon, setIcon] = useState("");
   const stageRef = useRef<any>(null);
 
   const [image] = useImage(selectedCover, 'anonymous');
   const [iconImage] = useImage(icon);
   const [spineImage] = useImage(selectedSpine);
-
-  const fontOptions = ["sans-serif", "serif", "monospace", "cursive", "fantasy"];
 
   //make it so when theres a long title, it makes it smaller
   const calculateFontSize = (text: string) => {
@@ -64,7 +62,7 @@ const BookBuilderPage = () => {
     }
 
     if (!title.trim() || !description.trim()) {
-      alert("Please fill in title, description and author");
+      alert("Please fill in title and description");
       return;
     }
 
@@ -134,8 +132,8 @@ const BookBuilderPage = () => {
   const router = useRouter();
   return (
     <div className="flex items-left">
-      <Button variant="outline" onClick={() => router.back()}>
-        Back
+      <Button className="bg-white hover:bg-slate-100 mb-3 text-sm font-medium text-slate-700" onClick={() => { router.back() }}>
+        ← Back to Submissions
       </Button>
       <div className="flex w-full flex-col items-center font-bold overflow-hidden">
         {/* Book Submissions */}
@@ -159,7 +157,7 @@ const BookBuilderPage = () => {
 
                   <Layer listening={false}>
                     <Rect x={50} y={0} width={256} height={384} fill={coverColor} />
-                    {image && <KonvaImage image={image} x={50} width={256} height={384} opacity={0.2} />}
+                    {image && <KonvaImage image={image} x={50} width={256} height={384} opacity={0.3} />}
                   </Layer>
 
                   <Layer>
@@ -180,7 +178,6 @@ const BookBuilderPage = () => {
                   <Layer>
                     {iconImage && (<KonvaImage image={iconImage} x={180} y={250} width={100} height={100} />)}
                   </Layer>
-
 
                 </Stage>
 
@@ -230,7 +227,6 @@ const BookBuilderPage = () => {
 
           </div>
 
-
           {/* <form>  cant have form has it refresh the page and cancels handlesubmit*/}
           <div className="flex w-full max-w-2xl border-2 space-between border-gray-300 rounded-lg shadow-sm p-6 space-y-4 overflow-hidden">
             <div className="flex flex-col text-base text-left space-y-10 text-black">
@@ -261,9 +257,7 @@ const BookBuilderPage = () => {
                   ]} sizeOptions={{ width: 600 }} value={genre} onChange={(e: any) => setGenre(e.target.value)} />
               </div>
 
-
               Description
-
 
               <UsInput multiline={true} placeholder="Enter description..." sizeOptions={{ height: 200, width: 600 }} maxLength={535} value={description} onChange={(e: any) => setDescription(e.target.value)} />
 
@@ -271,8 +265,6 @@ const BookBuilderPage = () => {
                 <Button type="button" onClick={handleSubmit} className="px-10 py-4 text-lg font-bold min-w-[200px]">Submit</Button>
               </div>
             </div>
-
-
           </div>
         </div>
 

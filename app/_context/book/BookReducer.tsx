@@ -14,7 +14,7 @@ export type BookReducerAction =
   | { type: BookActionKind.SET_BOOKS; payload: Book[] }
   | { type: BookActionKind.SET_STATUS; payload: string }
   | { type: BookActionKind.TOGGLE_MODE; payload: boolean }
-  | { type: BookActionKind.UPDATE_LIKES; payload: { tournamentsub_id: string, isAdding: boolean } }
+  | { type: BookActionKind.UPDATE_LIKED; payload: { tournamentsub_id: string, isLiked: boolean } }
   | { type: BookActionKind.SET_USER_CONCEPTS; payload: Concept[] };
 
 const bookReducer: Reducer<BookReducerState, BookReducerAction> = (state, action): BookReducerState => {
@@ -37,15 +37,14 @@ const bookReducer: Reducer<BookReducerState, BookReducerAction> = (state, action
         isGridMode: action.payload,
       };
 
-    // Currently not being used as likes are updated directly in the database without worrying about errors.
-    case BookActionKind.UPDATE_LIKES:
+    case BookActionKind.UPDATE_LIKED:
       return {
         ...state,
-        books: state.books.map((book) => {
-          return book.tournamentsub_id === action.payload.tournamentsub_id
-            ? { ...book, tournamentsub_likes: action.payload.isAdding ? book.tournamentsub_likes + 1 : book.tournamentsub_likes - 1 }
+        books: state.books.map(book =>
+          book.tournamentsub_id === action.payload.tournamentsub_id
+            ? { ...book, isLiked: action.payload.isLiked }
             : book
-        })
+        )
       };
 
     case BookActionKind.SET_USER_CONCEPTS:

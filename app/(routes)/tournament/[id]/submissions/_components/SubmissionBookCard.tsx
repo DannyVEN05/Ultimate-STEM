@@ -1,33 +1,40 @@
 import BookContext from "@/app/_context/book/BookContext";
 import { BookCover } from "@/app/_types/model/Concept";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
 import { Heart } from "lucide-react";
-import { useState, useContext, useEffect, useMemo } from "react";
+import CoverImage from "./CoverImage";
+import { useState, useContext, useEffect } from "react";
 import { MouseEvent } from "react";
 
 type BookCardProps = {
-  title: string;
+  title: string,
   description: string;
-  genre: string;
   tournamentsub_id: string;
   styling: BookCover;
   isLiked: boolean;
+  showLikeButton?: boolean;
+  aspectRatio?: string;
+  minHeight?: string;
 }
 
-const BookCard = (props: BookCardProps) => {
-  const [isLiked, setIsLiked] = useState(props.isLiked);
+const BookCard: React.FC<BookCardProps> = ({
+  title,
+  description,
+  tournamentsub_id,
+  styling,
+  isLiked: initialIsLiked,
+  showLikeButton = false,
+  aspectRatio = "",
+  minHeight = "min-h-[35vh]",
+}) => {
+  const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { updateLikes } = useContext(BookContext);
 
-  const coverUrl = useMemo(() => {
-    return supabase.storage.from('book-covers').getPublicUrl(props.styling.book_cover).data.publicUrl || '/covers/engineering.png';
-  }, [props.styling.book_cover]);
-
   useEffect(() => {
-    setIsLiked(props.isLiked)
-  }, [props.isLiked])
+    setIsLiked(initialIsLiked)
+  }, [initialIsLiked])
 
   async function handleClickLike(e: MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
@@ -38,7 +45,7 @@ const BookCard = (props: BookCardProps) => {
     const nextLiked = !isLiked;
     setIsLiked(nextLiked);
 
-    const success = await updateLikes(props.tournamentsub_id, nextLiked);
+    const success = await updateLikes(tournamentsub_id, nextLiked);
     if (!success) {
       setIsLiked(!nextLiked); // Rollback UI state if update fails
     }
@@ -46,7 +53,8 @@ const BookCard = (props: BookCardProps) => {
   }
 
   return (
-    <div className={`perspective-[1200px] ${isFlipped ? "z-50" : "z-10"}`}>
+    // min-h-[35vh] ensures this 
+    <div className={`perspective-[1200px] ${isFlipped ? "z-50" : "z-10"} ${minHeight} ${aspectRatio} mx-auto`}>
       <div
         className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] will-change-transform ${isFlipped
           ? "[transform:rotateY(180deg)]"
@@ -57,18 +65,21 @@ const BookCard = (props: BookCardProps) => {
         <div
           onClick={() => setIsFlipped(true)}
           role="button"
-          className="relative w-full h-full [backface-visibility:hidden] z-20"
+          className="absolute inset-0 [backface-visibility:hidden] z-20"
         >
-          <div className="w-full bg-secondary/50 rounded-xl shadow-md hover:bg-secondary/60">
-            <div className="p-4 h-full rounded-xl border border-gray-200 z-[8]">
+          <div className="p-3 flex flex-col h-full w-full bg-secondary/50 rounded-xl shadow-md border border-gray-200 overflow-hidden hover:bg-secondary/60">
+
+            {showLikeButton && (
               <div className="absolute -top-3 -right-3 z-10">
-                <Button variant="default" className="group min-h-12 min-w-12 rounded-full hover:bg-primary/90" onClick={handleClickLike}>
+                <Button variant="default" className="group min-h-12 min-w-12 rounded-full hover:brightness-120 transition" onClick={handleClickLike}>
                   <Heart className={`size-7 cursor-pointer transition-all ${isLiked ? " text-red-500 fill-red-500" : "fill-transparent"} `}>
                   </Heart>
                 </Button>
               </div>
-              <img src={coverUrl} alt={`${props.title} cover`} className="aspect-[3/4] object-cover w-full bg-white shadow-md rounded-lg"></img>
-              <h3 className="mt-3 text-sm text-gray-600 font-bold line-clamp-2">{props.title}</h3>
+            )}
+
+            <div className="flex-1 min-h-0 relative">
+              <CoverImage title={title} styling={styling} ratio={aspectRatio}></CoverImage>
             </div>
           </div>
         </div>
@@ -82,7 +93,7 @@ const BookCard = (props: BookCardProps) => {
           <div className="flex flex-col h-full">
             <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
               <p className="text-[10px] text-gray-600 leading-snug">
-                {props.description}
+                {description}
               </p>
             </div>
             <div className="mt-4 pt-4">
@@ -94,7 +105,7 @@ const BookCard = (props: BookCardProps) => {
         </div>
 
       </div>
-    </div>
+    </div >
   )
 };
 

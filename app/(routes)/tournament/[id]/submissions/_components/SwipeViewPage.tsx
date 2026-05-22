@@ -102,7 +102,7 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
                 dragConstraints={{ right: 0, left: -100 }}
                 dragSnapToOrigin={true}
                 dragElastic={0.15}
-                onDragEnd={(event, info) => {
+                onDragEnd={(_event, info) => {
                   if (isProcessing) return;
 
                   if (info.offset.x < -60) {
@@ -114,6 +114,12 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
                 <Button
                   variant="destructive"
                   disabled={isProcessing}
+
+                  // Descriptions to increase accessibility
+                  role="slider"
+                  aria-roledescription="swipe slider"
+                  aria-label={showingLiked ? "Drag left to unlike this book" : "Drag left to skip this book"}
+
                   className="w-full h-full rounded-full py-4 text-2xl font-semibold cursor-grab active:cursor-grabbing">
                   {showingLiked ? "Unlike" : "Skip"}
                 </Button>
@@ -161,7 +167,7 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
                 dragConstraints={{ right: 100, left: 0 }}
                 dragSnapToOrigin={true}
                 dragElastic={0.15}
-                onDragEnd={(event, info) => {
+                onDragEnd={(_event, info) => {
                   if (isProcessing) return;
 
                   if (info.offset.x > 60) {
@@ -175,6 +181,9 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
                     onClick={showingLiked ? handleSkip : handleYes}
                     variant="secondary"
                     disabled={isProcessing}
+                    role="slider"
+                    aria-roledescription="swipe slider"
+                    aria-label={showingLiked ? "Drag left to unlike this book" : "Drag left to skip this book"}
                     className="w-full h-full rounded-full text-2xl font-semibold cursor-grab active:cursor-grabbing bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500">
                     {showingLiked ? "Skip" : "Like"}
                   </Button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Trophy, Calendar, Users } from "lucide-react";
 import { getCategoryEmoji } from "@/app/_utilities/categoryUtils";
@@ -78,9 +79,10 @@ const PastTournamentsPage = () => {
       ) : (
         <div className="space-y-4">
           {tournaments.map((t, i) => (
-            <div
+            <Link
               key={t.id}
-              className="rounded-xl border border-gray-100 bg-white p-5 flex items-center gap-5 shadow-sm hover:shadow-md transition-shadow"
+              href={`/tournament/${t.id}?readonly=true`}
+              className="block rounded-xl border border-gray-100 bg-white p-5 flex items-center gap-5 shadow-sm hover:shadow-md transition-shadow"
             >
               {/* Season badge */}
               <div className="shrink-0 h-14 w-14 rounded-xl bg-purple-50 flex flex-col items-center justify-center border border-purple-100">
@@ -113,7 +115,7 @@ const PastTournamentsPage = () => {
                   {t.participants} participants
                 </span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

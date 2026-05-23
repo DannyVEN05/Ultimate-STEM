@@ -6,9 +6,16 @@ export const metadata: Metadata = {
   description: "Ultimate STEM",
 };
 
-const Tournament = async ({ params }: { params: Promise<{ id: string }> }) => {
+const Tournament = async ({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ readonly?: string }>;
+}) => {
   const { id } = await params;
-  return <TournamentPage id={id} />;
+  const { readonly } = await searchParams;
+  return <TournamentPage id={id} readonly={readonly === "true"} />;
 };
 
 export default Tournament;

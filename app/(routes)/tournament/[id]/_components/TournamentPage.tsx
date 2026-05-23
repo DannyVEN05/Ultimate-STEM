@@ -124,6 +124,8 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
   }, [tournamentData, id]);
 
   useEffect(() => {
+    if (readonly) return;
+
     if (!tournamentData?.tournament_end_date) {
       setTimeLeft({ days: 0, hours: 0, minutes: 0 });
       return;
@@ -158,7 +160,7 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
         window.clearTimeout(timeoutId);
       }
     };
-  }, [tournamentData?.tournament_end_date]);
+  }, [readonly, tournamentData?.tournament_end_date]);
 
   if (loading) return <p>Loading tournament...</p>;
 
@@ -169,8 +171,11 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
       <div className="mx-auto max-w-6xl">
 
         <section className="rounded-2xl bg-[#baffe5af] px-10 py-12 shadow-lg">
-          <div className="mb-4 inline-block rounded-full bg-tertiary px-4 py-1 text-sm font-bold text-orange-900">
-            Active Tournament
+          <div className={`mb-4 inline-block rounded-full px-4 py-1 text-sm font-bold ${tournamentData.tournament_status === "active"
+              ? "bg-tertiary text-orange-900"
+              : "bg-gray-200 text-gray-600"
+            }`}>
+            {tournamentData.tournament_status === "active" ? "Active Tournament" : "Concluded Tournament"}
           </div>
 
           <h1 className="max-w-2xl text-4xl font-bold leading-tight text-purple-950">{tournamentData.tournament_title}</h1>
@@ -182,7 +187,11 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
           </div>
 
 
-          <p className="max-w-3xl text-md text-gray-700"> Join as the most creative concepts face off in the ultimate STEM showdown! Vote for your favourite concepts to shape their future.</p>
+          <p className="max-w-3xl text-md text-gray-700">
+            {tournamentData.tournament_status === "active"
+              ? "Join as the most creative concepts face off in the ultimate STEM showdown! Vote for your favourite concepts to shape their future."
+              : "Browse the concepts that competed in this concluded tournament."}
+          </p>
 
         </section>
 

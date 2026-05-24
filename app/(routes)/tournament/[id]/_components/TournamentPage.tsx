@@ -32,7 +32,7 @@ type ConceptSubmission = {
   };
 };
 
-const TournamentPage = ({ id }: { id: string }) => {
+const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boolean }) => {
   const router = useRouter();
   const { tournament, setTournament } = useContext(TournamentContext);
 
@@ -124,6 +124,8 @@ const TournamentPage = ({ id }: { id: string }) => {
   }, [tournamentData, id]);
 
   useEffect(() => {
+    if (readonly) return;
+
     if (!tournamentData?.tournament_end_date) {
       setTimeLeft({ days: 0, hours: 0, minutes: 0 });
       return;
@@ -158,7 +160,7 @@ const TournamentPage = ({ id }: { id: string }) => {
         window.clearTimeout(timeoutId);
       }
     };
-  }, [tournamentData?.tournament_end_date]);
+  }, [readonly, tournamentData?.tournament_end_date]);
 
   if (loading) return <p>Loading tournament...</p>;
 
@@ -169,8 +171,11 @@ const TournamentPage = ({ id }: { id: string }) => {
       <div className="mx-auto max-w-6xl">
 
         <section className="rounded-2xl bg-[#baffe5af] px-10 py-12 shadow-lg">
-          <div className="mb-4 inline-block rounded-full bg-tertiary px-4 py-1 text-sm font-bold text-orange-900">
-            Active Tournament
+          <div className={`mb-4 inline-block rounded-full px-4 py-1 text-sm font-bold ${tournamentData.tournament_status === "active"
+              ? "bg-tertiary text-orange-900"
+              : "bg-gray-200 text-gray-600"
+            }`}>
+            {tournamentData.tournament_status === "active" ? "Active Tournament" : "Concluded Tournament"}
           </div>
 
           <h1 className="max-w-2xl text-4xl font-bold leading-tight text-purple-950">{tournamentData.tournament_title}</h1>
@@ -182,11 +187,15 @@ const TournamentPage = ({ id }: { id: string }) => {
           </div>
 
 
-          <p className="max-w-3xl text-md text-gray-700"> Join as the most creative concepts face off in the ultimate STEM showdown! Vote for your favourite concepts to shape their future.</p>
+          <p className="max-w-3xl text-md text-gray-700">
+            {tournamentData.tournament_status === "active"
+              ? "Join as the most creative concepts face off in the ultimate STEM showdown! Vote for your favourite concepts to shape their future."
+              : "Browse the concepts that competed in this concluded tournament."}
+          </p>
 
         </section>
 
-        <section className="mt-10 rounded-[2rem] bg-[whitesmoke] px-8 py-10 text-center shadow-lg">
+        {!readonly && <section className="mt-10 rounded-[2rem] bg-[whitesmoke] px-8 py-10 text-center shadow-lg">
           <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700">
             Time remaining to vote
           </p>
@@ -210,7 +219,7 @@ const TournamentPage = ({ id }: { id: string }) => {
             </div>
 
           </div>
-        </section>
+        </section>}
 
         <section className="mt-10">
           <div className="flex justify-between items-start mb-6">
@@ -220,12 +229,12 @@ const TournamentPage = ({ id }: { id: string }) => {
               </h2>
               <p className="text-md text-gray-600"> Review the latest {tournamentData.tournament_genre} submissions from our community!</p>
             </div>
-            <Button className="bg-white hover:bg-slate-100 text-sm font-medium text-slate-700" onClick={() => {
+            {!readonly && <Button className="bg-white hover:bg-slate-100 text-sm font-medium text-slate-700" onClick={() => {
               router.push(`/tournament/${id}/submissions`)
               window.scrollTo(0, 0);
             }}>
               View all submissions →
-            </Button>
+            </Button>}
           </div>
 
           {conceptSubmissions.length > 0 ? (
@@ -287,10 +296,10 @@ const TournamentPage = ({ id }: { id: string }) => {
                       <div className="flex items-center justify-between mb-3  mt-auto">
                         <span className="text-lg font-semibold text-purple-600 flex-shrink-0"></span>
 
-                        <Button onClick={() => router.push(`/tournament/${id}/submissions`)}
+                        {!readonly && <Button onClick={() => router.push(`/tournament/${id}/submissions`)}
                           className="rounded-full bg-purple-600 text-sm py-2 hover:bg-primary text-white font-medium px-4"
                         >View
-                        </Button>
+                        </Button>}
                       </div>
 
                     </div>
@@ -305,7 +314,7 @@ const TournamentPage = ({ id }: { id: string }) => {
           )}
         </section>
 
-        <section className="mt-10 rounded-2xl bg-primary px-10 py-12 shadow-lg text-center">
+        {!readonly && <section className="mt-10 rounded-2xl bg-primary px-10 py-12 shadow-lg text-center">
           <div className=" flex flex-col mb-4 text-left">
             <h2 className="text-3xl font-bold text-white mb-4">Ready to enter the Tournament Bracket?</h2>
             <p className="text-md text-gray-100 mb-6">Join the fun and vote for your favourite concepts!</p>
@@ -318,7 +327,7 @@ const TournamentPage = ({ id }: { id: string }) => {
           >
             Enter Tournament
           </Button>
-        </section>
+        </section>}
       </div>
     </div>
   );

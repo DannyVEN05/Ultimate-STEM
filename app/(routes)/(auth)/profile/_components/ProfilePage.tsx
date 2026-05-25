@@ -15,8 +15,6 @@ type ProfileFormState = {
   user_firstname: string;
   user_lastname: string;
   user_email: string;
-  user_phone_number: string;
-  user_dob: string;
 };
 
 const ProfilePage: React.FC = () => {
@@ -31,8 +29,6 @@ const ProfilePage: React.FC = () => {
     user_firstname: "",
     user_lastname: "",
     user_email: "",
-    user_phone_number: "",
-    user_dob: "",
   });
 
   const toFormState = (currentUser: User | null): ProfileFormState => {
@@ -40,8 +36,6 @@ const ProfilePage: React.FC = () => {
       user_firstname: currentUser?.user_firstname ?? "",
       user_lastname: currentUser?.user_lastname ?? "",
       user_email: currentUser?.user_email ?? "",
-      user_phone_number: currentUser?.user_phone_number ?? "",
-      user_dob: currentUser?.user_dob ? new Date(currentUser.user_dob).toISOString().slice(0, 10) : "",
     };
   };
 
@@ -104,8 +98,6 @@ const ProfilePage: React.FC = () => {
         formState.user_firstname.trim(),
         formState.user_lastname.trim(),
         formState.user_email.trim(),
-        formState.user_phone_number.trim(),
-        formState.user_dob ? new Date(formState.user_dob) : null,
         user.user_created_at,
         user.user_role
       )
@@ -181,32 +173,6 @@ const ProfilePage: React.FC = () => {
                   onChange={(event) => updateFormField("user_email", event.target.value)}
                   // disabled={!editMode || isSaving}
                   disabled
-                />
-              </div>
-              <div className="col-span-2 flex flex-col">
-                <label htmlFor="user_phone_number" className="ml-1 text-sm font-semibold">
-                  Phone Number:
-                </label>
-                <Input
-                  id="user_phone_number"
-                  className="bg-white text-sm"
-                  value={formState.user_phone_number}
-                  onChange={(event) => updateFormField("user_phone_number", event.target.value)}
-                  // disabled={!editMode || isSaving}
-                  disabled
-                />
-              </div>
-              <div className="col-span-2 flex flex-col">
-                <label htmlFor="user_dob" className="ml-1 text-sm font-semibold">
-                  Date of Birth:
-                </label>
-                <Input
-                  id="user_dob"
-                  className="bg-white text-sm"
-                  type="date"
-                  value={formState.user_dob}
-                  onChange={(event) => updateFormField("user_dob", event.target.value)}
-                  disabled={!editMode || isSaving}
                 />
               </div>
             </div>

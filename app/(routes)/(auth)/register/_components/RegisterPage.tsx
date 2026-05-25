@@ -20,8 +20,6 @@ type RegisterFormState = {
   user_firstname: string;
   user_lastname: string;
   user_email: string;
-  user_phone_number: string;
-  user_dob: string;
   user_password: string;
   confirm_password: string;
 };
@@ -35,8 +33,6 @@ const RegisterPage: React.FC = () => {
     user_firstname: "",
     user_lastname: "",
     user_email: "",
-    user_phone_number: "",
-    user_dob: "",
     user_password: "",
     confirm_password: "",
   });
@@ -112,8 +108,6 @@ const RegisterPage: React.FC = () => {
         password: form.user_password,
         user_firstname: form.user_firstname.trim(),
         user_lastname: form.user_lastname.trim(),
-        user_phone_number: form.user_phone_number.trim(),
-        user_dob: form.user_dob.trim(),
       });
 
 
@@ -152,8 +146,6 @@ const RegisterPage: React.FC = () => {
           email,
           user_firstname: form.user_firstname.trim(),
           user_lastname: form.user_lastname.trim(),
-          user_phone_number: form.user_phone_number.trim(),
-          user_dob: form.user_dob.trim(),
         },
         reactivateOldPassword
       );
@@ -232,35 +224,6 @@ const RegisterPage: React.FC = () => {
               value={form.user_email}
               onChange={updateField("user_email")}
               onBlur={() => setForm((prev) => ({ ...prev, user_email: form.user_email.trim().toLowerCase() }))}
-            />
-          </div>
-
-          <div className="col-span-1">
-            <label htmlFor="phoneNumber" className="block text-sm font-medium ml-1">Phone Number:</label>
-            <UsInput
-              id="phoneNumber"
-              name="phoneNumber"
-              type="tel"
-              autoComplete="tel"
-              disabled={isFormDisabled}
-              className="w-full"
-              value={form.user_phone_number}
-              onChange={updateField("user_phone_number")}
-            />
-          </div>
-
-          <div className="col-span-1">
-            <label htmlFor="dateOfBirth" className="block text-sm font-medium ml-1">Date of Birth:</label>
-            <UsInput
-              id="dateOfBirth"
-              name="dateOfBirth"
-              type="date"
-              autoComplete="bday"
-              required
-              disabled={isFormDisabled}
-              className="w-full"
-              value={form.user_dob}
-              onChange={updateField("user_dob")}
             />
           </div>
 

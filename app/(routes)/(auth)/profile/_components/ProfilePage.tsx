@@ -10,13 +10,20 @@ import ProfileBookCard from "./ProfileBookCard";
 import BookContext from "@/app/_context/book/BookContext";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 type ProfileFormState = {
   user_firstname: string;
   user_lastname: string;
   user_email: string;
-  user_phone_number: string;
-  user_dob: string;
 };
 
 const ProfilePage: React.FC = () => {
@@ -27,12 +34,14 @@ const ProfilePage: React.FC = () => {
 
   const [editMode, setEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmChecked, setConfirmChecked] = useState(false);
+  const [isProceeding, setIsProceeding] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [formState, setFormState] = useState<ProfileFormState>({
     user_firstname: "",
     user_lastname: "",
     user_email: "",
-    user_phone_number: "",
-    user_dob: "",
   });
 
   const toFormState = (currentUser: User | null): ProfileFormState => {
@@ -40,8 +49,6 @@ const ProfilePage: React.FC = () => {
       user_firstname: currentUser?.user_firstname ?? "",
       user_lastname: currentUser?.user_lastname ?? "",
       user_email: currentUser?.user_email ?? "",
-      user_phone_number: currentUser?.user_phone_number ?? "",
-      user_dob: currentUser?.user_dob ? new Date(currentUser.user_dob).toISOString().slice(0, 10) : "",
     };
   };
 
@@ -94,8 +101,55 @@ const ProfilePage: React.FC = () => {
     setEditMode(false);
   };
 
+  const handleProceedChange = async () => {
+    if (!user) return;
+    if (!confirmChecked) return;
+
+    setConfirmError(null);
+    setIsProceeding(true);
+    setIsSaving(true);
+
+    try {
+      const error = await updateUser(
+        new User(
+          user.user_id,
+          formState.user_firstname.trim(),
+          formState.user_lastname.trim(),
+          formState.user_email.trim(),
+          user.user_created_at,
+          user.user_role
+        )
+      );
+
+      setIsSaving(false);
+      setIsProceeding(false);
+
+      if (error) {
+        setConfirmError(error);
+        return;
+      }
+
+      setConfirmOpen(false);
+      setConfirmChecked(false);
+      setEditMode(false);
+    } catch (err) {
+      setIsSaving(false);
+      setIsProceeding(false);
+      setConfirmError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const handleSaveChanges = async () => {
     if (!user) return;
+    const newEmail = formState.user_email.trim();
+    const currentEmail = user.user_email ?? "";
+    const emailChanged = newEmail.toLowerCase() !== currentEmail.toLowerCase();
+
+    if (emailChanged) {
+      // Ask for explicit confirmation before sending a confirmation link
+      setConfirmOpen(true);
+      return;
+    }
 
     setIsSaving(true);
     const error = await updateUser(
@@ -103,9 +157,7 @@ const ProfilePage: React.FC = () => {
         user.user_id,
         formState.user_firstname.trim(),
         formState.user_lastname.trim(),
-        formState.user_email.trim(),
-        formState.user_phone_number.trim(),
-        formState.user_dob ? new Date(formState.user_dob) : null,
+        newEmail,
         user.user_created_at,
         user.user_role
       )
@@ -134,6 +186,46 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <Dialog open={confirmOpen} onOpenChange={(open) => { setConfirmOpen(open); if (!open) { setConfirmChecked(false); setConfirmError(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change email?</DialogTitle>
+            <DialogDescription>
+              You're about to change your account email to <strong>{formState.user_email}</strong>. To confirm this change you'll need to click the confirmation link sent to the new address. You will only see the change after confirming the new email.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="px-6 py-2">
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={confirmChecked}
+                onChange={(e) => setConfirmChecked(e.target.checked)}
+              />
+              <span className="text-sm">Send a link to {formState.user_email}</span>
+            </label>
+            {confirmError && (
+              <p className="mt-2 text-sm text-red-600">{confirmError}</p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <DialogClose asChild>
+              <Button type="button" variant="outline" className="rounded-full">Cancel</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="secondary"
+              className="rounded-full"
+              disabled={!confirmChecked || isProceeding}
+              onClick={handleProceedChange}
+            >
+              {isProceeding ? "Proceeding…" : "Proceed"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex gap-[152px] h-full min-h-0">
         <div className="flex flex-col flex-1 pl-2">
@@ -179,33 +271,6 @@ const ProfilePage: React.FC = () => {
                   className="bg-white text-sm"
                   value={formState.user_email}
                   onChange={(event) => updateFormField("user_email", event.target.value)}
-                  // disabled={!editMode || isSaving}
-                  disabled
-                />
-              </div>
-              <div className="col-span-2 flex flex-col">
-                <label htmlFor="user_phone_number" className="ml-1 text-sm font-semibold">
-                  Phone Number:
-                </label>
-                <Input
-                  id="user_phone_number"
-                  className="bg-white text-sm"
-                  value={formState.user_phone_number}
-                  onChange={(event) => updateFormField("user_phone_number", event.target.value)}
-                  // disabled={!editMode || isSaving}
-                  disabled
-                />
-              </div>
-              <div className="col-span-2 flex flex-col">
-                <label htmlFor="user_dob" className="ml-1 text-sm font-semibold">
-                  Date of Birth:
-                </label>
-                <Input
-                  id="user_dob"
-                  className="bg-white text-sm"
-                  type="date"
-                  value={formState.user_dob}
-                  onChange={(event) => updateFormField("user_dob", event.target.value)}
                   disabled={!editMode || isSaving}
                 />
               </div>

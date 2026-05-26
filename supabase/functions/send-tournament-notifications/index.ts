@@ -105,6 +105,9 @@ Deno.serve(async (req) => {
       if (!resendResponse.ok) {
         const errorText = await resendResponse.text();
         console.error(`Resend batch delivery failure log: ${errorText}`);
+        throw new Error(
+          `Resend batch delivery failed with status ${resendResponse.status}: ${errorText}`,
+        );
       }
     }
 

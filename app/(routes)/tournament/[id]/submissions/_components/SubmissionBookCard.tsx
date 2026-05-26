@@ -13,8 +13,6 @@ type BookCardProps = {
   styling: BookCover;
   isLiked: boolean;
   showLikeButton?: boolean;
-  aspectRatio?: string;
-  minHeight?: string;
 }
 
 const BookCard: React.FC<BookCardProps> = ({
@@ -24,8 +22,6 @@ const BookCard: React.FC<BookCardProps> = ({
   styling,
   isLiked: initialIsLiked,
   showLikeButton = false,
-  aspectRatio = "",
-  minHeight = "min-h-[35vh]",
 }) => {
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -53,8 +49,7 @@ const BookCard: React.FC<BookCardProps> = ({
   }
 
   return (
-    // min-h-[35vh] ensures this 
-    <div className={`perspective-[1200px] ${isFlipped ? "z-50" : "z-10"} ${minHeight} ${aspectRatio} mx-auto`}>
+    <div className={`perspective-[1200px] ${isFlipped ? "z-50" : "z-10"} h-full w-full aspect-[3/4]`}>
       <div
         className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] will-change-transform ${isFlipped
           ? "[transform:rotateY(180deg)]"
@@ -70,16 +65,16 @@ const BookCard: React.FC<BookCardProps> = ({
           <div className="p-3 flex flex-col h-full w-full bg-secondary/50 rounded-xl shadow-md border border-gray-200 overflow-hidden hover:bg-secondary/60">
 
             {showLikeButton && (
-              <div className="absolute -top-3 -right-3 z-10">
-                <Button variant="default" className="group min-h-12 min-w-12 rounded-full hover:brightness-120 transition" onClick={handleClickLike}>
-                  <Heart className={`size-7 cursor-pointer transition-all ${isLiked ? " text-red-500 fill-red-500" : "fill-transparent"} `}>
+              <div className="absolute -top-3 -right-3 z-30">
+                <Button variant="default" className="group min-h-12 min-w-12 2xl:min-w-16 2xl:min-h-16 rounded-full hover:brightness-120 transition" onClick={handleClickLike}>
+                  <Heart className={`size-7 2xl:size-9 cursor-pointer transition-all ${isLiked ? " text-red-500 fill-red-500" : "fill-transparent"} `}>
                   </Heart>
                 </Button>
               </div>
             )}
 
             <div className="flex-1 min-h-0 relative">
-              <CoverImage title={title} styling={styling} ratio={aspectRatio}></CoverImage>
+              <CoverImage title={title} styling={styling}></CoverImage>
             </div>
           </div>
         </div>

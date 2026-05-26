@@ -34,7 +34,7 @@ const GridViewPage = () => {
   }, [id]);
 
   return (
-    <div className="pt-8 w-full grid grid-cols-6 gap-6">
+    <div className="pt-8 w-full grid grid-cols-6 gap-[2%]">
       {books.map((book) => (
         <BookCard
           key={book.tournamentsub_id}
@@ -44,7 +44,6 @@ const GridViewPage = () => {
           styling={book.concept_styling}
           isLiked={book.isLiked}
           showLikeButton={true}
-          aspectRatio="aspect-[612/768]"
         />
       ))}
     </div>

@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const SHARED_SECRET = "Ultim4teSt3m_EOI_t0ken";
+const SHARED_SECRET = Deno.env.get("SHARED_SECRET");
 
 // 1. Explicitly type the expected database join structure
 interface UserProfile {

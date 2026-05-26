@@ -14,6 +14,14 @@ interface EoiRecord {
   user: UserProfile | null;
 }
 
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
 // 2. Use Deno's native global server wrapper directly (No remote import required)
 Deno.serve(async (req) => {
   if (
@@ -40,6 +48,14 @@ Deno.serve(async (req) => {
 
   try {
     const { tournament_id, tournament_title } = await req.json();
+    const normalizedTournamentTitle = typeof tournament_title === "string"
+      ? tournament_title
+      : "";
+    const safeTournamentTitleForSubject = normalizedTournamentTitle.replace(
+      /[\r\n]+/g,
+      " ",
+    ).trim() || "Tournament";
+    const safeTournamentTitleForHtml = escapeHtml(normalizedTournamentTitle);
 
     const supabaseAdmin = createClient(
       SUPABASE_URL,
@@ -93,11 +109,11 @@ Deno.serve(async (req) => {
         from:
           "Ultimate STEM Notifications <notifications@auth.ultimate-stem.com>",
         to: [email],
-        subject: `🚀 ${tournament_title} has officially begun!`,
+        subject: `🚀 ${safeTournamentTitleForSubject} has officially begun!`,
         html: `
           <div style="font-family: sans-serif; padding: 20px; color: #182033;">
             <h2>The gates are open!</h2>
-            <p>You registered your interest for <strong>${tournament_title}</strong>.</p>
+            <p>You registered your interest for <strong>${safeTournamentTitleForHtml}</strong>.</p>
             <p>The tournament is now live. Head over to your dashboard to view the rules and secure your placement slot!</p>
             <br />
             <a href="https://ultimate-stem.vercel.app/dashboard" style="display: inline-block; background: linear-gradient(135deg,#8b5cf6 0%,#6d3ef0 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Enter Tournament</a>

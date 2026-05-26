@@ -91,7 +91,7 @@ const LeaderBoardPage = () => {
   }, []);
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="max-w-7xl mx-auto px-6 py-10">
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-2">
@@ -128,7 +128,7 @@ const LeaderBoardPage = () => {
               className="rounded-xl border border-gray-100 bg-white p-5 flex items-stretch gap-5 shadow-sm hover:shadow-md transition-shadow"
             >
               {/* Badge is reserved for the BookCard */}
-              <div className="shrink-0 w-24">
+              <div className="shrink-0 w-36">
                 {t.winnerTournamentSubId && t.winnerStyling ? (
                   <BookCard
                     title={t.winnerConcept}
@@ -137,50 +137,50 @@ const LeaderBoardPage = () => {
                     styling={t.winnerStyling}
                     isLiked={false}
                     showLikeButton={false}
-                    aspectRatio="aspect-[3/4]"
-                    minHeight="min-h-[25vh]"
                   />
                 ) : (
                   // Keeping trophy as fallback when tournament has no winner
-                  <div className="h-full w-full rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100 ml-6">
+                  <div className="h-full w-full aspect-[3/4] rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100">
                     <span className="text-2xl">🏆</span>
                   </div>
                 )}
               </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0 flex flex-col justify-center pl-15">
-                <h2 className="font-bold text-gray-900 mt-0.5 truncate">Winner: {t.winnerName}</h2>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold uppercase tracking-widest text-primary">
-                    Season {tournaments.length - i}
-                  </span>
-                  {t.category && (
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{t.category}</span>
-                  )}
+              <div className="flex-1 min-w-0 flex justify-between items-center">
+                {/* Info */}
+                <div className="min-w-0 flex flex-col justify-center">
+                  <h2 className="font-bold text-gray-900 mt-0.5 truncate">Winner: {t.winnerName}</h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                      Season {tournaments.length - i}
+                    </span>
+                    {t.category && (
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{t.category}</span>
+                    )}
+                  </div>
+                  <div className="mt-2 text-sm text-gray-600">
+                    Tournament: <span className="font-semibold">{t.title}</span>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    Book Title: {t.winnerConcept}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    Book Genre: {t.winnerConceptGenre}
+                  </div>
                 </div>
-                <div className="mt-2 text-sm text-gray-600">
-                  Tournament: <span className="font-semibold">{t.title}</span>
-                </div>
-                <div className="text-xs text-gray-400">
-                  Book Title: {t.winnerConcept}
-                </div>
-                <div className="text-xs text-gray-400">
-                  Book Genre: {t.winnerConceptGenre}
-                </div>
-              </div>
 
-              {/* Metadata */}
-              <div className="shrink-0 flex flex-col justify-center gap-4 text-xs text-gray-400">
-                {t.endDate && (
+                {/* Metadata */}
+                <div className="shrink-0 flex flex-col justify-center gap-4 text-xs text-gray-400">
+                  {t.endDate && (
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      Ended {formatDate(t.endDate)}
+                    </span>
+                  )}
                   <span className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Ended {formatDate(t.endDate)}
+                    {t.likes} likes
                   </span>
-                )}
-                <span className="flex items-center gap-1.5">
-                  {t.likes} likes
-                </span>
+                </div>
               </div>
             </div>
           ))}

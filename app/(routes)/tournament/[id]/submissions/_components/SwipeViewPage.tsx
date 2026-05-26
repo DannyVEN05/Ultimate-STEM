@@ -33,8 +33,8 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
   const hasBook = Boolean(currentBook);
 
 
-  const handleYes = async () => {
-    if (!user || isProcessing || !currentBook) return;
+  const handleLike = async () => {
+    if (isProcessing || !currentBook) return;
 
     setIsProcessing(true);
     const success = await updateLikes(currentBook.tournamentsub_id, true);
@@ -49,7 +49,7 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
   };
 
   const handleSkip = () => {
-    if (!user || isProcessing || !currentBook) return;
+    if (isProcessing || !currentBook) return;
 
     setFeedback("skip");
     setCurrentIndex(prev => Math.min(prev + 1, activeBooks.length));
@@ -57,7 +57,7 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
   };
 
   const handleUnlike = async () => {
-    if (!user || isProcessing || !currentBook) return;
+    if (isProcessing || !currentBook) return;
 
     setIsProcessing(true);
     const success = await updateLikes(currentBook.tournamentsub_id, false);
@@ -153,8 +153,6 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
                   tournamentsub_id={currentBook.tournamentsub_id}
                   styling={currentBook.concept_styling}
                   isLiked={currentBook.isLiked}
-                  aspectRatio="aspect-[3/4]"
-                  minHeight="min-h-[65vh]"
                 />
               </div>
             </div>
@@ -171,14 +169,14 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
                   if (isProcessing) return;
 
                   if (info.offset.x > 60) {
-                    showingLiked ? handleSkip() : handleYes();
+                    showingLiked ? handleSkip() : handleLike();
                   }
                 }}
                 className="w-[30%] h-[18dvh] z-10 rounded-full"
               >
                 {(
                   <Button
-                    onClick={showingLiked ? handleSkip : handleYes}
+                    onClick={showingLiked ? handleSkip : handleLike}
                     variant="secondary"
                     disabled={isProcessing}
                     role="slider"

@@ -16,11 +16,16 @@ interface EoiRecord {
 
 // 2. Use Deno's native global server wrapper directly (No remote import required)
 Deno.serve(async (req) => {
-  if (!RESEND_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  if (
+    !RESEND_API_KEY ||
+    !SUPABASE_URL ||
+    !SUPABASE_SERVICE_ROLE_KEY ||
+    !SHARED_SECRET
+  ) {
     return new Response(
       JSON.stringify({
         error:
-          "Server misconfiguration: missing required environment variables (RESEND_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).",
+          "Server misconfiguration: missing required environment variables (RESEND_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SHARED_SECRET).",
       }),
       { status: 500 },
     );

@@ -49,7 +49,7 @@ interface UpcomingCardProps {
   now: number;
   isNotified: boolean;
   isNotifying: boolean;
-  onNotify: (id: string) => void;
+  onNotify: (id: string, action?: "add" | "cancel") => void;
 }
 
 function UpcomingCard({ t, now, isNotified, isNotifying, onNotify }: UpcomingCardProps) {
@@ -78,12 +78,18 @@ function UpcomingCard({ t, now, isNotified, isNotifying, onNotify }: UpcomingCar
       </div>
 
       {isNotified ? (
-        <span className="shrink-0 flex items-center gap-1.5 rounded-lg bg-green-100 px-5 py-2.5 text-sm font-semibold text-green-700">
-          <Bell className="h-4 w-4" />Notified
-        </span>
+        <button
+          onClick={() => onNotify(t.id, "cancel")}
+          disabled={isNotifying}
+          className="shrink-0 rounded-lg px-5 py-2.5 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white transition-all cursor-pointer disabled:cursor-default disabled:opacity-60"
+        >
+          {isNotifying
+            ? "Saving…"
+            : <span className="flex items-center gap-1.5"><Bell className="h-4 w-4" /> Cancel Notification</span>}
+        </button>
       ) : (
         <button
-          onClick={() => onNotify(t.id)}
+          onClick={() => onNotify(t.id, "add")}
           disabled={isNotifying}
           className="shrink-0 rounded-lg px-5 py-2.5 text-sm font-semibold bg-green-600 hover:bg-green-700 text-white transition-all cursor-pointer disabled:cursor-default disabled:opacity-60"
         >
@@ -158,10 +164,31 @@ const DashboardPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const handleNotifyMe = async (tournamentId: string) => {
+  const handleNotifyMe = async (tournamentId: string, action: "add" | "cancel" = "add") => {
     if (!user) { router.push("/login"); return; }
-    if (notifiedIds.has(tournamentId) || notifyingId === tournamentId) return;
+    if (notifyingId === tournamentId) return;
     setNotifyingId(tournamentId);
+
+    if (action === "cancel") {
+      const { error } = await supabase
+        .from("expression_of_interest")
+        .delete()
+        .match({ user_id: user.user_id, tournament_id: Number(tournamentId) });
+      if (error) {
+        console.error("expression_of_interest delete failed:", error.message, error.details, error.hint);
+      } else {
+        setNotifiedIds(prev => {
+          const s = new Set(prev);
+          s.delete(tournamentId);
+          return s;
+        });
+      }
+      setNotifyingId(null);
+      return;
+    }
+
+    if (notifiedIds.has(tournamentId)) { setNotifyingId(null); return; }
+
     const { error } = await supabase
       .from("expression_of_interest")
       .insert({

@@ -426,7 +426,7 @@ const DashboardPage = () => {
             <div className="space-y-2">
               <p className="text-white/60 text-xs uppercase tracking-widest font-semibold">Send your idea to</p>
               <a
-                href="mailto:stemtournaments@info.com.au"
+                href="mailto:info@contact.ultimate-stem.com"
                 className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-white/90 transition-colors"
               >
                 <Mail className="h-4 w-4 text-primary shrink-0" />

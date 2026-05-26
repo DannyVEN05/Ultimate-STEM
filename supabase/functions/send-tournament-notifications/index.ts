@@ -16,6 +16,16 @@ interface EoiRecord {
 
 // 2. Use Deno's native global server wrapper directly (No remote import required)
 Deno.serve(async (req) => {
+  if (!RESEND_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "Server misconfiguration: missing required environment variables (RESEND_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).",
+      }),
+      { status: 500 },
+    );
+  }
+
   const requestSecret = req.headers.get("X-Notification-Secret");
   if (requestSecret !== SHARED_SECRET) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -27,8 +37,8 @@ Deno.serve(async (req) => {
     const { tournament_id, tournament_title } = await req.json();
 
     const supabaseAdmin = createClient(
-      SUPABASE_URL!,
-      SUPABASE_SERVICE_ROLE_KEY!,
+      SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY,
       {
         auth: { persistSession: false },
       },

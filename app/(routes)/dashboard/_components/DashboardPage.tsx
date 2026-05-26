@@ -61,7 +61,7 @@ function UpcomingCard({ t, now, isNotified, isNotifying, onNotify }: UpcomingCar
         <h3 className="text-base font-bold text-gray-900">Next drop: {t.title}</h3>
         {t.category && (
           <p className="text-sm text-gray-500">
-            Get your concepts ready. {t.category} battle starts in {countdown.days}d {String(countdown.hours).padStart(2, "0")}h.
+            Get your concepts ready. {t.category} tournament starts in {countdown.days}d {String(countdown.hours).padStart(2, "0")}h.
           </p>
         )}
       </div>
@@ -190,10 +190,13 @@ const DashboardPage = () => {
         <div className="flex-1 space-y-5">
           <h1 className="text-5xl font-black leading-tight tracking-tight text-gray-900">
             Where <span className="text-primary">Writing</span><br />
-            meets <span className="text-tertiary">Science.</span>
+            meets <span className="text-tertiary">STEM.</span>
           </h1>
           <p className="text-gray-500 text-base leading-relaxed max-w-md">
-            Ultimate STEM is the ultimate battleground for young scientists enthusiasts to promote STEM through literature.
+            Ultimate STEM is the ultimate battleground for aspiring authors to promote Science, Technology, Engineering, and Mathematics through literature.
+          </p>
+          <p className="text-gray-500 text-base leading-relaxed max-w-md">
+            Participate in tournaments to bring recognition to your book ideas and progress further through your writing career.
           </p>
         </div>
 
@@ -206,13 +209,13 @@ const DashboardPage = () => {
                 <div className="absolute bottom-8 left-6 h-14 w-14 rounded-full border border-white/20" />
               </div>
               <FlaskConical className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-20 w-20 text-white/20" />
-              <p className="relative text-white/60 text-xs uppercase tracking-widest font-semibold">STEM Lab</p>
+              <p className="relative text-sm font-bold text-secondary whitespace-nowrap">Ultimate STEM</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── ACTIVE BATTLES ───────────────────────────────────────── */}
+      {/* ── ACTIVE Tournaments ───────────────────────────────────────── */}
       <section>
         <div className="text-center mb-14">
           <h2 className="text-3xl font-black text-gray-900">Active Tournaments</h2>
@@ -220,10 +223,10 @@ const DashboardPage = () => {
         </div>
 
         {loading ? (
-          <div className="text-gray-400 text-sm py-6">Loading battles…</div>
+          <div className="text-gray-400 text-sm py-6">Loading tournaments…</div>
         ) : active.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-200 p-10 text-center text-gray-400 text-sm">
-            No active battles right now — check upcoming tournaments below.
+            No active tournaments right now — check upcoming tournaments below.
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
@@ -282,7 +285,7 @@ const DashboardPage = () => {
               {sidebar.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-200 p-4 flex flex-col items-center justify-center gap-2 text-gray-400 flex-1">
                   <Zap className="h-5 w-5 opacity-30" />
-                  <p className="text-xs text-center">More battles coming soon</p>
+                  <p className="text-xs text-center">More tournaments coming soon</p>
                 </div>
               ) : (
                 <div className={`flex flex-col gap-4 overflow-y-auto overscroll-contain snap-y snap-mandatory pr-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 ${sidebar.length > 2 ? "max-h-[336px]" : "flex-1 min-h-0"}`}>
@@ -372,7 +375,7 @@ const DashboardPage = () => {
               <BookOpen className="h-10 w-10 text-primary/50" />
               <div>
                 <p className="font-bold text-gray-800 text-sm">Discover More</p>
-                <p className="text-xs text-gray-500 mt-0.5">Explore all archived student projects.</p>
+                <p className="text-xs text-gray-500 mt-0.5">Explore all archived tournaments.</p>
               </div>
               <span className="text-sm font-semibold text-primary hover:underline">Open Archives</span>
             </button>
@@ -400,7 +403,7 @@ const DashboardPage = () => {
                 className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-white/90 transition-colors"
               >
                 <Mail className="h-4 w-4 text-primary shrink-0" />
-                contact@ultimate-stem.com
+                info@contact.ultimate-stem.com
               </a>
             </div>
           </div>
@@ -410,7 +413,7 @@ const DashboardPage = () => {
               {[
                 ["1", "Describe the Tournament"],
                 ["2", "Give it a Catchy Name"],
-                ["3", "Set the Battle Rules"],
+                ["3", "Set the Tournament Rules"],
               ].map(([num, label]) => (
                 <div key={num} className="flex items-center gap-3">
                   <span className="h-7 w-7 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold shrink-0">{num}</span>

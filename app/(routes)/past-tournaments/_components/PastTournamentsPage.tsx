@@ -81,7 +81,7 @@ const PastTournamentsPage = () => {
           {tournaments.map((t, i) => (
             <Link
               key={t.id}
-              href={`/tournament/${t.id}?readonly=true`}
+              href={`/tournament/${t.id}`}
               className="block rounded-xl border border-gray-100 bg-white p-5 flex items-center gap-5 shadow-sm hover:shadow-md transition-shadow"
             >
               {/* Season badge */}

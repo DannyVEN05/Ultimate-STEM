@@ -642,7 +642,7 @@ export default function TournamentBracketPage({
 
         // 6. Total rounds from round 1 count
         const r1Count = sorted.filter((m) => (m.bmatch_index?.round ?? 1) === 1).length;
-        const computedTotalRounds = Math.max(1, Math.round(Math.log2(r1Count * 2)));
+        const computedTotalRounds = Math.max(1, Math.ceil(Math.log2(r1Count * 2)));
         setTotalRounds(computedTotalRounds);
 
         // 7. Group by round

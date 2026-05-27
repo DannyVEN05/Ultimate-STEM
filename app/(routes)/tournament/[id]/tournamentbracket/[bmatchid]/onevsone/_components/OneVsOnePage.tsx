@@ -316,7 +316,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
               {/* Front */}
               <div
-                className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-purple-100  hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
+                className="absolute inset-0 overflow-hidden rounded-lg p-4 bg-purple-100  hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
               >
                 <img
                   src={book1.concept_styling?.book_cover
@@ -328,7 +328,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                   }
 
                   alt={book1.concept_title}
-                  className="w-full flex-1 min-h-0 rounded-[1.75rem] shadow-md cursor-pointer aspect-[3/4]"
+                  className="w-full flex-1 min-h-0 rounded-lg shadow-md cursor-pointer aspect-[3/4]"
                   onClick={() => setBook1Flipped(!book1Flipped)}
                 />
 
@@ -384,7 +384,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
               {/* Front */}
 
               <div
-                className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-4 bg-purple-100 hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
+                className="absolute inset-0 overflow-hidden rounded-lg p-4 bg-purple-100 hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
               >
                 <img
                   src={book2.concept_styling?.book_cover
@@ -396,7 +396,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                   }
 
                   alt={book2.concept_title}
-                  className="w-full flex-1 min-h-0 rounded-[1.75rem] shadow-md cursor-pointer aspect-[3/4]"
+                  className="w-full flex-1 min-h-0 rounded-lg shadow-md cursor-pointer aspect-[3/4]"
                   onClick={() => setBook2Flipped(!book2Flipped)}
                 />
 

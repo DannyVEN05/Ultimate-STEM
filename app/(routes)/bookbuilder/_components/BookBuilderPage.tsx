@@ -117,12 +117,13 @@ const BookBuilderPage = () => {
       else {
         // If a tournamentId was passed in the URL, try to add the concept to that tournament.
         let warning: string | null = null;
-        const regularWarningMessage = `The provided tournament id ${tournamentId} is invalid. Your concept has been submitted but it has not been added to a tournament. You can manage your submissions on your profile page.`;
+        const invalidTournamentIdWarning = `The provided tournament id ${tournamentId} is invalid. Your concept has been submitted but it has not been added to a tournament. You can manage your submissions on your profile page.`;
+        const tournamentValidationWarning = "Your concept has been submitted, but we could not validate the tournament right now. You can manage your submissions on your profile page.";
 
         if (tournamentId) {
           const tId = Number(tournamentId);
           if (Number.isNaN(tId)) {
-            warning = regularWarningMessage;
+            warning = invalidTournamentIdWarning;
           } else {
             try {
               const { data: tRows, error: tError } = await supabase
@@ -131,8 +132,10 @@ const BookBuilderPage = () => {
                 .eq("tournament_id", tId)
                 .limit(1);
 
-              if (tError || !tRows || (Array.isArray(tRows) && tRows.length === 0)) {
-                warning = regularWarningMessage;
+              if (tError) {
+                warning = tournamentValidationWarning;
+              } else if (!tRows || (Array.isArray(tRows) && tRows.length === 0)) {
+                warning = invalidTournamentIdWarning;
               } else {
                 const { error: submissionError } = await supabase
                   .from("tournament_submission")
@@ -140,12 +143,12 @@ const BookBuilderPage = () => {
 
                 if (submissionError) {
                   console.log("Error adding tournament submission - ", submissionError.message, "Code", submissionError.code);
-                  warning = regularWarningMessage;
+                  warning = `Your concept has been submitted, but it has not been added to the tournament: ${submissionError.message}`;
                 }
               }
             } catch (err) {
               console.warn("Error validating tournament id:", err);
-              warning = regularWarningMessage;
+              warning = tournamentValidationWarning;
             }
           }
         }
@@ -315,5 +318,4 @@ const BookBuilderPage = () => {
 
 
 export default BookBuilderPage;
-
 

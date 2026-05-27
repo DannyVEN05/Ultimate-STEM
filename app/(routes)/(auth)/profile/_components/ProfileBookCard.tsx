@@ -177,7 +177,7 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
   };
 
   return (
-    <div className={`relative w-full shadow-md border border-gray-200 rounded-lg p-4 hover:shadow-xl transition-all hover:bg-secondary/30 ${className}`}>
+    <div className={`self-start relative w-full shadow-md border border-gray-200 rounded-lg p-4 hover:shadow-xl transition-all hover:bg-secondary/30 ${className}`}>
       <button
         type="button"
         aria-label="Settings"

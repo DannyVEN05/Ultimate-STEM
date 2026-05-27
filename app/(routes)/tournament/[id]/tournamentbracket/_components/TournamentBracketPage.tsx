@@ -530,7 +530,7 @@ function BracketSVG({
     <div className="overflow-auto">
       <div
         ref={containerRef}
-        className="inline-block rounded-2xl border border-gray-200 bg-white shadow-lg p-6"
+        className="inline-block rounded-2xl border border-gray-200 bg-white p-6"
         style={{ position: "relative" }}
       >
         <svg

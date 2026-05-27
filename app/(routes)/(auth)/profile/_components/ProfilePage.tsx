@@ -369,7 +369,7 @@ const ProfilePage: React.FC = () => {
         </div>
 
         <div className="flex-[3] flex flex-col items-center gap-2 min-h-0">
-          <div className={`h-full w-full rounded-lg px-4 grid grid-cols-6 gap-12 py-2 overflow-y-auto`}>
+          <div className={`w-full rounded-lg px-4 grid grid-cols-6 gap-12 py-2 overflow-y-auto items-start`}>
             {userConcepts.map((concept) => (
               <ProfileBookCard className="col-span-3" key={concept.concept_id} concept={concept} />
             ))}

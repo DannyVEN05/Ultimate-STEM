@@ -174,10 +174,10 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
 
         <section className="rounded-2xl bg-[#baffe5af] px-10 py-12 shadow-lg">
           <div className={`mb-4 inline-block rounded-full px-4 py-1 text-sm font-bold ${tournamentData.tournament_status === "active"
-              ? "bg-tertiary text-orange-900"
-              : "bg-gray-200 text-gray-600"
+            ? "bg-tertiary text-orange-900"
+            : "bg-gray-200 text-gray-600"
             }`}>
-            {tournamentData.tournament_status === "active" ? "Active Tournament" : "Concluded Tournament"}
+            {tournamentData.tournament_status !== "concluded" ? "Active Tournament" : "Concluded Tournament"}
           </div>
 
           <h1 className="max-w-2xl text-4xl font-bold leading-tight text-purple-950">{tournamentData.tournament_title}</h1>

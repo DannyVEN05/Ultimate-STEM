@@ -217,7 +217,7 @@ const LoginPage: React.FC = () => {
             <div className="col-span-2 flex justify-end">
               <button
                 type="button"
-                className="text-sm text-blue-500 hover:underline hover:cursor-pointer disabled:opacity-50 disabled:cursor-default disabled:no-underline"
+                className="text-sm text-primary hover:underline hover:cursor-pointer disabled:opacity-50 disabled:cursor-default disabled:no-underline"
                 disabled={isBusy || form.user_email.trim() === ""}
                 onClick={onForgotPassword}
               >
@@ -227,7 +227,7 @@ const LoginPage: React.FC = () => {
 
             <div className="col-span-2">
               <UsButton
-                variant="blue"
+                variant="primary"
                 className="w-full"
                 type="submit"
                 disabled={isBusy}

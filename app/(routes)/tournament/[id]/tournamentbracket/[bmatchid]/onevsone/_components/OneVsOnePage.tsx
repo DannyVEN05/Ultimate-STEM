@@ -30,6 +30,7 @@ type Bracket = {
 type Tournament = {
   tournament_title: string;
   tournament_end_date: string;
+  tournament_status?: string;
 };
 
 const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
@@ -50,6 +51,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
+  const [tournamentStatus, setTournamentStatus] = useState<string | null>(null);
   const [bracket, setBracket] = useState<Bracket | null>(null);
 
   const [book1, setBook1] = useState<Concept | null>(null);
@@ -94,12 +96,13 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
         // 3. Fetch tournament data
         const { data: tournamentData, error: tournamentError } = await supabase
           .from("tournament")
-          .select("tournament_title, tournament_end_date")
+          .select("tournament_title, tournament_end_date, tournament_status")
           .eq("tournament_id", bracketData.tournament_id)
           .single();
 
         if (tournamentError) throw tournamentError;
         setTournament(tournamentData);
+        if (tournamentData?.tournament_status) setTournamentStatus(tournamentData.tournament_status);
 
         // 4. Fetch submissions
         const { data: submissions, error: subError } = await supabase
@@ -124,7 +127,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
         if (conceptError) throw conceptError;
 
-        
+
         const subA = submissions.find(
           (sub) => sub.tournamentsub_id === match.bmatch_submission_a
         );
@@ -143,8 +146,8 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
         setBook2(bookB ?? null);
         setSubmissionAId(subA?.tournamentsub_id ?? null);
         setSubmissionBId(subB?.tournamentsub_id ?? null);
-        
-        
+
+
 
       } catch (error) {
         console.error("Fetch matchup failed:", error);
@@ -185,7 +188,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
       if (vote) {
         if (vote.tournamentsub_id === submissionAId) {
           setUserVote("a");
-          
+
         } else if (vote.tournamentsub_id === submissionBId) {
           setUserVote("b");
         }
@@ -225,6 +228,13 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
       return;
     }
 
+    // Prevent voting unless the tournament is in stage2
+    if (tournamentStatus !== "stage2") {
+      alert("Voting is not open for this tournament.");
+      setIsVoting(false);
+      return;
+    }
+
     setIsSubmittingVote(true);
 
 
@@ -247,22 +257,22 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
 
     try {
-     
-        // ── UPDATE existing vote row ──────────────────────────────────────
-        const { error } = await supabase
-          .from("vote")
-          .upsert({
-            bmatch_id: bmatchId,
-            user_id: user.id,
-            tournamentsub_id: newSubmissionId,
-          }, {
-            onConflict: "bmatch_id,user_id"
-          });
 
-        if (error) throw error;
+      // ── UPDATE existing vote row ──────────────────────────────────────
+      const { error } = await supabase
+        .from("vote")
+        .upsert({
+          bmatch_id: bmatchId,
+          user_id: user.id,
+          tournamentsub_id: newSubmissionId,
+        }, {
+          onConflict: "bmatch_id,user_id"
+        });
+
+      if (error) throw error;
 
       setUserVote(selectedSide);
-      
+
       setVoteSuccess(true);
       setTimeout(() => {
         setVoteSuccess(false);
@@ -299,7 +309,9 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
             {tournament?.tournament_title}</h1>
 
           <div className="rounded-full bg-green-100 px-5 py-3 text-sm font-semibold text-blue-800 shadow-lg mb-3 ">
-            Voting Ends in {tournament ? calculateTimeLeft(tournament.tournament_end_date) : "..."}
+            {calculateTimeLeft(tournament ? tournament.tournament_end_date : "") === "Voting ended"
+              ? "Voting has ended"
+              : `Voting Ends in ${calculateTimeLeft(tournament ? tournament.tournament_end_date : "")}`}
           </div>
         </div>
         <p className="mb-2 max-w-4xl text-base font-bold text-gray-500 sm:text-xl pt-3">Round: {bracket?.bracket_round_number} One vs One</p>
@@ -323,9 +335,9 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 <img
                   src={book1.concept_styling?.book_cover
                     ? supabase.storage
-                        .from("book-covers")
-                        .getPublicUrl(book1.concept_styling.book_cover)
-                        .data.publicUrl
+                      .from("book-covers")
+                      .getPublicUrl(book1.concept_styling.book_cover)
+                      .data.publicUrl
                     : "/placeholder-cover.png"
                   }
 
@@ -336,17 +348,19 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
 
                 <div className="mt-5 flex justify-center">
-                  <Button
-                    className="pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedBook(book1.concept_title);
-                      setSelectedSide("a")
-                      setIsVoting(true);
-                    }}
-                  >
-                    Vote
-                  </Button>
+                  {tournamentStatus === "stage2" && (
+                    <Button
+                      className="pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedBook(book1.concept_title);
+                        setSelectedSide("a")
+                        setIsVoting(true);
+                      }}
+                    >
+                      Vote
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -391,9 +405,9 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 <img
                   src={book2.concept_styling?.book_cover
                     ? supabase.storage
-                        .from("book-covers")
-                        .getPublicUrl(book2.concept_styling.book_cover)
-                        .data.publicUrl
+                      .from("book-covers")
+                      .getPublicUrl(book2.concept_styling.book_cover)
+                      .data.publicUrl
                     : "/placeholder-cover.png"
                   }
 
@@ -403,17 +417,19 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 />
 
                 <div className="mt-5 flex justify-center">
-                  <Button
-                    className=" pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedBook(book2.concept_title);
-                      setSelectedSide("b");
-                      setIsVoting(true);
-                    }}
-                  >
-                    Vote
-                  </Button>
+                  {tournamentStatus === "stage2" && (
+                    <Button
+                      className=" pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedBook(book2.concept_title);
+                        setSelectedSide("b");
+                        setIsVoting(true);
+                      }}
+                    >
+                      Vote
+                    </Button>
+                  )}
 
                 </div>
               </div>
@@ -444,10 +460,10 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 <DialogTitle className="text-[#1d2436]">Confirm Your Vote</DialogTitle>
                 <DialogDescription className="text-[#8088a0]">
                   {userVote === selectedSide
-                  ? `You have already voted for ${selectedBook}.`
-                  : userVote && userVote !== selectedSide
-                  ? `Would you like to switch your vote to ${selectedBook}?`
-                  : `Would you like to vote for ${selectedBook}?`}
+                    ? `You have already voted for ${selectedBook}.`
+                    : userVote && userVote !== selectedSide
+                      ? `Would you like to switch your vote to ${selectedBook}?`
+                      : `Would you like to vote for ${selectedBook}?`}
 
                 </DialogDescription>
               </DialogHeader>

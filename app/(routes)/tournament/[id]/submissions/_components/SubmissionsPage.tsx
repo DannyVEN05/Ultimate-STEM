@@ -12,6 +12,7 @@ const SubmissionsPage = () => {
   const { isGridMode, setIsGridMode, books } = useContext(BookContext);
   const router = useRouter();
   const [title, setTitle] = useState("");
+  const [tournamentStatus, setTournamentStatus] = useState<string | null>(null);
   const [showingLiked, setShowingLiked] = useState(false);
   const [loading, setLoading] = useState(true);
   const params = useParams<{ id: string }>();
@@ -33,7 +34,7 @@ const SubmissionsPage = () => {
     const fetchTournamentTitle = async () => {
       const { data, error } = await supabase
         .from("tournament")
-        .select("tournament_title")
+        .select("tournament_title, tournament_status")
         .eq("tournament_id", id)
         .single();
 
@@ -42,7 +43,10 @@ const SubmissionsPage = () => {
         setTitle("Tournament Submissions");
       }
       setLoading(false);
-      if (data) setTitle(data.tournament_title);
+      if (data) {
+        setTitle(data.tournament_title);
+        if (data.tournament_status) setTournamentStatus(data.tournament_status);
+      }
     }
     if (id) fetchTournamentTitle();
   }, [id]);
@@ -67,9 +71,12 @@ const SubmissionsPage = () => {
 
       <div className="flex w-full justify-between">
         {isGridMode ? (
-          <button className="rounded-lg bg-primary p-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors cursor-pointer" onClick={() => { router.push(`/bookbuilder${id ? `?tournamentId=${encodeURIComponent(id)}` : ''}`) }}>
-            Submit a Book
-          </button>
+          // Only show submit button when tournament is in stage1
+          tournamentStatus === "stage1" ? (
+            <button className="rounded-lg bg-primary p-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors cursor-pointer" onClick={() => { router.push(`/bookbuilder${id ? `?tournamentId=${encodeURIComponent(id)}` : ''}`) }}>
+              Submit a Book
+            </button>
+          ) : null
         ) : (
           hasLikedBooks && (
             <button
@@ -91,9 +98,9 @@ const SubmissionsPage = () => {
 
       </div>
       {isGridMode ? (
-        <GridViewPage />
+        <GridViewPage canLike={tournamentStatus === "stage1"} />
       ) : (
-        <SwipeViewPage showingLiked={showingLiked} onLikedToggle={handleLikedToggle} />
+        <SwipeViewPage showingLiked={showingLiked} onLikedToggle={handleLikedToggle} canLike={tournamentStatus === "stage1"} />
       )}
     </div>
   )

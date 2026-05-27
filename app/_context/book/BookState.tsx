@@ -131,6 +131,35 @@ const BookState = ({ children }: Props) => {
     }
 
     try {
+      // Check that the associated tournament is in stage1 before allowing likes/unlikes
+      const { data: subRow, error: subErr } = await supabase
+        .from("tournament_submission")
+        .select("tournament_id")
+        .eq("tournamentsub_id", tournamentsub_id)
+        .single();
+
+      if (subErr || !subRow) {
+        console.warn("Could not determine tournament for submission:", subErr);
+        return false;
+      }
+
+      const tId = subRow.tournament_id;
+      const { data: tRow, error: tErr } = await supabase
+        .from("tournament")
+        .select("tournament_status")
+        .eq("tournament_id", tId)
+        .single();
+
+      if (tErr || !tRow) {
+        console.warn("Could not fetch tournament status:", tErr);
+        return false;
+      }
+
+      if (tRow.tournament_status !== "stage1") {
+        alert("This tournament is not accepting likes at this time.");
+        return false;
+      }
+
       const { error } = isLiked
         ? await supabase.from("submission_likes").upsert(
           { user_id: user?.user_id, tournamentsub_id: tournamentsub_id },

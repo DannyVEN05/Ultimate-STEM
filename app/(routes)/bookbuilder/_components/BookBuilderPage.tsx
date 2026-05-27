@@ -128,7 +128,7 @@ const BookBuilderPage = () => {
             try {
               const { data: tRows, error: tError } = await supabase
                 .from("tournament")
-                .select("tournament_id")
+                .select("tournament_id, tournament_status")
                 .eq("tournament_id", tId)
                 .limit(1);
 
@@ -137,13 +137,18 @@ const BookBuilderPage = () => {
               } else if (!tRows || (Array.isArray(tRows) && tRows.length === 0)) {
                 warning = invalidTournamentIdWarning;
               } else {
-                const { error: submissionError } = await supabase
-                  .from("tournament_submission")
-                  .insert({ concept_id: data.concept_id, tournament_id: tId });
+                const tournamentRow = Array.isArray(tRows) ? tRows[0] : tRows;
+                if (tournamentRow.tournament_status !== "stage1") {
+                  warning = `The tournament is not accepting submissions (status: ${tournamentRow.tournament_status}). Your concept has been submitted but it has not been added to the tournament. You can manage your submissions on your profile page.`;
+                } else {
+                  const { error: submissionError } = await supabase
+                    .from("tournament_submission")
+                    .insert({ concept_id: data.concept_id, tournament_id: tId });
 
-                if (submissionError) {
-                  console.log("Error adding tournament submission - ", submissionError.message, "Code", submissionError.code);
-                  warning = `Your concept has been submitted, but it has not been added to the tournament: ${submissionError.message}`;
+                  if (submissionError) {
+                    console.log("Error adding tournament submission - ", submissionError.message, "Code", submissionError.code);
+                    warning = `Your concept has been submitted, but it has not been added to the tournament: ${submissionError.message}`;
+                  }
                 }
               }
             } catch (err) {

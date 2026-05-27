@@ -6,7 +6,7 @@ import BookCard from "./SubmissionBookCard";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-const GridViewPage = () => {
+const GridViewPage = ({ canLike = true }: { canLike?: boolean }) => {
   const { books, setBooks } = useContext(BookContext);
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -43,7 +43,7 @@ const GridViewPage = () => {
           tournamentsub_id={book.tournamentsub_id}
           styling={book.concept_styling}
           isLiked={book.isLiked}
-          showLikeButton={true}
+          showLikeButton={canLike}
         />
       ))}
     </div>

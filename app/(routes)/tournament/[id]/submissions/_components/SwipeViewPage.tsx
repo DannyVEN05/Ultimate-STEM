@@ -11,11 +11,13 @@ import BookCard from "./SubmissionBookCard";
 type SwipeViewProps = {
   showingLiked: boolean;
   onLikedToggle: () => void;
+  canLike?: boolean;
 }
 
 const SwipeViewPage: React.FC<SwipeViewProps> = ({
   showingLiked,
   onLikedToggle,
+  canLike = true,
 }) => {
   const { books } = useContext(BookContext);
   const { user } = useContext(AuthContext);
@@ -52,7 +54,7 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
     if (isProcessing || !currentBook) return;
 
     setFeedback("skip");
-    setCurrentIndex(prev => Math.min(prev + 1, activeBooks.length));
+    setCurrentIndex(prev => Math.min(prev + 1, Math.max(activeBooks.length - 1, 0)));
     window.setTimeout(() => setFeedback(null), 900);
   };
 
@@ -97,33 +99,39 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
         <div className="flex-1 grid grid-cols-3 items-center w-full h-full">
           <div className="flex justify-center gap-4">
             {hasBook ? (
-              <motion.div
-                drag="x"
-                dragConstraints={{ right: 0, left: -100 }}
-                dragSnapToOrigin={true}
-                dragElastic={0.15}
-                onDragEnd={(_event, info) => {
-                  if (isProcessing) return;
+              canLike ? (
+                <motion.div
+                  drag="x"
+                  dragConstraints={{ right: 0, left: -100 }}
+                  dragSnapToOrigin={true}
+                  dragElastic={0.15}
+                  onDragEnd={(_event, info) => {
+                    if (isProcessing) return;
 
-                  if (info.offset.x < -60) {
-                    showingLiked ? handleUnlike() : handleSkip();
-                  }
-                }}
-                className="w-[30%] h-[18dvh] z-10 rounded-full"
-              >
-                <Button
-                  variant="destructive"
-                  disabled={isProcessing}
+                    if (info.offset.x < -60) {
+                      showingLiked ? handleUnlike() : handleSkip();
+                    }
+                  }}
+                  className="w-[30%] h-[18dvh] z-10 rounded-full"
+                >
+                  <Button
+                    variant="destructive"
+                    disabled={isProcessing}
 
-                  // Descriptions to increase accessibility
-                  role="slider"
-                  aria-roledescription="swipe slider"
-                  aria-label={showingLiked ? "Drag left to unlike this book" : "Drag left to skip this book"}
+                    // Descriptions to increase accessibility
+                    role="slider"
+                    aria-roledescription="swipe slider"
+                    aria-label={showingLiked ? "Drag left to unlike this book" : "Drag left to skip this book"}
 
-                  className="w-full h-full rounded-full py-4 text-2xl font-semibold cursor-grab active:cursor-grabbing">
-                  {showingLiked ? "Unlike" : "Skip"}
-                </Button>
-              </motion.div>
+                    className="w-full h-full rounded-full py-4 text-2xl font-semibold cursor-grab active:cursor-grabbing">
+                    {showingLiked ? "Unlike" : "Skip"}
+                  </Button>
+                </motion.div>
+              ) : (
+                <div className="w-[30%] h-[18dvh] flex items-center justify-center">
+                  <Button onClick={() => setCurrentIndex(prev => Math.max(prev - 1, 0))} disabled={currentIndex === 0} className="w-full h-full rounded-full py-4 text-lg font-semibold">Previous</Button>
+                </div>
+              )
             ) : (<></>)}
           </div>
 
@@ -160,33 +168,39 @@ const SwipeViewPage: React.FC<SwipeViewProps> = ({
 
           {hasBook ? (
             <div className="gap-4 flex justify-center">
-              <motion.div
-                drag="x"
-                dragConstraints={{ right: 100, left: 0 }}
-                dragSnapToOrigin={true}
-                dragElastic={0.15}
-                onDragEnd={(_event, info) => {
-                  if (isProcessing) return;
+              {canLike ? (
+                <motion.div
+                  drag="x"
+                  dragConstraints={{ right: 100, left: 0 }}
+                  dragSnapToOrigin={true}
+                  dragElastic={0.15}
+                  onDragEnd={(_event, info) => {
+                    if (isProcessing) return;
 
-                  if (info.offset.x > 60) {
-                    showingLiked ? handleSkip() : handleLike();
+                    if (info.offset.x > 60) {
+                      showingLiked ? handleSkip() : handleLike();
+                    }
+                  }}
+                  className="w-[30%] h-[18dvh] z-10 rounded-full"
+                >
+                  {
+                    <Button
+                      onClick={showingLiked ? handleSkip : handleLike}
+                      variant="secondary"
+                      disabled={isProcessing}
+                      role="slider"
+                      aria-roledescription="swipe slider"
+                      aria-label={showingLiked ? "Drag left to unlike this book" : "Drag left to skip this book"}
+                      className="w-full h-full rounded-full text-2xl font-semibold cursor-grab active:cursor-grabbing bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500">
+                      {showingLiked ? "Skip" : "Like"}
+                    </Button>
                   }
-                }}
-                className="w-[30%] h-[18dvh] z-10 rounded-full"
-              >
-                {(
-                  <Button
-                    onClick={showingLiked ? handleSkip : handleLike}
-                    variant="secondary"
-                    disabled={isProcessing}
-                    role="slider"
-                    aria-roledescription="swipe slider"
-                    aria-label={showingLiked ? "Drag left to unlike this book" : "Drag left to skip this book"}
-                    className="w-full h-full rounded-full text-2xl font-semibold cursor-grab active:cursor-grabbing bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500">
-                    {showingLiked ? "Skip" : "Like"}
-                  </Button>
-                )}
-              </motion.div>
+                </motion.div>
+              ) : (
+                <div className="w-[30%] h-[18dvh] flex items-center justify-center">
+                  <Button onClick={() => setCurrentIndex(prev => Math.min(prev + 1, Math.max(activeBooks.length - 1, 0)))} disabled={currentIndex >= Math.max(activeBooks.length - 1, 0)} className="w-full h-full rounded-full py-4 text-lg font-semibold">Next</Button>
+                </div>
+              )}
             </div>
           ) : (<></>)}
 

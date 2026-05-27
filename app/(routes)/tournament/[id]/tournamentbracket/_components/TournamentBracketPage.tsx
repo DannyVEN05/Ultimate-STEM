@@ -211,12 +211,12 @@ function BracketSVG({
   const r1Count = Math.max(r1Left.length, r1Right.length);
 
   const r1UnitH = MH + VG;
-  const totalH = RL + r1Count * r1UnitH + 80;
+  const totalH = RL + r1Count * r1UnitH + 10;
 
   const sideRounds = totalRounds - 1;
   const sideWidth = sideRounds * (MW + RG);
   const finalX = sideWidth + FG;
-  const totalW = finalX * 2 + MW;
+  const totalW = finalX * 2 + MW - 10;
 
   const pos: Record<number, { x: number; y: number }> = {};
 

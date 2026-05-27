@@ -212,7 +212,7 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
                     <div key={t.tournament_id} className="flex items-center justify-between gap-4 p-3 border rounded-md">
                       <div>
                         <div className="font-semibold">{t.tournament_title}</div>
-                        <div className="text-sm text-muted-foreground">Tournament Status: {t.tournament_status === "1" ? "Stage 1" : "Stage 2"}</div>
+                        <div className="text-sm text-muted-foreground">Tournament Status: {t.tournament_status === "stage1" ? "Stage 1" : "Stage 2"}</div>
                         {submissionStatus && <div className="text-sm">Submission: {submissionStatus}</div>}
                       </div>
                       <div className="flex items-center gap-2">

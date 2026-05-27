@@ -304,7 +304,7 @@ const BookBuilderPage = () => {
               <UsInput multiline={true} placeholder="Enter description..." sizeOptions={{ height: 200, width: 600 }} maxLength={535} value={description} onChange={(e: any) => setDescription(e.target.value)} />
 
               <div className="flex items-center justify-center gap-20 mb-2 mt-8">
-                <Button type="button" onClick={handleSubmit} className="px-10 py-4 text-lg font-bold min-w-[200px]">Submit</Button>
+                <Button type="button" onClick={handleSubmit} size="lg">Submit</Button>
               </div>
             </div>
           </div>

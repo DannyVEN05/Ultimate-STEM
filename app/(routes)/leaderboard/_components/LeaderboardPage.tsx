@@ -56,18 +56,7 @@ const LeaderBoardPage = () => {
             bracket (
               bracket_id,
               bracket_round_number,
-              tournamentsub_id,
-              tournament_submission (
-                tournamentsub_id,
-                tournamentsub_likes,
-                concept (
-                  concept_title,
-                  concept_description,
-                  concept_genre,
-                  concept_styling,
-                  user ( user_firstname, user_lastname )
-                )
-              )
+              tournamentsub_id
             )
           `)
           .eq("tournament_status", "concluded")

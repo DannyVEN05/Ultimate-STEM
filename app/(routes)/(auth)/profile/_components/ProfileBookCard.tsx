@@ -28,16 +28,23 @@ const ProfileBookCard: React.FC<Props> = ({
   };
 
   return (
-    <div className={`flex w-full items-stretch shadow-md border border-gray-200 rounded-lg p-4 gap-4 hover:shadow-xl transition-all hover:bg-secondary/30 ${className}`}>
-      <div className="flex-none w-[40%] bg-white shadow-md border border-gray-200 rounded-lg hover:shadow-xl transform transition hover:-translate-y-1 aspect-[3/4] overflow-hidden">
-        <img src={coverUrl} alt={`${concept.concept_title} Book Cover`} className="h-full w-full object-cover rounded-lg" style={{ width: "100%", height: "100%" }} />
+    <div className={`relative w-full shadow-md border border-gray-200 rounded-lg p-4 hover:shadow-xl transition-all hover:bg-secondary/30 ${className}`}>
+      <div className="w-[40%] bg-white shadow-md border border-gray-200 rounded-lg hover:shadow-xl transform transition hover:-translate-y-1 aspect-[3/4] overflow-hidden">
+        <img src={coverUrl} alt={`${concept.concept_title} Book Cover`} className="h-full w-full object-cover rounded-lg" />
       </div>
-      <div className="flex-1 flex flex-col gap-2 h-full overflow-hidden">
-        <h3 className="text-xl font-bold line-clamp-2">{concept.concept_title}</h3>
-        <p className="text-md text-muted-foreground"><strong>Genre:</strong> {concept.concept_genre}</p>
-        <p className="text-md text-muted-foreground -mb-2"><strong>Description:</strong></p>
-        <div className="overflow-y-auto">
-          <p className="text-md text-muted-foreground line-clamp-6">{concept.concept_description}</p>
+
+      <div className="absolute top-4 bottom-4 right-4" style={{ left: 'calc(40% + 2rem)' }}>
+        <div className="h-full flex flex-col gap-2 overflow-hidden">
+          <div className="overflow-y-auto max-h-14">
+            <h3 className="text-xl font-bold">{concept.concept_title}</h3>
+          </div>
+          <div>
+            <p className="text-md text-muted-foreground"><strong>Genre:</strong> {concept.concept_genre}</p>
+          </div>
+          <p className="text-md text-muted-foreground -mb-2"><strong>Description:</strong></p>
+          <div className="overflow-y-auto flex-1 min-h-0">
+            <p className="text-md text-muted-foreground">{concept.concept_description}</p>
+          </div>
         </div>
       </div>
     </div>

@@ -88,15 +88,17 @@ const BookState = ({ children }: Props) => {
 
     try {
       const { data, error } = await supabase
-        .from("tournament_submission")
-        .select(`
-          *,
-          concept!inner(*),
-          submission_likes!left(user_id)
-        `)
-        .eq("tournament_id", tournament_id)
-        .eq("tournamentsub_status", "approved")
-        .filter("submission_likes.user_id", "eq", user?.user_id || '00000000-0000-0000-0000-000000000000')
+          .from("tournament_submission")
+          .select(`
+            *,
+            concept!inner(*),
+            submission_likes!left(user_id)
+          `)
+          .eq("tournament_id", tournament_id)
+          .eq("tournamentsub_status", "approved")
+          .not("tournamentsub_status", "eq", "deleted")
+          .not("concept.concept_status", "eq", "deleted")
+          .filter("submission_likes.user_id", "eq", user?.user_id || '00000000-0000-0000-0000-000000000000')
 
       if (error) {
         console.warn("Error fetching data: ", error);
@@ -164,7 +166,8 @@ const BookState = ({ children }: Props) => {
       const { data, error } = await supabase
         .from("concept")
         .select("*")
-        .eq("user_id", user.user_id);
+        .eq("user_id", user.user_id)
+        .not("concept_status", "eq", "deleted");
 
       if (error) {
         console.warn("Error fetching user concepts: ", error);

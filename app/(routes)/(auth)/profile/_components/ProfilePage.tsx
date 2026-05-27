@@ -32,6 +32,8 @@ const ProfilePage: React.FC = () => {
   const setUserConceptsRef = useRef(setUserConcepts);
   const router = useRouter();
 
+  const [userTotalWins, setUserTotalWins] = useState<number>(0);
+
   const [editMode, setEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -86,6 +88,49 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     setUserConceptsRef.current = setUserConcepts;
   }, [setUserConcepts]);
+
+  useEffect(() => {
+    if (!user) {
+      setUserTotalWins(0);
+      return;
+    }
+
+    let mounted = true;
+
+    const fetchWins = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("bracket")
+          .select(
+            `
+              bracket_id,
+              tournament_submission!inner (
+                concept!inner ( user_id )
+              )
+            `
+          )
+          .not("tournamentsub_id", "is", null)
+          .eq("tournament_submission.concept.user_id", user.user_id);
+
+        if (error) {
+          console.warn("Error fetching user tournament wins:", error);
+          if (mounted) setUserTotalWins(0);
+          return;
+        }
+
+        if (mounted) setUserTotalWins(data?.length ?? 0);
+      } catch (err) {
+        console.warn("Unexpected error fetching user tournament wins:", err);
+        if (mounted) setUserTotalWins(0);
+      }
+    };
+
+    fetchWins();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
 
   const updateFormField = (field: keyof ProfileFormState, value: string) => {
     setFormState((prev) => ({ ...prev, [field]: value }));
@@ -231,7 +276,7 @@ const ProfilePage: React.FC = () => {
         <div className="flex flex-col flex-1 pl-2">
 
           <div className="flex-[5] my-2 mr-2 ml-2 border border-gray-200 shadow-xs rounded-xl justify-between items-center flex flex-col p-4 bg-gradient-to-b from-secondary/50 to-white hover:from-secondary/70 hover:to-secondary/10 transition-colors hover:shadow-md">
-            <p className="text-sm text-muted-foreground mt-2">User Since {user?.user_created_at?.toLocaleDateString()}</p>
+            <p className="text-sm text-muted-foreground mt-2">User Since {user?.user_created_at ? new Date(user.user_created_at).toLocaleDateString() : ""}</p>
             <Avatar className="h-32 w-32 shadow-md hover:shadow-lg transition-shadow">
               <AvatarImage alt="@username" />
               <AvatarFallback style={{ backgroundColor: "white", fontSize: 24 }}>{user?.user_firstname?.charAt(0)}{user?.user_lastname?.charAt(0)}</AvatarFallback>
@@ -312,19 +357,19 @@ const ProfilePage: React.FC = () => {
 
           <div className="flex flex-1 m-2 gap-4">
             <div className="flex-1 bg-tertiary/20 p-6 shadow-md rounded-xl border-b-4 border-tertiary/50 hover:bg-tertiary/30 transition-colors hover:shadow-xl">
-              <span className="text-xs font-bold uppercase tracking-widest">Global Rank</span>
-              <div className="text-3xl font-headline font-bold mt-1">#1</div>
+              <span className="text-[10px] font-bold uppercase tracking-widest">Total<br />Book<br />Concepts</span>
+              <div className="text-2xl font-headline font-bold mt-1">{userConcepts.length}</div>
             </div>
             <div className="flex-1 bg-primary/20 p-6 shadow-md rounded-xl border-b-4 border-primary/50 hover:bg-primary/30 transition-colors hover:shadow-xl">
-              <span className="text-xs font-bold uppercase tracking-widest">Total Wins</span>
-              <div className="text-3xl font-headline font-bold mt-1">1</div>
+              <span className="text-[10px] font-bold uppercase tracking-widest">Total<br />Tournament<br />Wins</span>
+              <div className="text-2xl font-headline font-bold mt-1">{userTotalWins}</div>
             </div>
           </div>
 
         </div>
 
         <div className="flex-[3] flex flex-col items-center gap-2 min-h-0">
-          <div className={`h-full w-full rounded-lg px-4 grid grid-cols-6 auto-rows-[30%] gap-12 py-2 overflow-y-auto`}>
+          <div className={`h-full w-full rounded-lg px-4 grid grid-cols-6 gap-12 py-2 overflow-y-auto`}>
             {userConcepts.map((concept) => (
               <ProfileBookCard className="col-span-3" key={concept.concept_id} concept={concept} />
             ))}

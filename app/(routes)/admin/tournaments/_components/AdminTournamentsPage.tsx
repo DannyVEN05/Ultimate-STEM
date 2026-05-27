@@ -108,40 +108,69 @@ interface QueueItem {
   category: string;
   status: string;
   likes: number;
+  author?: string;
+  styling?: any;
 }
 
 async function getQueueItems(): Promise<QueueItem[]> {
-  const { data: subs, error: subsError } = await supabase
+  const { data: subs, error } = await supabase
     .from("tournament_submission")
-    .select("tournamentsub_id, tournamentsub_status, tournamentsub_likes, concept_id")
+    .select(`
+      tournamentsub_id,
+      tournamentsub_status,
+      tournamentsub_likes,
+      concept (
+        concept_id,
+        concept_title,
+        concept_genre,
+        concept_styling,
+        user_id,
+        user ( user_firstname, user_lastname )
+      )
+    `)
     .not("tournamentsub_status", "eq", "terminated")
     .not("tournamentsub_status", "eq", "deleted")
     .order("tournamentsub_created_at", { ascending: false });
 
-  if (subsError) throw new Error(subsError.message);
+  if (error) throw new Error(error.message);
   if (!subs || subs.length === 0) return [];
+  // Build fallback users map for any concepts where nested user wasn't returned
+  const missingUserIds = [...new Set((subs as any[])
+    .map((row: any) => (row.concept ?? {}).user_id)
+    .filter(Boolean))];
 
-  const conceptIds = subs.map((s: any) => s.concept_id);
+  let usersMap = new Map<string, { user_firstname?: string; user_lastname?: string }>();
+  if (missingUserIds.length > 0) {
+    const { data: users } = await supabase
+      .from("user")
+      .select("user_id, user_firstname, user_lastname")
+      .in("user_id", missingUserIds);
+    if (users) {
+      usersMap = new Map(users.map((u: any) => [u.user_id, { user_firstname: u.user_firstname, user_lastname: u.user_lastname }]));
+    }
+  }
 
-  const { data: concepts, error: conceptsError } = await supabase
-    .from("concept")
-    .select("concept_id, concept_title, concept_genre")
-    .not("concept_status", "eq", "deleted")
-    .in("concept_id", conceptIds);
+  return (subs as any[]).map((row: any) => {
+    const concept = row.concept ?? {};
+    const rawUser = concept.user ?? {};
+    const nestedUser = Array.isArray(rawUser) ? rawUser[0] ?? null : rawUser || null;
+    let author = "Unknown";
+    if (nestedUser && (nestedUser.user_firstname || nestedUser.user_lastname)) {
+      author = `${nestedUser.user_firstname ?? ""} ${nestedUser.user_lastname ?? ""}`.trim();
+    } else if (concept.user_id && usersMap.has(concept.user_id)) {
+      const u = usersMap.get(concept.user_id)!;
+      author = `${u.user_firstname ?? ""} ${u.user_lastname ?? ""}`.trim();
+    }
 
-  if (conceptsError) throw new Error(conceptsError.message);
-
-  const conceptMap = new Map((concepts ?? []).map((c: any) => [c.concept_id, c]));
-
-  return subs.map((row: any) => {
-    const concept = conceptMap.get(row.concept_id);
     return {
-      id: row.concept_id,
+      id: concept.concept_id ?? row.concept_id,
       submissionId: row.tournamentsub_id,
-      title: concept?.concept_title ?? "Untitled",
-      category: concept?.concept_genre ?? "—",
+      title: concept.concept_title ?? "Untitled",
+      category: concept.concept_genre ?? "—",
       status: (row.tournamentsub_status === "active" || row.tournamentsub_status == null ? "pending" : row.tournamentsub_status),
       likes: row.tournamentsub_likes ?? 0,
+      author,
+      styling: concept.concept_styling ?? null,
     };
   });
 }
@@ -420,7 +449,7 @@ const AdminTournamentsPage = () => {
                     <div key={item.submissionId} className="px-5 py-4">
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#b1b8ca]">{item.category}</p>
                       <p className="mt-1 text-sm font-bold leading-snug text-[#1f2639]">{item.title}</p>
-                      <p className="mt-0.5 text-xs leading-5 text-[#8b92a7]">{item.likes} likes</p>
+                      <p className="mt-0.5 text-xs leading-5 text-[#8b92a7]">{item.author} · {item.likes} likes</p>
                       {queueTab === "pending" && (
                         <div className="mt-3 flex gap-2">
                           <Button

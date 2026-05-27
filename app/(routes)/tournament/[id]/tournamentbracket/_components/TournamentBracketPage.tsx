@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { JSX } from "react";
@@ -8,12 +8,16 @@ import type { JSX } from "react";
 // ----------------------------
 // CONSTANTS
 // ----------------------------
-const MW = 170;
+const MW = 150;
 const MH = 56;
-const RG = 40; // reduced from 60
+const RG = 24;
 const VG = 16;
 const RL = 40;
-const FG = 30; // reduced from 50
+const FG = 20;
+const LABEL_FILL = "#dcfce7";
+const LABEL_STROKE = "#34d399";
+const LABEL_TEXT = "#065f46";
+const CONNECTOR_STROKE = "#000000";
 
 // ----------------------------
 // TYPES
@@ -25,6 +29,10 @@ interface BracketMatch {
   slot: number;
   nameA: string;
   nameB: string;
+  coverA: string | null;
+  coverB: string | null;
+  descA: string | null;
+  descB: string | null;
   status: string;
   side: "left" | "right" | "final";
   indexInRound: number;
@@ -41,9 +49,135 @@ function trunc(s: string | null | undefined, n: number) {
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
 }
 
-function nextPowerOfTwo(n: number) {
-  if (n <= 1) return 1;
-  return Math.pow(2, Math.ceil(Math.log2(n)));
+function getCoverUrl(bookCover: string | null | undefined): string {
+  if (!bookCover) return "/covers/space.jpg";
+  if (bookCover.startsWith("/")) return bookCover;
+  return supabase.storage.from("book-covers").getPublicUrl(bookCover).data.publicUrl;
+}
+
+// ----------------------------
+// TOOLTIP
+// ----------------------------
+function MatchTooltip({
+  match,
+  mouseX,
+  mouseY,
+  containerW,
+}: {
+  match: BracketMatch;
+  mouseX: number;
+  mouseY: number;
+  containerW: number;
+}) {
+  const TOOLTIP_W = 360;
+  const OFFSET = 16;
+
+  // Flip left if tooltip would overflow right edge
+  const left = mouseX + OFFSET + TOOLTIP_W > containerW
+    ? mouseX - TOOLTIP_W - OFFSET
+    : mouseX + OFFSET;
+
+  const top = mouseY - 90;
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left,
+        top,
+        width: TOOLTIP_W,
+        pointerEvents: "none",
+        zIndex: 100,
+      }}
+    >
+      <div style={{
+        background: "#fff",
+        border: "1px solid #e5e7eb",
+        borderRadius: 14,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.16)",
+        padding: "14px 16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+      }}>
+        {/* Header */}
+        <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: 1, textTransform: "uppercase" }}>
+          Match Preview
+        </div>
+
+        {/* Books */}
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          {/* Book A */}
+          <div style={{ flex: 1, display: "flex", gap: 8 }}>
+            <img
+              src={getCoverUrl(match.coverA)}
+              alt={match.nameA}
+              onError={(e) => { (e.target as HTMLImageElement).src = "/covers/space.jpg"; }}
+              style={{ width: 52, height: 70, objectFit: "cover", borderRadius: 6, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}
+            />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", lineHeight: 1.3, marginBottom: 4 }}>
+                {match.nameA || "TBD"}
+              </div>
+              {match.descA && (
+                <div style={{
+                  fontSize: 10, color: "#6b7280", lineHeight: 1.5,
+                  display: "-webkit-box", WebkitLineClamp: 3,
+                  WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}>
+                  {match.descA}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* VS */}
+          <div style={{
+            alignSelf: "center", flexShrink: 0,
+            fontSize: 11, fontWeight: 800, color: "#7c3aed",
+            background: "#f5f3ff", borderRadius: 20, padding: "4px 8px",
+          }}>
+            VS
+          </div>
+
+          {/* Book B */}
+          <div style={{ flex: 1, display: "flex", gap: 8, flexDirection: "row-reverse" }}>
+            <img
+              src={getCoverUrl(match.coverB)}
+              alt={match.nameB}
+              onError={(e) => { (e.target as HTMLImageElement).src = "/covers/space.jpg"; }}
+              style={{ width: 52, height: 70, objectFit: "cover", borderRadius: 6, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}
+            />
+            <div style={{ minWidth: 0, textAlign: "right" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", lineHeight: 1.3, marginBottom: 4 }}>
+                {match.nameB || "TBD"}
+              </div>
+              {match.descB && (
+                <div style={{
+                  fontSize: 10, color: "#6b7280", lineHeight: 1.5,
+                  display: "-webkit-box", WebkitLineClamp: 3,
+                  WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}>
+                  {match.descB}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <span style={{
+            fontSize: 10, fontWeight: 600, padding: "2px 12px", borderRadius: 20,
+            background: match.status === "completed" ? "#dcfce7" : "#fef9c3",
+            color: match.status === "completed" ? "#166534" : "#854d0e",
+          }}>
+            {match.status === "completed" ? "✓ Completed" : "● Active"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ----------------------------
@@ -58,6 +192,17 @@ function BracketSVG({
   totalRounds: number;
   onMatchClick: (m: BracketMatch) => void;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hoveredMatch, setHoveredMatch] = useState<BracketMatch | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [containerW, setContainerW] = useState(0);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      setContainerW(containerRef.current.offsetWidth);
+    }
+  }, [matches]);
+
   if (!matches.length) return null;
 
   const r1Left = matches.filter((m) => m.roundNumber === 1 && m.side === "left");
@@ -74,327 +219,339 @@ function BracketSVG({
 
   const pos: Record<number, { x: number; y: number }> = {};
 
-  // ----------------------------
-  // POSITIONS
-  // ----------------------------
   for (let rIdx = 0; rIdx < sideRounds; rIdx++) {
     const round = rIdx + 1;
-
     const leftMs = matches
       .filter((m) => m.roundNumber === round && m.side === "left")
       .sort((a, b) => a.indexInRound - b.indexInRound);
-
     const rightMs = matches
       .filter((m) => m.roundNumber === round && m.side === "right")
       .sort((a, b) => a.indexInRound - b.indexInRound);
 
     const spacing = r1UnitH * Math.pow(2, rIdx);
-
     const lX = rIdx * (MW + RG);
     const rX = totalW - MW - rIdx * (MW + RG);
-
     const slotsPerSide = Math.max(1, r1Count / Math.pow(2, rIdx));
 
     for (let i = 0; i < slotsPerSide; i++) {
       const cy = RL + i * spacing + spacing / 2;
-
       const lm = leftMs[i];
       const lId = lm ? lm.id : -(round * 1000 + i * 2);
-
       pos[lId] = { x: lX, y: cy - MH / 2 };
 
       const rm = rightMs[i];
       const rId = rm ? rm.id : -(round * 1000 + i * 2 + 1);
-
       pos[rId] = { x: rX, y: cy - MH / 2 };
     }
   }
 
-  // ----------------------------
-  // FINAL POSITION
-  // ----------------------------
+  // Final position — centred vertically
   const finalMatch = matches.find((m) => m.side === "final");
-  const finalSlotId = finalMatch ? finalMatch.id : -9999;
+  const allNonFinal = matches.filter((m) => m.side !== "final");
+  const matchYs = allNonFinal
+    .map((m) => pos[m.id])
+    .filter((p): p is { x: number; y: number } => Boolean(p))
+    .map((p) => p.y);
 
   let finalY = totalH / 2 - MH / 2;
-
-  if (finalMatch) {
-    const semis = matches.filter((m) => m.nextMatchId === finalMatch.id);
-
-    if (semis.length === 2) {
-      const a = pos[semis[0].id];
-      const b = pos[semis[1].id];
-
-      if (a && b) {
-        finalY = ((a.y + MH / 2 + b.y + MH / 2) / 2) - MH / 2;
-      }
-    }
+  if (matchYs.length > 0) {
+    const topY = Math.min(...matchYs);
+    const bottomY = Math.max(...matchYs) + MH;
+    finalY = (topY + bottomY) / 2 - MH / 2;
   }
 
+  const finalSlotId = finalMatch ? finalMatch.id : -9999;
   pos[finalSlotId] = { x: finalX, y: finalY };
 
+  // Build a hit-test map: given mouse x/y in SVG coords, which match is it over?
+  const matchHitAreas = matches.map((m) => ({ m, p: pos[m.id] })).filter(({ p }) => Boolean(p));
+
+  const handleSvgMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const svgX = e.clientX - rect.left;
+    const svgY = e.clientY - rect.top;
+
+    // Check if cursor is inside any match card
+    const hit = matchHitAreas.find(({ p }) =>
+      svgX >= p.x && svgX <= p.x + MW &&
+      svgY >= p.y && svgY <= p.y + MH
+    );
+
+    if (hit) {
+      setHoveredMatch(hit.m);
+      // Mouse position relative to the container div
+      const containerRect = containerRef.current?.getBoundingClientRect();
+      if (containerRect) {
+        setMousePos({
+          x: e.clientX - containerRect.left,
+          y: e.clientY - containerRect.top,
+        });
+      }
+    } else {
+      setHoveredMatch(null);
+    }
+  }, [matchHitAreas]);
+
+  const handleSvgMouseLeave = useCallback(() => {
+    setHoveredMatch(null);
+  }, []);
+
   // ----------------------------
-  // CONNECTOR LINES
+  // CONNECTORS
+  // Draw proper bracket lines: for each pair of siblings, draw
+  //   - a short horizontal stub from each card to a shared vertical spine
+  //   - one vertical spine connecting both stubs
+  //   - a horizontal line from the spine midpoint to the next round card
   // ----------------------------
   const connectors: JSX.Element[] = [];
+  const STUB = 16; // length of horizontal stub from card edge to spine
+  const STROKE = "#c4b5fd"; // subtle purple
+  const SW = 1.5;
 
+  // Group real matches by (side, round), pair them up, draw spines
+  const roundGroups: Record<string, BracketMatch[]> = {};
   matches.forEach((m) => {
-    if (!m.nextMatchId) return;
-
-    const from = pos[m.id];
-    const to = pos[m.nextMatchId];
-
-    if (!from || !to) return;
-
-    const fy = from.y + MH / 2;
-    const ty = to.y + MH / 2;
-
-    if (m.side === "left") {
-      const fx = from.x + MW;
-      const tx = to.x;
-      const mid = (fx + tx) / 2;
-
-      connectors.push(
-        <path
-          key={`conn-${m.id}`}
-          d={`M${fx},${fy} H${mid} V${ty} H${tx}`}
-          fill="none"
-          stroke="#d1d5db"
-          strokeWidth={2}
-          strokeLinecap="round"
-        />
-      );
-    }
-
-    if (m.side === "right") {
-      const fx = from.x;
-      const tx = to.x + MW;
-      const mid = (fx + tx) / 2;
-
-      connectors.push(
-        <path
-          key={`conn-${m.id}`}
-          d={`M${fx},${fy} H${mid} V${ty} H${tx}`}
-          fill="none"
-          stroke="#d1d5db"
-          strokeWidth={2}
-          strokeLinecap="round"
-        />
-      );
-    }
+    if (m.side === "final") return;
+    const key = `${m.side}-${m.roundNumber}`;
+    if (!roundGroups[key]) roundGroups[key] = [];
+    roundGroups[key].push(m);
   });
+
+  // Also handle ghost slots — we need spines for them too
+  // Build a combined slot list per (side, round) mixing real + ghost ids
+  for (let rIdx = 0; rIdx < sideRounds; rIdx++) {
+    const round = rIdx + 1;
+    const slotsPerSide = Math.max(1, r1Count / Math.pow(2, rIdx));
+
+    (["left", "right"] as const).forEach((side) => {
+      const key = `${side}-${round}`;
+      const realMs = (roundGroups[key] ?? []).sort((a, b) => a.indexInRound - b.indexInRound);
+
+      // Get next round's matches on same side for target y
+      const nextRound = round + 1;
+      const nextKey = `${side}-${nextRound}`;
+      const nextMs = (roundGroups[nextKey] ?? []).sort((a, b) => a.indexInRound - b.indexInRound);
+
+      for (let i = 0; i < slotsPerSide; i += 2) {
+        // Top and bottom of the pair
+        const mTop = realMs[i];
+        const mBot = realMs[i + 1];
+
+        const topId = mTop ? mTop.id : -(round * 1000 + i * 2 + (side === "right" ? 1 : 0));
+        const botId = mBot ? mBot.id : -(round * 1000 + (i + 1) * 2 + (side === "right" ? 1 : 0));
+
+        const pTop = pos[topId];
+        const pBot = pos[botId];
+        if (!pTop || !pBot) continue;
+
+        const yTop = pTop.y + MH / 2;
+        const yBot = pBot.y + MH / 2;
+        const yMid = (yTop + yBot) / 2;
+
+        // Resolve next round target position from pos map
+        // (works for real matches, ghost TBD slots, and the final)
+        const pairIndex = Math.floor(i / 2);
+        const nextRealMatch = nextMs[pairIndex];
+        let pTarget: { x: number; y: number } | undefined;
+
+        if (nextRealMatch) {
+          pTarget = pos[nextRealMatch.id];
+        } else if (round + 1 > sideRounds && finalMatch) {
+          pTarget = pos[finalMatch.id];
+        } else {
+          const nr = round + 1;
+          const ghostId = side === "left"
+            ? -(nr * 1000 + pairIndex * 2)
+            : -(nr * 1000 + pairIndex * 2 + 1);
+          pTarget = pos[ghostId];
+        }
+
+        if (side === "left") {
+          const stubX = pTop.x + MW + STUB;
+          const targetX = pTarget ? pTarget.x : stubX;
+
+          // Stub from top card
+          connectors.push(
+            <line key={`stub-top-${topId}`}
+              x1={pTop.x + MW} y1={yTop} x2={stubX} y2={yTop}
+              stroke={STROKE} strokeWidth={SW} />
+          );
+          // Stub from bottom card
+          connectors.push(
+            <line key={`stub-bot-${botId}`}
+              x1={pBot.x + MW} y1={yBot} x2={stubX} y2={yBot}
+              stroke={STROKE} strokeWidth={SW} />
+          );
+          // Vertical spine
+          connectors.push(
+            <line key={`spine-${topId}-${botId}`}
+              x1={stubX} y1={yTop} x2={stubX} y2={yBot}
+              stroke={STROKE} strokeWidth={SW} />
+          );
+          // Horizontal to next match
+          if (pTarget) {
+            connectors.push(
+              <line key={`horiz-${topId}`}
+                x1={stubX} y1={yMid} x2={targetX} y2={yMid}
+                stroke={STROKE} strokeWidth={SW} />
+            );
+          }
+        } else {
+          const stubX = pTop.x - STUB; // vertical spine x (left of card)
+          const targetX = pTarget ? pTarget.x + MW : stubX;
+
+          // Stub from top card
+          connectors.push(
+            <line key={`stub-top-${topId}`}
+              x1={pTop.x} y1={yTop} x2={stubX} y2={yTop}
+              stroke={STROKE} strokeWidth={SW} />
+          );
+          // Stub from bottom card
+          connectors.push(
+            <line key={`stub-bot-${botId}`}
+              x1={pBot.x} y1={yBot} x2={stubX} y2={yBot}
+              stroke={STROKE} strokeWidth={SW} />
+          );
+          // Vertical spine
+          connectors.push(
+            <line key={`spine-${topId}-${botId}`}
+              x1={stubX} y1={yTop} x2={stubX} y2={yBot}
+              stroke={STROKE} strokeWidth={SW} />
+          );
+          // Horizontal to next match
+          if (pTarget) {
+            connectors.push(
+              <line key={`horiz-${topId}`}
+                x1={stubX} y1={yMid} x2={targetX} y2={yMid}
+                stroke={STROKE} strokeWidth={SW} />
+            );
+          }
+        }
+      }
+    });
+  }
 
   // ----------------------------
   // ROUND LABELS
   // ----------------------------
   const labels: JSX.Element[] = [];
-
-  const roundNames = [
-    "Round of 32",
-    "Round of 16",
-    "Quarterfinals",
-    "Semifinals",
-    "Final",
-  ];
+  const roundNames = ["Round of 32", "Round of 16", "Quarterfinals", "Semifinals"];
 
   for (let rIdx = 0; rIdx < sideRounds; rIdx++) {
-    const round = rIdx + 1;
-    const label = roundNames[rIdx] ?? `Round ${round}`;
-
+    const label = roundNames[roundNames.length - sideRounds + rIdx] ?? `Round of ${2 ** (sideRounds - rIdx + 1)}`;
     const lX = rIdx * (MW + RG) + MW / 2;
     const rX = totalW - rIdx * (MW + RG) - MW / 2;
+    const badgeWidth = MW * 0.78;
+    const badgeHeight = 28;
+    const badgeY = 8;
 
     labels.push(
-      <text
-        key={`ll-${round}`}
-        x={lX}
-        y={RL - 8}
-        textAnchor="middle"
-        fontSize={11}
-        fill="#6b7280"
-        fontWeight={600}
-      >
-        {label}
-      </text>
+      <g key={`ll-${rIdx}`}>
+        <rect x={lX - badgeWidth / 2} y={badgeY} width={badgeWidth} height={badgeHeight} rx={badgeHeight / 2}
+          fill={LABEL_FILL} stroke={LABEL_STROKE} strokeWidth={1} />
+        <text x={lX} y={badgeY + badgeHeight / 2 + 4} textAnchor="middle" fontSize={12} fill={LABEL_TEXT} fontWeight={700}>
+          {label}
+        </text>
+      </g>
     );
-
     labels.push(
-      <text
-        key={`rl-${round}`}
-        x={rX}
-        y={RL - 8}
-        textAnchor="middle"
-        fontSize={11}
-        fill="#6b7280"
-        fontWeight={600}
-      >
-        {label}
-      </text>
+      <g key={`rl-${rIdx}`}>
+        <rect x={rX - badgeWidth / 2} y={badgeY} width={badgeWidth} height={badgeHeight} rx={badgeHeight / 2}
+          fill={LABEL_FILL} stroke={LABEL_STROKE} strokeWidth={1} />
+        <text x={rX} y={badgeY + badgeHeight / 2 + 4} textAnchor="middle" fontSize={12} fill={LABEL_TEXT} fontWeight={700}>
+          {label}
+        </text>
+      </g>
     );
   }
 
   labels.push(
-    <text
-      key="final-label"
-      x={finalX + MW / 2}
-      y={RL - 8}
-      textAnchor="middle"
-      fontSize={11}
-      fill="#6b7280"
-      fontWeight={600}
-    >
-      Final
-    </text>
+    <g key="final-label">
+      <rect x={finalX + MW / 2 - 75} y={8} width={150} height={30} rx={15}
+        fill={LABEL_FILL} stroke={LABEL_STROKE} strokeWidth={1} />
+      <text x={finalX + MW / 2} y={8 + 30 / 2 + 4} textAnchor="middle" fontSize={13} fill={LABEL_TEXT} fontWeight={700}>
+        Final
+      </text>
+    </g>
   );
 
   // ----------------------------
   // MATCH CARDS
   // ----------------------------
   const cards: JSX.Element[] = [];
+  const realIds = new Set(matches.map((m) => m.id));
 
-  // Real matches
   matches.forEach((m) => {
     const p = pos[m.id];
     if (!p) return;
-
     const isCompleted = m.status === "completed";
+    const isHovered = hoveredMatch?.id === m.id;
 
     cards.push(
       <g key={m.id} onClick={() => onMatchClick(m)} style={{ cursor: "pointer" }}>
-        <rect
-          x={p.x + 2}
-          y={p.y + 2}
-          width={MW}
-          height={MH}
-          rx={6}
-          fill="#00000015"
-        />
-
-        <rect
-          x={p.x}
-          y={p.y}
-          width={MW}
-          height={MH}
-          rx={6}
-          fill="#ffffff"
-          stroke="#e5e7eb"
-          strokeWidth={1}
-        />
-
-        <line
-          x1={p.x + 1}
-          y1={p.y + MH / 2}
-          x2={p.x + MW - 1}
-          y2={p.y + MH / 2}
-          stroke="#f3f4f6"
-          strokeWidth={1}
-        />
-
-        <text
-          x={p.x + 10}
-          y={p.y + MH / 4 + 4}
-          fontSize={11}
-          fill="#1a1a1a"
-          fontFamily="sans-serif"
-        >
+        <rect x={p.x + 2} y={p.y + 2} width={MW} height={MH} rx={6} fill="#00000015" />
+        <rect x={p.x} y={p.y} width={MW} height={MH} rx={6}
+          fill={isHovered ? "#faf5ff" : "#ffffff"}
+          stroke={isHovered ? "#7c3aed" : "#e5e7eb"}
+          strokeWidth={isHovered ? 2 : 1} />
+        <line x1={p.x + 1} y1={p.y + MH / 2} x2={p.x + MW - 1} y2={p.y + MH / 2} stroke="#f3f4f6" strokeWidth={1} />
+        <text x={p.x + 10} y={p.y + MH / 4 + 4} fontSize={11} fill="#1a1a1a" fontFamily="sans-serif">
           {trunc(m.nameA, 22)}
         </text>
-
-        <text
-          x={p.x + 10}
-          y={p.y + (MH * 3) / 4 + 4}
-          fontSize={11}
-          fill="#1a1a1a"
-          fontFamily="sans-serif"
-        >
+        <text x={p.x + 10} y={p.y + (MH * 3) / 4 + 4} fontSize={11} fill="#1a1a1a" fontFamily="sans-serif">
           {trunc(m.nameB, 22)}
         </text>
-
         {isCompleted && (
-          <circle
-            cx={p.x + MW - 10}
-            cy={p.y + MH / 2}
-            r={4}
-            fill="#22c55e"
-          />
+          <circle cx={p.x + MW - 10} cy={p.y + MH / 2} r={4} fill="#22c55e" />
         )}
       </g>
     );
   });
 
-  // Ghost/TBD matches
-  const realIds = new Set(matches.map((m) => m.id));
-
+  // Ghost TBD slots
   Object.entries(pos).forEach(([idStr, p]) => {
     const id = Number(idStr);
-
     if (realIds.has(id)) return;
-
     cards.push(
       <g key={`ghost-${id}`}>
-        <rect
-          x={p.x + 2}
-          y={p.y + 2}
-          width={MW}
-          height={MH}
-          rx={6}
-          fill="#00000008"
-        />
-
-        <rect
-          x={p.x}
-          y={p.y}
-          width={MW}
-          height={MH}
-          rx={6}
-          fill="#fafafa"
-          stroke="#d1d5db"
-          strokeWidth={1}
-          strokeDasharray="4 3"
-        />
-
-        <line
-          x1={p.x + 1}
-          y1={p.y + MH / 2}
-          x2={p.x + MW - 1}
-          y2={p.y + MH / 2}
-          stroke="#f3f4f6"
-          strokeWidth={1}
-        />
-
-        <text
-          x={p.x + MW / 2}
-          y={p.y + MH / 4 + 4}
-          fontSize={10}
-          fill="#cbd5e1"
-          textAnchor="middle"
-          fontFamily="sans-serif"
-        >
-          TBD
-        </text>
-
-        <text
-          x={p.x + MW / 2}
-          y={p.y + (MH * 3) / 4 + 4}
-          fontSize={10}
-          fill="#cbd5e1"
-          textAnchor="middle"
-          fontFamily="sans-serif"
-        >
-          TBD
-        </text>
+        <rect x={p.x + 2} y={p.y + 2} width={MW} height={MH} rx={6} fill="#00000008" />
+        <rect x={p.x} y={p.y} width={MW} height={MH} rx={6}
+          fill="#fafafa" stroke="#d1d5db" strokeWidth={1} strokeDasharray="4 3" />
+        <line x1={p.x + 1} y1={p.y + MH / 2} x2={p.x + MW - 1} y2={p.y + MH / 2} stroke="#f3f4f6" strokeWidth={1} />
+        <text x={p.x + MW / 2} y={p.y + MH / 4 + 4} fontSize={10} fill="#cbd5e1" textAnchor="middle" fontFamily="sans-serif">TBD</text>
+        <text x={p.x + MW / 2} y={p.y + (MH * 3) / 4 + 4} fontSize={10} fill="#cbd5e1" textAnchor="middle" fontFamily="sans-serif">TBD</text>
       </g>
     );
   });
 
   return (
     <div className="overflow-auto">
-      <div className="inline-block rounded-2xl border border-gray-200 bg-white shadow-lg p-6">
-        <svg width={totalW} height={totalH} style={{ display: "block" }}>
+      <div
+        ref={containerRef}
+        className="inline-block rounded-2xl border border-gray-200 bg-white shadow-lg p-6"
+        style={{ position: "relative" }}
+      >
+        <svg
+          width={totalW}
+          height={totalH}
+          style={{ display: "block" }}
+          onMouseMove={handleSvgMouseMove}
+          onMouseLeave={handleSvgMouseLeave}
+        >
           {labels}
           {connectors}
           {cards}
         </svg>
+
+        {hoveredMatch && (
+          <MatchTooltip
+            match={hoveredMatch}
+            mouseX={mousePos.x}
+            mouseY={mousePos.y}
+            containerW={containerW}
+          />
+        )}
       </div>
     </div>
   );
@@ -456,15 +613,22 @@ export default function TournamentBracketPage({
           ),
         ];
 
-        // 4. Resolve submission → concept name
+        // 4. Resolve submission → concept (name, cover, description)
         const { data: subs } = await supabase
           .from("tournament_submission")
-          .select("tournamentsub_id, concept(concept_title)")
+          .select("tournamentsub_id, concept(concept_title, concept_description, concept_styling)")
           .in("tournamentsub_id", subIds);
 
         const nameMap: Record<string, string> = {};
+        const coverMap: Record<string, string | null> = {};
+        const descMap: Record<string, string | null> = {};
+
         (subs ?? []).forEach((s: any) => {
-          nameMap[s.tournamentsub_id] = s.concept?.concept_title ?? "TBD";
+          const c = s.concept;
+          if (!c) return;
+          nameMap[s.tournamentsub_id] = c.concept_title ?? "TBD";
+          descMap[s.tournamentsub_id] = c.concept_description ?? null;
+          coverMap[s.tournamentsub_id] = c.concept_styling?.book_cover ?? null;
         });
 
         // 5. Sort by round then slot
@@ -476,7 +640,7 @@ export default function TournamentBracketPage({
           return ar !== br ? ar - br : as - bs;
         });
 
-        // 6. Determine total rounds from round 1 match count
+        // 6. Total rounds from round 1 count
         const r1Count = sorted.filter((m) => (m.bmatch_index?.round ?? 1) === 1).length;
         const computedTotalRounds = Math.max(1, Math.round(Math.log2(r1Count * 2)));
         setTotalRounds(computedTotalRounds);
@@ -524,6 +688,10 @@ export default function TournamentBracketPage({
             slot: m.bmatch_index?.slot ?? 1,
             nameA: nameMap[m.bmatch_submission_a] ?? "TBD",
             nameB: nameMap[m.bmatch_submission_b] ?? "TBD",
+            coverA: coverMap[m.bmatch_submission_a] ?? null,
+            coverB: coverMap[m.bmatch_submission_b] ?? null,
+            descA: descMap[m.bmatch_submission_a] ?? null,
+            descB: descMap[m.bmatch_submission_b] ?? null,
             status: m.bmatch_status ?? "active",
             side,
             indexInRound,
@@ -532,8 +700,6 @@ export default function TournamentBracketPage({
             tournamentSubBId: m.bmatch_submission_b ?? "",
           };
         });
-
-        setMatches(built);
 
         setMatches(built);
       } catch (err) {

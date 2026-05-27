@@ -27,63 +27,73 @@ import ReviewModal, {
 } from "./ReviewModal";
 
 async function fetchSubmissions(): Promise<Submission[]> {
-  const { data: subs, error: subsError } = await supabase
+  const { data: subs, error } = await supabase
     .from("tournament_submission")
-    .select("tournamentsub_id, tournamentsub_status, tournamentsub_likes, tournamentsub_created_at, concept_id, tournament_id")
+    .select(`
+      tournamentsub_id,
+      tournamentsub_status,
+      tournamentsub_likes,
+      tournamentsub_created_at,
+      tournament ( tournament_id, tournament_title ),
+      concept (
+        concept_id,
+        concept_title,
+        concept_description,
+        concept_genre,
+        concept_styling,
+        user_id,
+        user ( user_id, user_firstname, user_lastname )
+      )
+    `)
     .not("tournamentsub_status", "eq", "deleted")
     .order("tournamentsub_created_at", { ascending: false });
 
-  if (subsError) throw new Error(subsError.message);
+  if (error) throw new Error(error.message);
   if (!subs || subs.length === 0) return [];
+  // Collect any concept.user_id values where the nested `user` object wasn't returned
+  const missingUserIds = [...new Set((subs as any[])
+    .map((row: any) => (row.concept ?? {}).user_id)
+    .filter(Boolean))];
 
-  const conceptIds = [...new Set(subs.map((s: any) => s.concept_id))];
-  const tournamentIds = [...new Set(subs.map((s: any) => s.tournament_id))];
-
-  const [{ data: concepts, error: conceptsError }, { data: tournaments, error: tournamentsError }] = await Promise.all([
-    supabase
-      .from("concept")
-      .select("concept_id, concept_title, concept_description, concept_genre, user_id")
-      .not("concept_status", "eq", "deleted")
-      .in("concept_id", conceptIds),
-    supabase
-      .from("tournament")
-      .select("tournament_id, tournament_title")
-      .in("tournament_id", tournamentIds),
-  ]);
-
-  if (conceptsError) throw new Error(conceptsError.message);
-  if (tournamentsError) throw new Error(tournamentsError.message);
-
-  const userIds = [...new Set((concepts ?? []).map((c: any) => c.user_id).filter(Boolean))];
-  let usersMap = new Map<string, string>();
-  if (userIds.length > 0) {
+  let usersMap = new Map<string, { user_firstname?: string; user_lastname?: string }>();
+  if (missingUserIds.length > 0) {
     const { data: users } = await supabase
       .from("user")
       .select("user_id, user_firstname, user_lastname")
-      .in("user_id", userIds);
+      .in("user_id", missingUserIds);
     if (users) {
-      usersMap = new Map(users.map((u: any) => [u.user_id, `${u.user_firstname} ${u.user_lastname}`.trim()]));
+      usersMap = new Map(users.map((u: any) => [u.user_id, { user_firstname: u.user_firstname, user_lastname: u.user_lastname }]));
     }
   }
 
-  const conceptMap = new Map((concepts ?? []).map((c: any) => [c.concept_id, c]));
-  const tournamentMap = new Map((tournaments ?? []).map((t: any) => [t.tournament_id, t]));
+  return (subs as any[]).map((row: any) => {
+    const concept = row.concept ?? {};
+    const tournament = row.tournament ?? {};
+    // `concept.user` may be an object or an array depending on the relationship shape
+    const rawUser = concept.user ?? {};
+    const nestedUser = Array.isArray(rawUser) ? rawUser[0] ?? null : rawUser || null;
 
-  return subs.map((row: any) => {
-    const concept = conceptMap.get(row.concept_id);
-    const tournament = tournamentMap.get(row.tournament_id);
+    let author = "Unknown";
+    if (nestedUser && (nestedUser.user_firstname || nestedUser.user_lastname)) {
+      author = `${nestedUser.user_firstname ?? ""} ${nestedUser.user_lastname ?? ""}`.trim();
+    } else if (concept.user_id && usersMap.has(concept.user_id)) {
+      const u = usersMap.get(concept.user_id)!;
+      author = `${u.user_firstname ?? ""} ${u.user_lastname ?? ""}`.trim();
+    }
+
     return {
       submissionId: row.tournamentsub_id,
-      conceptId: row.concept_id,
-      author: usersMap.get(concept?.user_id) ?? "Unknown",
-      tournament: tournament?.tournament_title ?? "Unknown Tournament",
-      title: concept?.concept_title ?? "Untitled",
-      category: concept?.concept_genre ?? "—",
-      description: concept?.concept_description ?? "",
+      conceptId: concept.concept_id ?? row.concept_id,
+      author,
+      tournament: tournament.tournament_title ?? "Unknown Tournament",
+      title: concept.concept_title ?? "Untitled",
+      category: concept.concept_genre ?? "—",
+      description: concept.concept_description ?? "",
       submittedAt: row.tournamentsub_created_at?.slice(0, 10) ?? "",
       status: (row.tournamentsub_status === "active" || row.tournamentsub_status == null ? "pending" : row.tournamentsub_status) as SubmissionStatus,
       likes: row.tournamentsub_likes ?? 0,
-    };
+      styling: concept.concept_styling ?? null,
+    } as Submission;
   });
 }
 

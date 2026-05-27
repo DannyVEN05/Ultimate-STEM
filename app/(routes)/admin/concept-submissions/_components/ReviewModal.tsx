@@ -7,6 +7,7 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
 
@@ -23,9 +24,11 @@ export interface Submission {
   submittedAt: string;
   status: SubmissionStatus;
   likes: number;
+  styling?: any;
 }
 
 import { profanity } from "@2toad/profanity";
+import { supabase } from "@/lib/supabase";
 
 export function detectBadWords(text: string): string[] {
   const words = text.toLowerCase().match(/\b[a-z]+\b/g) ?? [];
@@ -47,6 +50,18 @@ export function highlightBadWords(text: string, flags: string[]): React.ReactNod
       part
     )
   );
+}
+
+function parseStyling(styling: any): string | null {
+  if (!styling) return null;
+  try {
+    const data = typeof styling === "string" ? JSON.parse(styling) : styling;
+    return data?.book_cover ?? data?.bookCover ?? data?.cover ?? null;
+  } catch (err) {
+    // if styling is a plain string that isn't JSON, assume it might be a URL
+    if (typeof styling === "string") return styling;
+    return null;
+  }
 }
 
 export const statusConfig: Record<SubmissionStatus, { label: string; className: string; icon: React.ReactNode }> = {
@@ -104,6 +119,9 @@ export default function ReviewModal({ submission, onClose, onAction }: ReviewMod
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-2xl border-0 shadow-xl">
         <DialogTitle className="sr-only">{submission.title}</DialogTitle>
+        <DialogDescription className="sr-only">
+          Review submission by {submission.author}. Approve or reject this submission.
+        </DialogDescription>
 
         {/* BookCard-style two-column layout */}
         <div className="relative flex gap-5 bg-white border border-gray-200 rounded-2xl p-5 shadow-md hover:shadow-xl transition-all">
@@ -111,7 +129,27 @@ export default function ReviewModal({ submission, onClose, onAction }: ReviewMod
           {/* Left — cover placeholder (mirrors BookCard's left flex-1) */}
           <div className="w-[150px] shrink-0 bg-white shadow-md border border-gray-200 rounded-xl flex flex-col items-center justify-between p-4 hover:shadow-xl transition-shadow transform hover:-translate-y-0.5">
             <div className="flex-1 flex items-center justify-center w-full">
-              <BookOpen className="h-14 w-14 text-gray-200" />
+              {(() => {
+                const raw = parseStyling((submission as any).styling);
+                const fallback = "/covers/engineering.png";
+                if (!raw) return <BookOpen className="h-14 w-14 text-gray-200" />;
+                // If it's an absolute URL or local path, use directly. Otherwise, try Supabase storage.
+                const isLocalPath = raw.startsWith("/");
+                const isAbsoluteUrl = /^(https?:)?\/\//.test(raw);
+                let coverUrl = fallback;
+                if (isLocalPath || isAbsoluteUrl) {
+                  coverUrl = raw;
+                } else {
+                  const { data } = supabase.storage.from("book-covers").getPublicUrl(raw);
+                  coverUrl = data?.publicUrl ?? fallback;
+                }
+
+                return (
+                  <div className="w-full aspect-[3/4] overflow-hidden rounded-xl">
+                    <img src={coverUrl} alt={submission.title} className="w-full h-full object-cover" />
+                  </div>
+                );
+              })()}
             </div>
             <div className="text-center mt-3 w-full">
               <p className="text-[10px] font-black uppercase tracking-widest text-[#9aa0b8] truncate">{submission.category}</p>

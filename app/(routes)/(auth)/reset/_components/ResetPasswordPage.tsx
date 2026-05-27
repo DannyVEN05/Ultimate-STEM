@@ -222,7 +222,7 @@ const ResetPasswordPage: React.FC = () => {
 
             <div className="col-span-2">
               <UsButton
-                variant="blue"
+                variant="primary"
                 className="w-full"
                 type="submit"
                 disabled={isSubmitting}

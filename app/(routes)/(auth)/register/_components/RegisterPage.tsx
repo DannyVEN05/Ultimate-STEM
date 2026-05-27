@@ -259,7 +259,7 @@ const RegisterPage: React.FC = () => {
 
           <div className="col-span-2 mt-4">
             <UsButton
-              variant="blue"
+              variant="primary"
               className="w-full"
               type="submit"
               disabled={isFormDisabled}
@@ -339,7 +339,7 @@ const RegisterPage: React.FC = () => {
                   No, I will use a different email
                 </UsButton>
                 <UsButton
-                  variant="blue"
+                  variant="primary"
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => setReactivateStep("confirm")}
@@ -362,7 +362,7 @@ const RegisterPage: React.FC = () => {
                   Back
                 </UsButton>
                 <UsButton
-                  variant="blue"
+                  variant="primary"
                   type="button"
                   disabled={isSubmitting}
                   onClick={onConfirmReactivate}

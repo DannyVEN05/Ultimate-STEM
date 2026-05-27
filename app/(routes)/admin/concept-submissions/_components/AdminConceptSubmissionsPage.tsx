@@ -30,6 +30,7 @@ async function fetchSubmissions(): Promise<Submission[]> {
   const { data: subs, error: subsError } = await supabase
     .from("tournament_submission")
     .select("tournamentsub_id, tournamentsub_status, tournamentsub_likes, tournamentsub_created_at, concept_id, tournament_id")
+    .not("tournamentsub_status", "eq", "deleted")
     .order("tournamentsub_created_at", { ascending: false });
 
   if (subsError) throw new Error(subsError.message);
@@ -42,6 +43,7 @@ async function fetchSubmissions(): Promise<Submission[]> {
     supabase
       .from("concept")
       .select("concept_id, concept_title, concept_description, concept_genre, user_id")
+      .not("concept_status", "eq", "deleted")
       .in("concept_id", conceptIds),
     supabase
       .from("tournament")

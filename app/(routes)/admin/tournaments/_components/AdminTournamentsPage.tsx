@@ -46,6 +46,7 @@ async function getTournaments(): Promise<Tournament[]> {
     .select("tournament_id, tournament_title, tournament_genre, tournament_start_date, tournament_s2_start_date, tournament_end_date, tournament_user_limit, tournament_status, tournament_submission(count)")
     .not("tournament_submission.tournamentsub_status", "eq", "terminated")
     .not("tournament_submission.tournamentsub_status", "eq", "rejected")
+    .not("tournament_submission.tournamentsub_status", "eq", "deleted")
     .order("tournament_start_date", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -114,6 +115,7 @@ async function getQueueItems(): Promise<QueueItem[]> {
     .from("tournament_submission")
     .select("tournamentsub_id, tournamentsub_status, tournamentsub_likes, concept_id")
     .not("tournamentsub_status", "eq", "terminated")
+    .not("tournamentsub_status", "eq", "deleted")
     .order("tournamentsub_created_at", { ascending: false });
 
   if (subsError) throw new Error(subsError.message);
@@ -124,6 +126,7 @@ async function getQueueItems(): Promise<QueueItem[]> {
   const { data: concepts, error: conceptsError } = await supabase
     .from("concept")
     .select("concept_id, concept_title, concept_genre")
+    .not("concept_status", "eq", "deleted")
     .in("concept_id", conceptIds);
 
   if (conceptsError) throw new Error(conceptsError.message);

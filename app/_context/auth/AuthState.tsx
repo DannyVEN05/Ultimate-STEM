@@ -19,8 +19,6 @@ export type SignUpData = {
   password: string;
   user_firstname: string;
   user_lastname: string;
-  user_phone_number: string;
-  user_dob: string;
 };
 
 export type ReactivateProfileData = Omit<SignUpData, "password">;
@@ -34,8 +32,6 @@ type DbUserRow = {
   user_firstname: string;
   user_lastname: string;
   user_email: string;
-  user_phone_number: string;
-  user_dob: string | null;
   user_created_at: string | null;
   user_role: string;
 };
@@ -56,8 +52,6 @@ const AuthState = ({ children }: Props) => {
       u.user_firstname,
       u.user_lastname,
       u.user_email,
-      u.user_phone_number,
-      u.user_dob ? new Date(u.user_dob) : null,
       u.user_created_at ? new Date(u.user_created_at) : new Date(),
       u.user_role
     );
@@ -174,8 +168,6 @@ const AuthState = ({ children }: Props) => {
           data: {
             user_firstname: signUpData.user_firstname.trim(),
             user_lastname: signUpData.user_lastname.trim(),
-            user_phone_number: signUpData.user_phone_number.trim(),
-            user_dob: signUpData.user_dob.trim(),
           },
           emailRedirectTo,
         },
@@ -230,8 +222,6 @@ const AuthState = ({ children }: Props) => {
         user_firstname: signUpData.user_firstname.trim(),
         user_lastname: signUpData.user_lastname.trim(),
         user_email: email,
-        user_phone_number: signUpData.user_phone_number.trim(),
-        user_dob: signUpData.user_dob.trim(),
         user_role: "user",
       };
 
@@ -239,8 +229,6 @@ const AuthState = ({ children }: Props) => {
         data: {
           user_firstname: profilePayload.user_firstname,
           user_lastname: profilePayload.user_lastname,
-          user_phone_number: profilePayload.user_phone_number,
-          user_dob: profilePayload.user_dob,
         },
       });
 
@@ -341,25 +329,35 @@ const AuthState = ({ children }: Props) => {
         user_firstname: newUserData.user_firstname.trim(),
         user_lastname: newUserData.user_lastname.trim(),
         user_email: newUserData.user_email.trim(),
-        user_phone_number: newUserData.user_phone_number.trim(),
-        user_dob: newUserData.user_dob ? newUserData.user_dob.toISOString().slice(0, 10) : null,
       };
 
+      // Detect whether the email is actually changing (case-insensitive)
+      const currentEmail = state.user?.user_email ?? "";
+      const emailChanged = profilePayload.user_email.toLowerCase() !== currentEmail.toLowerCase();
+
+      // Update the auth user (this will send a confirmation link if the email changed)
       const { error: authError } = await supabase.auth.updateUser({
         email: profilePayload.user_email,
         data: {
           user_firstname: profilePayload.user_firstname,
           user_lastname: profilePayload.user_lastname,
-          user_phone_number: profilePayload.user_phone_number,
-          user_dob: profilePayload.user_dob,
         },
       });
 
       if (authError) return authError.message ?? String(authError);
 
+      // Update the public profile table. Only update the email in the public
+      // table if it did not change (i.e. no confirmation required). If the
+      // email did change, we wait until the user confirms via the link.
+      const dbPayload: Partial<DbUserRow> = {
+        user_firstname: profilePayload.user_firstname,
+        user_lastname: profilePayload.user_lastname,
+      };
+      if (!emailChanged) dbPayload.user_email = profilePayload.user_email;
+
       const { data: updatedProfile, error: profileError } = await supabase
         .from("user")
-        .update(profilePayload)
+        .update(dbPayload)
         .eq("user_id", authenticatedUserId)
         .select("*")
         .single();
@@ -367,6 +365,7 @@ const AuthState = ({ children }: Props) => {
       if (profileError) return profileError.message ?? String(profileError);
 
       dispatch({ type: AuthActionKind.SET_USER, payload: mapToAppUser(updatedProfile) });
+
       return null;
     } catch (err) {
       return err instanceof Error ? err.message : String(err);

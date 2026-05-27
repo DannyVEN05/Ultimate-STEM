@@ -31,67 +31,109 @@ const LeaderBoardPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("tournament")
-      .select(`
-        tournament_id,
-        tournament_title,
-        tournament_genre,
-        tournament_end_date,
-        tournament_submission (
-          tournamentsub_id,
-          tournamentsub_likes,
-          concept (
-            concept_title,
-            concept_description,
-            concept_genre,
-            concept_styling,
-            user ( user_firstname, user_lastname )
-          )
-        )
-      `)
-      .eq("tournament_status", "concluded")
-      .eq("tournament_submission.tournamentsub_status", "approved")
-      .order("tournament_end_date", { ascending: false })
-      .then(({ data, error: err }) => {
-        if (err) { setError(err.message); }
-        else if (data) {
-          const formatted = data.map((row: any) => {
-            const submissions = row.tournament_submission || [];
+    let mounted = true;
 
-            // Select the submission with the most likes without mutating the array
-            const winner = submissions.reduce((currentWinner: any, submission: any) => {
+    const fetchTournaments = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("tournament")
+          .select(`
+            tournament_id,
+            tournament_title,
+            tournament_genre,
+            tournament_end_date,
+            tournament_submission (
+              tournamentsub_id,
+              tournamentsub_likes,
+              concept (
+                concept_title,
+                concept_description,
+                concept_genre,
+                concept_styling,
+                user ( user_firstname, user_lastname )
+              )
+            ),
+            bracket (
+              bracket_id,
+              bracket_round_number,
+              tournamentsub_id,
+              tournament_submission (
+                tournamentsub_id,
+                tournamentsub_likes,
+                concept (
+                  concept_title,
+                  concept_description,
+                  concept_genre,
+                  concept_styling,
+                  user ( user_firstname, user_lastname )
+                )
+              )
+            )
+          `)
+          .eq("tournament_status", "concluded")
+          .eq("tournament_submission.tournamentsub_status", "approved")
+          .neq("tournament_submission.concept.concept_status", "deleted")
+          .neq("bracket.tournament_submission.tournamentsub_status", "deleted")
+          .neq("bracket.tournament_submission.concept.concept_status", "deleted")
+          .order("tournament_end_date", { ascending: false });
+
+        if (error) {
+          if (mounted) setError(error.message);
+          return;
+        }
+
+        if (!data || !mounted) return;
+
+        const formatted = data.map((row: any) => {
+          const submissions = row.tournament_submission || [];
+          const brackets = row.bracket || [];
+
+          // Directly extract the winner object from your 1-to-1 bracket relationship
+          let winner: any = brackets[0]?.tournament_submission ?? null;
+
+          // Fallback: pick most-liked submission if bracket winner is not set yet
+          if (!winner) {
+            winner = submissions.reduce((currentWinner: any, submission: any) => {
               const currentWinnerLikes = currentWinner?.tournamentsub_likes || 0;
               const submissionLikes = submission?.tournamentsub_likes || 0;
-
               return submissionLikes > currentWinnerLikes ? submission : currentWinner;
             }, null);
+          }
 
-            //needed to get the winner name from their book submissions (concepts) based on howmuch likes they gotten on their book sub
-            return {
-              id: String(row.tournament_id),
-              title: row.tournament_title,
-              category: row.tournament_genre ?? "",
-              endDate: row.tournament_end_date ?? "",
-              winnerName: winner
-                ? `${winner.concept?.user?.user_firstname ?? ""} ${winner.concept?.user?.user_lastname ?? ""}`
-                : "No winner",
-              winnerConcept: winner?.concept?.concept_title ?? "Unknown",
-              winnerConceptGenre: winner?.concept?.concept_genre ?? "Unknown",
-              likes: winner?.tournamentsub_likes ?? 0,
-              winnerTournamentSubId: winner?.tournamentsub_id ?? null,
-              winnerStyling: winner?.concept?.concept_styling ?? null,
-              winnerDescription: winner?.concept?.concept_description ?? null,
-            };
-          });
-          setTournaments(formatted);
-        }
-        setLoading(false);
-      });
+          return {
+            id: String(row.tournament_id),
+            title: row.tournament_title,
+            category: row.tournament_genre ?? "",
+            endDate: row.tournament_end_date ?? "",
+            winnerName: winner
+              ? `${winner.concept?.user?.user_firstname ?? ""} ${winner.concept?.user?.user_lastname ?? ""}`
+              : "No winner",
+            winnerConcept: winner?.concept?.concept_title ?? "Unknown",
+            winnerConceptGenre: winner?.concept?.concept_genre ?? "Unknown",
+            likes: winner?.tournamentsub_likes ?? 0,
+            winnerTournamentSubId: winner?.tournamentsub_id ?? null,
+            winnerStyling: winner?.concept?.concept_styling ?? null,
+            winnerDescription: winner?.concept?.concept_description ?? null,
+          };
+        });
+
+        setTournaments(formatted);
+      } catch (err) {
+        if (mounted) setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchTournaments();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="max-w-7xl mx-auto px-6 py-10">
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-2">
@@ -128,7 +170,7 @@ const LeaderBoardPage = () => {
               className="rounded-xl border border-gray-100 bg-white p-5 flex items-stretch gap-5 shadow-sm hover:shadow-md transition-shadow"
             >
               {/* Badge is reserved for the BookCard */}
-              <div className="shrink-0 w-24">
+              <div className="shrink-0 w-36">
                 {t.winnerTournamentSubId && t.winnerStyling ? (
                   <BookCard
                     title={t.winnerConcept}
@@ -137,50 +179,50 @@ const LeaderBoardPage = () => {
                     styling={t.winnerStyling}
                     isLiked={false}
                     showLikeButton={false}
-                    aspectRatio="aspect-[3/4]"
-                    minHeight="min-h-[25vh]"
                   />
                 ) : (
                   // Keeping trophy as fallback when tournament has no winner
-                  <div className="h-full w-full rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100 ml-6">
+                  <div className="h-full w-full aspect-[3/4] rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100">
                     <span className="text-2xl">🏆</span>
                   </div>
                 )}
               </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0 flex flex-col justify-center pl-15">
-                <h2 className="font-bold text-gray-900 mt-0.5 truncate">Winner: {t.winnerName}</h2>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold uppercase tracking-widest text-primary">
-                    Season {tournaments.length - i}
-                  </span>
-                  {t.category && (
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{t.category}</span>
-                  )}
+              <div className="flex-1 min-w-0 flex justify-between items-center">
+                {/* Info */}
+                <div className="min-w-0 flex flex-col justify-center">
+                  <h2 className="font-bold text-gray-900 mt-0.5 truncate">Winner: {t.winnerName}</h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                      Season {tournaments.length - i}
+                    </span>
+                    {t.category && (
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{t.category}</span>
+                    )}
+                  </div>
+                  <div className="mt-2 text-sm text-gray-600">
+                    Tournament: <span className="font-semibold">{t.title}</span>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    Book Title: {t.winnerConcept}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    Book Genre: {t.winnerConceptGenre}
+                  </div>
                 </div>
-                <div className="mt-2 text-sm text-gray-600">
-                  Tournament: <span className="font-semibold">{t.title}</span>
-                </div>
-                <div className="text-xs text-gray-400">
-                  Book Title: {t.winnerConcept}
-                </div>
-                <div className="text-xs text-gray-400">
-                  Book Genre: {t.winnerConceptGenre}
-                </div>
-              </div>
 
-              {/* Metadata */}
-              <div className="shrink-0 flex flex-col justify-center gap-4 text-xs text-gray-400">
-                {t.endDate && (
+                {/* Metadata */}
+                <div className="shrink-0 flex flex-col justify-center gap-4 text-xs text-gray-400">
+                  {t.endDate && (
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      Ended {formatDate(t.endDate)}
+                    </span>
+                  )}
                   <span className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Ended {formatDate(t.endDate)}
+                    {t.likes} likes
                   </span>
-                )}
-                <span className="flex items-center gap-1.5">
-                  {t.likes} likes
-                </span>
+                </div>
               </div>
             </div>
           ))}

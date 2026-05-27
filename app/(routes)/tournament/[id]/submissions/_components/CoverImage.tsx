@@ -5,13 +5,11 @@ import { useMemo } from "react";
 interface CoverImageProps {
   title: string,
   styling: BookCover,
-  ratio?: string
 }
 
 const CoverImage: React.FC<CoverImageProps> = ({
   title,
   styling,
-  ratio,
 }) => {
 
   const coverUrl = useMemo(() => {
@@ -19,7 +17,7 @@ const CoverImage: React.FC<CoverImageProps> = ({
   }, [styling.book_cover]);
 
   return (
-    <img src={coverUrl} alt={`${title} cover`} className={`${ratio} h-full object-cover w-full bg-white shadow-md rounded-lg hover:shadow-xl transform transition`}></img>
+    <img src={coverUrl} alt={`${title} cover`} className={`h-full object-cover w-full bg-white shadow-md rounded-lg hover:shadow-xl transform transition`}></img>
   );
 }
 

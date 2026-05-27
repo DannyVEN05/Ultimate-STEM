@@ -67,7 +67,7 @@ const SubmissionsPage = () => {
 
       <div className="flex w-full justify-between">
         {isGridMode ? (
-          <button className="rounded-lg bg-primary p-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors cursor-pointer" onClick={() => { router.push("/bookbuilder") }}>
+          <button className="rounded-lg bg-primary p-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors cursor-pointer" onClick={() => { router.push(`/bookbuilder${id ? `?tournamentId=${encodeURIComponent(id)}` : ''}`) }}>
             Submit a Book
           </button>
         ) : (

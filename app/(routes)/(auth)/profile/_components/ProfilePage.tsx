@@ -99,18 +99,15 @@ const ProfilePage: React.FC = () => {
 
     const fetchWins = async () => {
       try {
-        const { data, error, count } = await supabase
+        const { data, error } = await supabase
           .from("bracket")
           .select(
             `
               bracket_id,
-              tournamentsub_id,
-              tournament_submission (
-                tournamentsub_id,
-                concept ( user_id )
+              tournament_submission!inner (
+                concept!inner ( user_id )
               )
-            `,
-            { count: "exact" }
+            `
           )
           .not("tournamentsub_id", "is", null)
           .eq("tournament_submission.concept.user_id", user.user_id);
@@ -121,8 +118,7 @@ const ProfilePage: React.FC = () => {
           return;
         }
 
-        const wins = typeof count === "number" ? count : (data?.length ?? 0);
-        if (mounted) setUserTotalWins(wins);
+        if (mounted) setUserTotalWins(data?.length ?? 0);
       } catch (err) {
         console.warn("Unexpected error fetching user tournament wins:", err);
         if (mounted) setUserTotalWins(0);

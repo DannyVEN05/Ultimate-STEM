@@ -54,7 +54,6 @@ const BookBuilderPage = () => {
 
   const searchParams = useSearchParams();
   const tournamentId = searchParams?.get("tournamentId");
-  const [tournamentWarning, setTournamentWarning] = useState<string | null>(null);
 
   const profanity = new Profanity();
 

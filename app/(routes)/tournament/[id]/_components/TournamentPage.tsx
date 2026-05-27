@@ -107,6 +107,8 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
         `)
         .eq("tournament_id", Number(id))
         .eq("tournamentsub_status", "approved")
+        .not("tournamentsub_status", "eq", "deleted")
+        .not("concept.concept_status", "eq", "deleted")
         .order("tournamentsub_created_at", { ascending: false })
         .limit(3);
 

@@ -108,7 +108,8 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
           .in("tournamentsub_id", [
             match.bmatch_submission_a,
             match.bmatch_submission_b,
-          ]);
+          ])
+          .not("tournamentsub_status", "eq", "deleted");
 
         if (subError) throw subError;
 
@@ -118,7 +119,8 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
         const { data: concepts, error: conceptError } = await supabase
           .from("concept")
           .select("*")
-          .in("concept_id", conceptIds);
+          .in("concept_id", conceptIds)
+          .not("concept_status", "eq", "deleted");
 
         if (conceptError) throw conceptError;
 

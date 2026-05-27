@@ -48,6 +48,7 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [subs, setSubs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const { setUserConcepts } = useContext(BookContext);
 
   const fetchData = async () => {
@@ -86,6 +87,9 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
   }, [open]);
 
   const handleAdd = async (tournamentId: number) => {
+    if (pendingAction) return;
+    const actionKey = `add-${tournamentId}`;
+    setPendingAction(actionKey);
     try {
       const { error } = await supabase.from("tournament_submission").insert({ concept_id: concept.concept_id, tournament_id: tournamentId });
       if (error) {
@@ -103,13 +107,18 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
     } catch (err) {
       console.error(err);
       alert("Failed to add to tournament.");
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const handleRemove = async (submissionId: string) => {
+    if (pendingAction) return;
     const ok = window.confirm("Removing this submission will delete all its current likes. Are you sure?");
     if (!ok) return;
 
+    const actionKey = `remove-${submissionId}`;
+    setPendingAction(actionKey);
     try {
       const { error } = await supabase
         .from("tournament_submission")
@@ -125,13 +134,18 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
     } catch (err) {
       console.error(err);
       alert("Failed to remove submission.");
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const handleDeleteConcept = async () => {
+    if (pendingAction) return;
     const ok = window.confirm("Permanently delete this book concept? This cannot be undone.");
     if (!ok) return;
 
+    const actionKey = "delete-concept";
+    setPendingAction(actionKey);
     try {
       // mark concept as deleted
       const { error: cErr } = await supabase
@@ -157,6 +171,8 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
     } catch (err) {
       console.error(err);
       alert("Failed to delete concept.");
+    } finally {
+      setPendingAction(null);
     }
   };
 
@@ -217,10 +233,14 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
                       </div>
                       <div className="flex items-center gap-2">
                         {t.tournament_status === 'stage1' && !submitted && (
-                          <Button onClick={() => handleAdd(t.tournament_id)}>Add to tournament</Button>
+                          <Button disabled={!!pendingAction} onClick={() => handleAdd(t.tournament_id)}>
+                            {pendingAction === `add-${t.tournament_id}` ? "Adding..." : "Add to tournament"}
+                          </Button>
                         )}
                         {t.tournament_status === 'stage1' && submitted && (
-                          <Button variant="destructive" onClick={() => handleRemove(submission.tournamentsub_id)}>Remove from tournament</Button>
+                          <Button disabled={!!pendingAction} variant="destructive" onClick={() => handleRemove(submission.tournamentsub_id)}>
+                            {pendingAction === `remove-${submission.tournamentsub_id}` ? "Removing..." : "Remove from tournament"}
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -234,7 +254,9 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
             <h4 className="font-semibold mb-2">Danger zone</h4>
             <p className="text-sm text-muted-foreground mb-3">Permanently delete book concept. This cannot be undone.</p>
             <div className="flex gap-2">
-              <Button variant="destructive" onClick={handleDeleteConcept}>Permanently delete book concept</Button>
+              <Button disabled={!!pendingAction} variant="destructive" onClick={handleDeleteConcept}>
+                {pendingAction === "delete-concept" ? "Deleting..." : "Permanently delete book concept"}
+              </Button>
             </div>
           </div>
 

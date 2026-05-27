@@ -31,63 +31,116 @@ const LeaderBoardPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("tournament")
-      .select(`
-        tournament_id,
-        tournament_title,
-        tournament_genre,
-        tournament_end_date,
-        tournament_submission (
-          tournamentsub_id,
-          tournamentsub_likes,
-          concept (
-            concept_title,
-            concept_description,
-            concept_genre,
-            concept_styling,
-            user ( user_firstname, user_lastname )
-          )
-        )
-      `)
-      .eq("tournament_status", "concluded")
-      .eq("tournament_submission.tournamentsub_status", "approved")
-      .order("tournament_end_date", { ascending: false })
-      .then(({ data, error: err }) => {
-        if (err) { setError(err.message); }
-        else if (data) {
-          const formatted = data.map((row: any) => {
-            const submissions = row.tournament_submission || [];
+    let mounted = true;
 
-            // Select the submission with the most likes without mutating the array
-            const winner = submissions.reduce((currentWinner: any, submission: any) => {
+    const fetchTournaments = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("tournament")
+          .select(`
+            tournament_id,
+            tournament_title,
+            tournament_genre,
+            tournament_end_date,
+            tournament_submission (
+              tournamentsub_id,
+              tournamentsub_likes,
+              concept (
+                concept_title,
+                concept_description,
+                concept_genre,
+                concept_styling,
+                user ( user_firstname, user_lastname )
+              )
+            ),
+            bracket (
+              bracket_id,
+              bracket_round_number,
+              tournamentsub_id,
+              tournament_submission (
+                tournamentsub_id,
+                tournamentsub_likes,
+                concept (
+                  concept_title,
+                  concept_description,
+                  concept_genre,
+                  concept_styling,
+                  user ( user_firstname, user_lastname )
+                )
+              )
+            )
+          `)
+          .eq("tournament_status", "concluded")
+          .eq("tournament_submission.tournamentsub_status", "approved")
+          .order("tournament_end_date", { ascending: false });
+
+        if (error) {
+          if (mounted) setError(error.message);
+          return;
+        }
+
+        if (!data || !mounted) return;
+
+        const formatted = data.map((row: any) => {
+          const submissions = row.tournament_submission || [];
+          const brackets = row.bracket || [];
+
+          // Prefer bracket winner: find bracket rows that reference a winning tournamentsub_id,
+          // pick the one with the highest round number (final), and use its linked submission.
+          let winner: any = null;
+
+          const winningBrackets = brackets.filter((b: any) => b && b.tournamentsub_id != null);
+          if (winningBrackets.length > 0) {
+            winningBrackets.sort((a: any, b: any) => Number(b.bracket_round_number ?? 0) - Number(a.bracket_round_number ?? 0));
+            const finalBracket = winningBrackets[0];
+
+            // nested `tournament_submission` on bracket may be an object or array depending on relationship shape
+            let ts = finalBracket.tournament_submission ?? (Array.isArray(finalBracket.tournament_submission) ? finalBracket.tournament_submission[0] : null);
+            if (!ts && finalBracket.tournamentsub_id) {
+              ts = submissions.find((s: any) => s.tournamentsub_id === finalBracket.tournamentsub_id) ?? null;
+            }
+            if (ts) winner = ts;
+          }
+
+          // Fallback: pick most-liked submission if bracket winner is not available
+          if (!winner) {
+            winner = submissions.reduce((currentWinner: any, submission: any) => {
               const currentWinnerLikes = currentWinner?.tournamentsub_likes || 0;
               const submissionLikes = submission?.tournamentsub_likes || 0;
-
               return submissionLikes > currentWinnerLikes ? submission : currentWinner;
             }, null);
+          }
 
-            //needed to get the winner name from their book submissions (concepts) based on howmuch likes they gotten on their book sub
-            return {
-              id: String(row.tournament_id),
-              title: row.tournament_title,
-              category: row.tournament_genre ?? "",
-              endDate: row.tournament_end_date ?? "",
-              winnerName: winner
-                ? `${winner.concept?.user?.user_firstname ?? ""} ${winner.concept?.user?.user_lastname ?? ""}`
-                : "No winner",
-              winnerConcept: winner?.concept?.concept_title ?? "Unknown",
-              winnerConceptGenre: winner?.concept?.concept_genre ?? "Unknown",
-              likes: winner?.tournamentsub_likes ?? 0,
-              winnerTournamentSubId: winner?.tournamentsub_id ?? null,
-              winnerStyling: winner?.concept?.concept_styling ?? null,
-              winnerDescription: winner?.concept?.concept_description ?? null,
-            };
-          });
-          setTournaments(formatted);
-        }
-        setLoading(false);
-      });
+          return {
+            id: String(row.tournament_id),
+            title: row.tournament_title,
+            category: row.tournament_genre ?? "",
+            endDate: row.tournament_end_date ?? "",
+            winnerName: winner
+              ? `${winner.concept?.user?.user_firstname ?? ""} ${winner.concept?.user?.user_lastname ?? ""}`
+              : "No winner",
+            winnerConcept: winner?.concept?.concept_title ?? "Unknown",
+            winnerConceptGenre: winner?.concept?.concept_genre ?? "Unknown",
+            likes: winner?.tournamentsub_likes ?? 0,
+            winnerTournamentSubId: winner?.tournamentsub_id ?? null,
+            winnerStyling: winner?.concept?.concept_styling ?? null,
+            winnerDescription: winner?.concept?.concept_description ?? null,
+          };
+        });
+
+        setTournaments(formatted);
+      } catch (err) {
+        if (mounted) setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchTournaments();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (

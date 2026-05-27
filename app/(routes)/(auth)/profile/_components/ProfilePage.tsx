@@ -32,6 +32,8 @@ const ProfilePage: React.FC = () => {
   const setUserConceptsRef = useRef(setUserConcepts);
   const router = useRouter();
 
+  const [userTotalWins, setUserTotalWins] = useState<number>(0);
+
   const [editMode, setEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -86,6 +88,53 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     setUserConceptsRef.current = setUserConcepts;
   }, [setUserConcepts]);
+
+  useEffect(() => {
+    if (!user) {
+      setUserTotalWins(0);
+      return;
+    }
+
+    let mounted = true;
+
+    const fetchWins = async () => {
+      try {
+        const { data, error, count } = await supabase
+          .from("bracket")
+          .select(
+            `
+              bracket_id,
+              tournamentsub_id,
+              tournament_submission (
+                tournamentsub_id,
+                concept ( user_id )
+              )
+            `,
+            { count: "exact" }
+          )
+          .not("tournamentsub_id", "is", null)
+          .eq("tournament_submission.concept.user_id", user.user_id);
+
+        if (error) {
+          console.warn("Error fetching user tournament wins:", error);
+          if (mounted) setUserTotalWins(0);
+          return;
+        }
+
+        const wins = typeof count === "number" ? count : (data?.length ?? 0);
+        if (mounted) setUserTotalWins(wins);
+      } catch (err) {
+        console.warn("Unexpected error fetching user tournament wins:", err);
+        if (mounted) setUserTotalWins(0);
+      }
+    };
+
+    fetchWins();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
 
   const updateFormField = (field: keyof ProfileFormState, value: string) => {
     setFormState((prev) => ({ ...prev, [field]: value }));
@@ -312,12 +361,12 @@ const ProfilePage: React.FC = () => {
 
           <div className="flex flex-1 m-2 gap-4">
             <div className="flex-1 bg-tertiary/20 p-6 shadow-md rounded-xl border-b-4 border-tertiary/50 hover:bg-tertiary/30 transition-colors hover:shadow-xl">
-              <span className="text-xs font-bold uppercase tracking-widest">Global Rank</span>
-              <div className="text-3xl font-headline font-bold mt-1">#1</div>
+              <span className="text-xs font-bold uppercase tracking-widest">Total Book Concepts</span>
+              <div className="text-3xl font-headline font-bold mt-1">{userConcepts.length}</div>
             </div>
             <div className="flex-1 bg-primary/20 p-6 shadow-md rounded-xl border-b-4 border-primary/50 hover:bg-primary/30 transition-colors hover:shadow-xl">
-              <span className="text-xs font-bold uppercase tracking-widest">Total Wins</span>
-              <div className="text-3xl font-headline font-bold mt-1">1</div>
+              <span className="text-xs font-bold uppercase tracking-widest">Total Tournament Wins</span>
+                <div className="text-3xl font-headline font-bold mt-1">{userTotalWins}</div>
             </div>
           </div>
 

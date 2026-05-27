@@ -72,6 +72,9 @@ const LeaderBoardPage = () => {
           `)
           .eq("tournament_status", "concluded")
           .eq("tournament_submission.tournamentsub_status", "approved")
+          .neq("tournament_submission.concept.concept_status", "deleted")
+          .neq("bracket.tournament_submission.tournamentsub_status", "deleted")
+          .neq("bracket.tournament_submission.concept.concept_status", "deleted")
           .order("tournament_end_date", { ascending: false });
 
         if (error) {

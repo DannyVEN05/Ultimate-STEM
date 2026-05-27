@@ -1,4 +1,4 @@
-import type { Metadata, NextPage } from "next";
+import type { Metadata } from "next";
 import TournamentBracketPage from "./_components/TournamentBracketPage";
 
 export const metadata: Metadata = {
@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 const TournamentBracket = async ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
-  return <TournamentBracketPage id={id} />;
+  return <TournamentBracketPage tournamentId={id} />;
 };
 
 export default TournamentBracket;

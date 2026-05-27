@@ -276,7 +276,7 @@ const ProfilePage: React.FC = () => {
         <div className="flex flex-col flex-1 pl-2">
 
           <div className="flex-[5] my-2 mr-2 ml-2 border border-gray-200 shadow-xs rounded-xl justify-between items-center flex flex-col p-4 bg-gradient-to-b from-secondary/50 to-white hover:from-secondary/70 hover:to-secondary/10 transition-colors hover:shadow-md">
-            <p className="text-sm text-muted-foreground mt-2">User Since {user?.user_created_at?.toLocaleDateString()}</p>
+            <p className="text-sm text-muted-foreground mt-2">User Since {user?.user_created_at ? new Date(user.user_created_at).toLocaleDateString() : ""}</p>
             <Avatar className="h-32 w-32 shadow-md hover:shadow-lg transition-shadow">
               <AvatarImage alt="@username" />
               <AvatarFallback style={{ backgroundColor: "white", fontSize: 24 }}>{user?.user_firstname?.charAt(0)}{user?.user_lastname?.charAt(0)}</AvatarFallback>
@@ -362,7 +362,7 @@ const ProfilePage: React.FC = () => {
             </div>
             <div className="flex-1 bg-primary/20 p-6 shadow-md rounded-xl border-b-4 border-primary/50 hover:bg-primary/30 transition-colors hover:shadow-xl">
               <span className="text-[10px] font-bold uppercase tracking-widest">Total<br />Tournament<br />Wins</span>
-                <div className="text-2xl font-headline font-bold mt-1">{userTotalWins}</div>
+              <div className="text-2xl font-headline font-bold mt-1">{userTotalWins}</div>
             </div>
           </div>
 

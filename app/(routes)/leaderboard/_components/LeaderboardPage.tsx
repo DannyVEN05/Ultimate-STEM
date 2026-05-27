@@ -56,7 +56,18 @@ const LeaderBoardPage = () => {
             bracket (
               bracket_id,
               bracket_round_number,
-              tournamentsub_id
+              tournamentsub_id,
+              tournament_submission (
+                tournamentsub_id,
+                tournamentsub_likes,
+                concept (
+                  concept_title,
+                  concept_description,
+                  concept_genre,
+                  concept_styling,
+                  user ( user_firstname, user_lastname )
+                )
+              )
             )
           `)
           .eq("tournament_status", "concluded")
@@ -77,15 +88,10 @@ const LeaderBoardPage = () => {
           const submissions = row.tournament_submission || [];
           const brackets = row.bracket || [];
 
-          // Prefer bracket winner from bracket.tournamentsub_id (one bracket row per tournament).
-          let winner: any = null;
+          // Directly extract the winner object from your 1-to-1 bracket relationship
+          let winner: any = brackets[0]?.tournament_submission ?? null;
 
-          const winnerTournamentSubId = brackets[0]?.tournamentsub_id ?? null;
-          if (winnerTournamentSubId) {
-            winner = submissions.find((s: any) => s.tournamentsub_id === winnerTournamentSubId) ?? null;
-          }
-
-          // Fallback: pick most-liked submission if bracket.tournamentsub_id is not available
+          // Fallback: pick most-liked submission if bracket winner is not set yet
           if (!winner) {
             winner = submissions.reduce((currentWinner: any, submission: any) => {
               const currentWinnerLikes = currentWinner?.tournamentsub_likes || 0;

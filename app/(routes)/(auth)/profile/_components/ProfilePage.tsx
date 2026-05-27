@@ -361,19 +361,19 @@ const ProfilePage: React.FC = () => {
 
           <div className="flex flex-1 m-2 gap-4">
             <div className="flex-1 bg-tertiary/20 p-6 shadow-md rounded-xl border-b-4 border-tertiary/50 hover:bg-tertiary/30 transition-colors hover:shadow-xl">
-              <span className="text-xs font-bold uppercase tracking-widest">Total Book Concepts</span>
-              <div className="text-3xl font-headline font-bold mt-1">{userConcepts.length}</div>
+              <span className="text-[10px] font-bold uppercase tracking-widest">Total<br />Book<br />Concepts</span>
+              <div className="text-2xl font-headline font-bold mt-1">{userConcepts.length}</div>
             </div>
             <div className="flex-1 bg-primary/20 p-6 shadow-md rounded-xl border-b-4 border-primary/50 hover:bg-primary/30 transition-colors hover:shadow-xl">
-              <span className="text-xs font-bold uppercase tracking-widest">Total Tournament Wins</span>
-                <div className="text-3xl font-headline font-bold mt-1">{userTotalWins}</div>
+              <span className="text-[10px] font-bold uppercase tracking-widest">Total<br />Tournament<br />Wins</span>
+                <div className="text-2xl font-headline font-bold mt-1">{userTotalWins}</div>
             </div>
           </div>
 
         </div>
 
         <div className="flex-[3] flex flex-col items-center gap-2 min-h-0">
-          <div className={`h-full w-full rounded-lg px-4 grid grid-cols-6 auto-rows-[30%] gap-12 py-2 overflow-y-auto`}>
+          <div className={`h-full w-full rounded-lg px-4 grid grid-cols-6 gap-12 py-2 overflow-y-auto`}>
             {userConcepts.map((concept) => (
               <ProfileBookCard className="col-span-3" key={concept.concept_id} concept={concept} />
             ))}

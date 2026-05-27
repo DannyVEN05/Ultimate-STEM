@@ -311,7 +311,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
           <div className="perspective-[1000px] w-[400px]">
             <div
-              className={`relative h-[460px] w-full transition-transform duration-500 [transform-style:preserve-3d] ${book1Flipped ? "[transform:rotateY(180deg)]" : "hover:-translate-y-3"}`}
+              className={`relative aspect-[3/4] w-full transition-transform duration-500 [transform-style:preserve-3d] ${book1Flipped ? "[transform:rotateY(180deg)]" : "hover:-translate-y-3"}`}
             >
 
               {/* Front */}
@@ -328,7 +328,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                   }
 
                   alt={book1.concept_title}
-                  className="w-full flex-1 min-h-0 rounded-[1.75rem] shadow-md cursor-pointer"
+                  className="w-full flex-1 min-h-0 rounded-[1.75rem] shadow-md cursor-pointer aspect-[3/4]"
                   onClick={() => setBook1Flipped(!book1Flipped)}
                 />
 
@@ -378,7 +378,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
           <div className="perspective-[1000px] w-[400px]">
             <div
-              className={`relative h-[460px] w-full transition-transform duration-500 [transform-style:preserve-3d] ${book2Flipped ? "[transform:rotateY(180deg)]" : "hover:-translate-y-3"}`}
+              className={`relative aspect-[3/4] w-full transition-transform duration-500 [transform-style:preserve-3d] ${book2Flipped ? "[transform:rotateY(180deg)]" : "hover:-translate-y-3"}`}
             >
 
               {/* Front */}
@@ -396,7 +396,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                   }
 
                   alt={book2.concept_title}
-                  className="w-full flex-1 min-h-0 rounded-[1.75rem] shadow-md cursor-pointer"
+                  className="w-full flex-1 min-h-0 rounded-[1.75rem] shadow-md cursor-pointer aspect-[3/4]"
                   onClick={() => setBook2Flipped(!book2Flipped)}
                 />
 

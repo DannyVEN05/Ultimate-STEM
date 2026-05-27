@@ -276,11 +276,11 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
 
                 return (
                   <div key={submission.tournamentsub_id} className="w-[280px] rounded-lg border border-gray-200 bg-[#baffe5af] p-4 shadow-lg hover:shadow-md transition-shadow flex flex-col">
-                    <div className="w-full h-60 rounded-lg oveflow-hidden mb-3">
+                    <div className="w-full aspect-[3/4] rounded-lg overflow-hidden mb-3">
                       <img
                         src={coverUrl}
                         alt={`${submission.concept.concept_title} Book Cover`}
-                        className="rounded-lg mb-3 w-full h-full"
+                        className="rounded-lg w-full h-full object-cover"
                       />
                     </div>
 

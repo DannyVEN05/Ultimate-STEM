@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { JSX } from "react";
+import { Button } from "@/components/ui/button";
 
 // ----------------------------
 // CONSTANTS
@@ -210,7 +211,7 @@ function BracketSVG({
   const r1Count = Math.max(r1Left.length, r1Right.length);
 
   const r1UnitH = MH + VG;
-  const totalH = RL + r1Count * r1UnitH * 2 + 80;
+  const totalH = RL + r1Count * r1UnitH + 80;
 
   const sideRounds = totalRounds - 1;
   const sideWidth = sideRounds * (MW + RG);
@@ -718,12 +719,27 @@ export default function TournamentBracketPage({
   };
 
   if (loading) return <div className="p-6 text-gray-500">Loading bracket...</div>;
-  if (error) return <div className="p-6 text-red-500">{error}</div>;
-  if (!matches.length) return <div className="p-6 text-gray-400">No matches available.</div>;
+  if (error) return <div className="p-6 text-red-500 relative">
+    {error}
+    <Button className="absolute left-0 top-20 bg-white hover:bg-slate-100 tracking-normal text-sm font-medium text-slate-700" onClick={() => { router.push("./") }}>
+      ← Back to Tournament
+    </Button>
+  </div>;
+  if (!matches.length) return <div className="p-6 text-gray-400 relative">
+    No matches available.
+    <Button className="absolute left-0 top-20 bg-white hover:bg-slate-100 tracking-normal text-sm font-medium text-slate-700" onClick={() => { router.push("./") }}>
+      ← Back to Tournament
+    </Button>
+  </div>;
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-6">Tournament Bracket</h1>
+      <h1 className="relative text-3xl font-bold tracking-tight text-center text-gray-900 mb-6">
+        Tournament Bracket
+        <Button className="absolute left-0 bg-white hover:bg-slate-100 tracking-normal text-sm font-medium text-slate-700" onClick={() => { router.push("./") }}>
+          ← Back to Tournament
+        </Button>
+      </h1>
       <BracketSVG
         matches={matches}
         totalRounds={totalRounds}

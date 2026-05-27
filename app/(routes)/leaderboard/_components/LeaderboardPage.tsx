@@ -85,24 +85,15 @@ const LeaderBoardPage = () => {
           const submissions = row.tournament_submission || [];
           const brackets = row.bracket || [];
 
-          // Prefer bracket winner: find bracket rows that reference a winning tournamentsub_id,
-          // pick the one with the highest round number (final), and use its linked submission.
+          // Prefer bracket winner from bracket.tournamentsub_id (one bracket row per tournament).
           let winner: any = null;
 
-          const winningBrackets = brackets.filter((b: any) => b && b.tournamentsub_id != null);
-          if (winningBrackets.length > 0) {
-            winningBrackets.sort((a: any, b: any) => Number(b.bracket_round_number ?? 0) - Number(a.bracket_round_number ?? 0));
-            const finalBracket = winningBrackets[0];
-
-            // nested `tournament_submission` on bracket may be an object or array depending on relationship shape
-            let ts = finalBracket.tournament_submission ?? (Array.isArray(finalBracket.tournament_submission) ? finalBracket.tournament_submission[0] : null);
-            if (!ts && finalBracket.tournamentsub_id) {
-              ts = submissions.find((s: any) => s.tournamentsub_id === finalBracket.tournamentsub_id) ?? null;
-            }
-            if (ts) winner = ts;
+          const winnerTournamentSubId = brackets[0]?.tournamentsub_id ?? null;
+          if (winnerTournamentSubId) {
+            winner = submissions.find((s: any) => s.tournamentsub_id === winnerTournamentSubId) ?? null;
           }
 
-          // Fallback: pick most-liked submission if bracket winner is not available
+          // Fallback: pick most-liked submission if bracket.tournamentsub_id is not available
           if (!winner) {
             winner = submissions.reduce((currentWinner: any, submission: any) => {
               const currentWinnerLikes = currentWinner?.tournamentsub_likes || 0;

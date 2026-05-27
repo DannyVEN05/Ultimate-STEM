@@ -4,7 +4,7 @@ import UsAutofillBox from "@/app/_common/ui/inputs/UsAutofillBox";
 import UsInput from "@/app/_common/ui/inputs/UsInput";
 import AuthContext from "@/app/_context/auth/AuthContext";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useContext, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { Profanity } from '@2toad/profanity';
@@ -51,6 +51,10 @@ const BookBuilderPage = () => {
   const dynamicSize = calculateFontSize(title);
 
   const { user } = useContext(AuthContext);
+
+  const searchParams = useSearchParams();
+  const tournamentId = searchParams?.get("tournamentId");
+  const [tournamentWarning, setTournamentWarning] = useState<string | null>(null);
 
   const profanity = new Profanity();
 
@@ -112,13 +116,49 @@ const BookBuilderPage = () => {
         console.log("Error uploading concepts - no concept returned from insert");
       }
       else {
-        const { error: submissionError } = await supabase.from("tournament_submission").insert({ concept_id: data.concept_id, tournament_id: 4 }); //upload to tournamant submission
+        // If a tournamentId was passed in the URL, try to add the concept to that tournament.
+        let warning: string | null = null;
+        const regularWarningMessage = `The provided tournament id ${tournamentId} is invalid. Your concept has been submitted but it has not been added to a tournament. You can manage your submissions on your profile page.`;
 
-        if (submissionError) {
-          console.log("Error uploading concepts - ", submissionError.message, "Code", submissionError.code);
-        } else {
-          router.push("/");
+        if (tournamentId) {
+          const tId = Number(tournamentId);
+          if (Number.isNaN(tId)) {
+            warning = regularWarningMessage;
+          } else {
+            try {
+              const { data: tRows, error: tError } = await supabase
+                .from("tournament")
+                .select("tournament_id")
+                .eq("tournament_id", tId)
+                .limit(1);
+
+              if (tError || !tRows || (Array.isArray(tRows) && tRows.length === 0)) {
+                warning = regularWarningMessage;
+              } else {
+                const { error: submissionError } = await supabase
+                  .from("tournament_submission")
+                  .insert({ concept_id: data.concept_id, tournament_id: tId });
+
+                if (submissionError) {
+                  console.log("Error adding tournament submission - ", submissionError.message, "Code", submissionError.code);
+                  warning = regularWarningMessage;
+                }
+              }
+            } catch (err) {
+              console.warn("Error validating tournament id:", err);
+              warning = regularWarningMessage;
+            }
+          }
         }
+
+        if (warning) {
+          // Surface the warning to the user before redirecting so they see what happened.
+          // Use alert for now; we can replace with a nicer UI notification later.
+          alert(warning);
+        }
+
+        // Redirect only when the concept insert succeeded
+        router.push("/");
 
       }
     } catch (err) {

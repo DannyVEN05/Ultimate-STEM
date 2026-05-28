@@ -236,10 +236,10 @@ const BookBuilderPage = () => {
               Select Spine Cover
               <UsAutofillBox
                 options={[
-                  { value: "/covers/spine.png", label: "Spine 1" },
-                  { value: "/covers/spine2.png", label: "Spine 2" },
-                  { value: "/covers/spine3.png", label: "Spine 3" },
-                  { value: "/covers/spine4.png", label: "Spine 4" },
+                  { value: "/covers/Spine.png", label: "Spine 1" },
+                  { value: "/covers/Spine2.png", label: "Spine 2" },
+                  { value: "/covers/Spine3.png", label: "Spine 3" },
+                  { value: "/covers/Spine4.png", label: "Spine 4" },
                 ]} sizeOptions={{ width: 300 }} value={selectedSpine} onChange={(e: any) => setSelectedSpine(e.target.value)} />
 
             </div>

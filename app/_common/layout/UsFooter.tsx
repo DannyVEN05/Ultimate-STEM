@@ -3,8 +3,8 @@
 const UsFooter = () => {
 
   return (
-    <div className="h-10 bg-gray-200 p-4 flex items-center justify-center text-sm">
-      Footer
+    <div className="bg-white border-t border-gray-200 px-6 py-5 flex items-center text-sm text-gray-500">
+      <span>© {new Date().getFullYear()} Ultimate STEM. All rights reserved.</span>
     </div>
   );
 };

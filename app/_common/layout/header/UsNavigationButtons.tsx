@@ -1,0 +1,31 @@
+"use client";
+
+import AuthContext from "@/app/_context/auth/AuthContext";
+import { useRouter } from "next/navigation";
+import { use, useContext, useEffect } from "react";
+
+const UsNavigationButtons = () => {
+  const router = useRouter();
+  const { user } = useContext(AuthContext);
+
+  return (
+    <div className="flex items-center space-x-6 text-sm font-medium">
+      {/* <button onClick={() => router.push("/dashboard")} className="hover:cursor-pointer hover:text-primary transition-colors">
+        Active Battles
+      </button> */}
+      <button onClick={() => router.push("/past-tournaments")} className="hover:cursor-pointer hover:text-primary transition-colors">
+        Past Tournaments
+      </button>
+      <button onClick={() => router.push("/leaderboard")} className="hover:cursor-pointer hover:text-primary transition-colors">
+        Leaderboard
+      </button>
+      {user?.user_role == "admin" && (
+        <button onClick={() => router.push("/admin")} className="hover:cursor-pointer hover:text-primary transition-colors">
+          Admin
+        </button>
+      )}
+    </div>
+  );
+};
+
+export default UsNavigationButtons;

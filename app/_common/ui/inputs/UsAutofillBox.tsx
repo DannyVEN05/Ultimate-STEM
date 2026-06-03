@@ -2,6 +2,7 @@
 
 import { presetStyles } from "@/app/_utilities/PresetStyles";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import DownCaret from "../icons/DownCaret";
 import { UsSelectOption, UsSizeOptions, UsTextSizes } from "@/app/_utilities/GlobalTypes";
 
@@ -37,6 +38,9 @@ const UsAutofillBox: React.FC<UsAutofillBoxProps> = ({
   });
   const [selectedValue, setSelectedValue] = useState<UsSelectOption | undefined>(undefined);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Track positional coordinates for the portal dropdown
+  const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0, width: 0 });
 
   /************************************************************
   * Memoized Values
@@ -110,6 +114,33 @@ const UsAutofillBox: React.FC<UsAutofillBoxProps> = ({
   ************************************************************/
   useEffect(() => { dropdownOpenRef.current = dropdownOpen; }, [dropdownOpen]);
 
+  // Handle calculating position coordinates dynamically when open
+  useEffect(() => {
+    if (!dropdownOpen || !inputRef.current) return;
+
+    const updatePosition = () => {
+      if (inputRef.current) {
+        const rect = inputRef.current.getBoundingClientRect();
+        setDropdownCoords({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      }
+    };
+
+    updatePosition();
+
+    // Re-calculate if layout shifts due to window resize or scroll
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [dropdownOpen]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!dropdownOpenRef.current) return;
@@ -162,7 +193,7 @@ const UsAutofillBox: React.FC<UsAutofillBoxProps> = ({
     return () => {
       window.removeEventListener("click", handleClickOutside);
     };
-  }, []);
+  }, [filteredOptions, onChange, props.name]);
 
   /************************************************************
   * Styling
@@ -174,6 +205,7 @@ const UsAutofillBox: React.FC<UsAutofillBoxProps> = ({
     paddingBottom: sizeOptions.paddingY ? `${sizeOptions.paddingY}px` : "8px",
     paddingLeft: sizeOptions.paddingX ? `${sizeOptions.paddingX}px` : "22px",
     paddingRight: sizeOptions.paddingX ? `${sizeOptions.paddingX}px` : "24px",
+    minHeight: sizeOptions.height ? undefined : "32px",
   }
 
   /************************************************************
@@ -199,7 +231,7 @@ const UsAutofillBox: React.FC<UsAutofillBoxProps> = ({
       {/* Input Field */}
       <input
         {...props}
-        className={`block rounded-xl ${textSize} font-medium cursor-pointer focus:outline-none transition-all duration-200 truncate ${presetStyles.UsInput} ${className}`}
+        className={`block rounded-sm ${textSize} font-medium cursor-pointer focus:outline-none transition-all duration-200 truncate ${presetStyles.UsInput} ${className}`}
         style={{ ...sizeStyling }}
         value={inputValue}
         onClick={toggleDropdown}
@@ -208,23 +240,29 @@ const UsAutofillBox: React.FC<UsAutofillBoxProps> = ({
         readOnly={readOnly}
       />
 
-      {/* Dropdown */}
-      {dropdownOpen && (
+      {/* Dropdown Portaled to document.body */}
+      {dropdownOpen && typeof window !== "undefined" && createPortal(
         <div
-          className={`absolute left-0 mt-1 w-full overflow-y-auto ${textSize} bg-white border border-gray-300 rounded-md shadow-lg z-10`}
-          style={{ maxHeight: maxDropdownHeight ? `${maxDropdownHeight}px` : "200px" }}
+          className={`absolute overflow-y-auto ${textSize} bg-white border border-gray-300 rounded-md shadow-lg z-[9999]`}
+          style={{
+            maxHeight: maxDropdownHeight ? `${maxDropdownHeight}px` : "200px",
+            top: `${dropdownCoords.top}px`,
+            left: `${dropdownCoords.left}px`,
+            width: `${dropdownCoords.width}px`,
+          }}
           ref={dropdownRef}
         >
           {filteredOptions.map((option) => (
             <div
               key={option.value}
-              className="px-4 py-1 hover:bg-gray-100 cursor-pointer"
+              className="px-4 py-1 hover:bg-gray-100 cursor-pointer text-left text-black"
               onClick={() => handleOptionClick(option)}
             >
               {option.label || option.value}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Clear Button */}

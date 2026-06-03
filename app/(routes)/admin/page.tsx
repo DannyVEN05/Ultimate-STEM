@@ -1,13 +1,11 @@
-import { Metadata, NextPage } from "next";
-import AdminPage from "./_components/AdminPage";
+import { redirect } from "next/navigation";
+import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Admin",
   description: "Ultimate STEM Admin Dashboard",
 };
 
-const Admin: NextPage = () => {
-  return <AdminPage />;
-};
-
-export default Admin;
+export default function Admin() {
+  redirect("/admin/tournaments");
+}

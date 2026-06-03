@@ -1,3 +1,9 @@
+# Ultimate STEM
+
+> [!NOTE]
+> For the complete server migration instructions, custom domain setup, and client administration user manual, please refer to the **[Handover Documentation](handover_documentation.md)**.
+> This documentation is for the original repo before handover. This may change. The owner should update accordingly.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
@@ -15,7 +21,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
    git clone https://github.com/DannyVEN05/Ultimate-STEM.git
    ```
 
-  iii. Open the new dictory in VSCode. Go to VSCode -> File -> Open Folder -> Select the folder that was created by the command -> Select it.
+  iii. Open the new directory in VSCode. Go to VSCode -> File -> Open Folder -> Select the folder that was created by the command -> Select it.
 
   iv. Open the terminal in VSCode (if on Windows, change the terminal type to Git Bash, not Powershell). In the VSCode terminal: run the command:
    ```bash

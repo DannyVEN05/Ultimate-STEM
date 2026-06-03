@@ -28,6 +28,8 @@ const UsButton: React.FC<UsButtonProps> = ({
     height: sizeOptions.height ? `${sizeOptions.height}px` : "",
     width: sizeOptions.width ? `${sizeOptions.width}px` : "",
     padding: `${sizeOptions.paddingY ? sizeOptions.paddingY : 6}px ${sizeOptions.paddingX ? sizeOptions.paddingX : 10}px`,
+    minHeight: sizeOptions.height ? undefined : "32px",
+    minWidth: sizeOptions.width ? undefined : "96px",
   }
 
   /************************************************************
@@ -36,7 +38,7 @@ const UsButton: React.FC<UsButtonProps> = ({
   return (
     <button
       {...props}
-      className={`${textSize} font-medium rounded-xl border transition-all duration-200 cursor-pointer disabled:cursor-not-allowed ${presetStyles.UsButton[variant]} ${className}`}
+      className={`${textSize} font-medium rounded-sm border transition-all duration-200 cursor-pointer disabled:cursor-not-allowed ${presetStyles.UsButton[variant]} ${className}`}
       style={{ ...sizeStyling }}
     >
       {children}

@@ -25,6 +25,7 @@ const UsBasicSelectBox: React.FC<UsBasicSelectBoxProps> = ({
     height: sizeOptions.height ? `${sizeOptions.height}px` : "",
     width: sizeOptions.width ? `${sizeOptions.width}px` : "",
     padding: `${sizeOptions.paddingY ? sizeOptions.paddingY : 8}px ${sizeOptions.paddingX ? sizeOptions.paddingX : 12}px`,
+    minHeight: sizeOptions.height ? undefined : "32px",
   }
 
   /************************************************************
@@ -33,7 +34,7 @@ const UsBasicSelectBox: React.FC<UsBasicSelectBoxProps> = ({
   return (
     <select
       {...props}
-      className={`block rounded-xl ${textSize} font-medium focus:outline-none transition-all duration-200 ${presetStyles.UsInput} ${className}`}
+      className={`block rounded-sm ${textSize} font-medium focus:outline-none transition-all duration-200 ${presetStyles.UsInput} ${className}`}
       style={{ ...sizeStyling }}
       onChange={onChange}
     />

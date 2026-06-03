@@ -1032,6 +1032,7 @@ export default function TournamentBracketPage({
     });
   }
 
+  {/* Admin buttons are commented out because they were added just for testing - this is not functional unless admin button is activated */ }
   const openConfirm = (action: "stage2" | "round") => {
     setConfirmAction(action);
     setConfirmOpen(true);
@@ -1122,7 +1123,8 @@ export default function TournamentBracketPage({
             <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">{milestone.label}</p>
               <p className="mt-2 text-xl font-extrabold text-emerald-900">{formatCountdownParts(milestoneCountdown)}</p>
-              {isAdmin && (tournament.tournament_status === "stage1" || tournament.tournament_status === "stage2") && (
+              {/* Admin buttons are commented out because they were added just for testing */}
+              {/* {isAdmin && (tournament.tournament_status === "stage1" || tournament.tournament_status === "stage2") && (
                 <div className="mt-3 flex gap-2">
                   {tournament.tournament_status === "stage1" && (
                     <Button variant="outline" onClick={() => openConfirm("stage2")}>Advance to Stage 2 (seed now)</Button>
@@ -1131,7 +1133,7 @@ export default function TournamentBracketPage({
                     <Button variant="outline" onClick={() => openConfirm("round")}>Advance to Round {activeRound + 1}</Button>
                   )}
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         )

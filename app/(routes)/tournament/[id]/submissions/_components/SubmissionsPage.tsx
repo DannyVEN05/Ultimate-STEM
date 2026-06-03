@@ -39,6 +39,7 @@ const SubmissionsPage = () => {
     })();
   }, []);
 
+  {/* Admin buttons are commented out because they were added just for testing - this is not functional unless admin button is activated */ }
   const handleAddAllConcepts = async () => {
     if (bulkAdding) return;
     setBulkAdding(true);
@@ -200,7 +201,8 @@ const SubmissionsPage = () => {
         )
         }
         <div className="flex ml-auto items-center">
-          {isAdmin && tournamentStatus === "stage1" && (
+          {/* Admin buttons are commented out because they were added just for testing */}
+          {/* {isAdmin && tournamentStatus === "stage1" && (
             <button
               className="rounded-lg bg-purple-700 p-2 text-sm font-semibold text-white hover:bg-purple-800 transition-colors cursor-pointer mr-2"
               onClick={handleAddAllConcepts}
@@ -208,7 +210,7 @@ const SubmissionsPage = () => {
             >
               {bulkAdding ? "Adding Concepts..." : "Add & Approve All Concepts"}
             </button>
-          )}
+          )} */}
           <button className="rounded-lg bg-primary p-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors cursor-pointer" onClick={handleModeToggle}>
             {isGridMode ? "Swipe Mode" : "Grid Mode"}
           </button>

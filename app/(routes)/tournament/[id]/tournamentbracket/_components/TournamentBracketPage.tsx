@@ -5,6 +5,22 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { JSX } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  formatCountdownParts,
+  getCountdownParts,
+  getRoundCountdownTarget,
+  getTournamentMilestoneTarget,
+  resolveTournamentLifecycleStatus,
+  TournamentLifecycleStatus,
+} from "@/app/_utilities/tournamentLifecycle";
 
 // ----------------------------
 // CONSTANTS
@@ -568,165 +584,275 @@ export default function TournamentBracketPage({
 }) {
   const [matches, setMatches] = useState<BracketMatch[]>([]);
   const [totalRounds, setTotalRounds] = useState(1);
+  const [activeRound, setActiveRound] = useState(1);
+  const [tournament, setTournament] = useState<{
+    tournament_id: number;
+    tournament_title: string;
+    tournament_status: string;
+    tournament_start_date: string;
+    tournament_s2_start_date: string | null;
+    tournament_end_date: string;
+  } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"stage2" | "round" | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    setError(null);
 
+    try {
       try {
-        // 1. Get bracket for this tournament
-        const { data: bracketRows, error: bracketError } = await supabase
-          .from("bracket")
-          .select("bracket_id")
-          .eq("tournament_id", Number(tournamentId));
-
-        if (bracketError || !bracketRows || !bracketRows.length) {
-          setError("No bracket found for this tournament.");
-          setLoading(false);
-          return;
-        }
-
-        const bracketId = bracketRows[0].bracket_id;
-
-        // 2. Get all bracket matches
-        const { data: rawMatches, error: matchError } = await supabase
-          .from("bracket_match")
-          .select("*")
-          .eq("bracket_id", bracketId);
-
-        if (matchError || !rawMatches || !rawMatches.length) {
-          setError("No matches found for this bracket.");
-          setLoading(false);
-          return;
-        }
-
-        // 3. Collect all tournamentsub_ids
-        const subIds = [
-          ...new Set(
-            [
-              ...rawMatches.map((m) => m.bmatch_submission_a),
-              ...rawMatches.map((m) => m.bmatch_submission_b),
-            ].filter(Boolean)
-          ),
-        ];
-
-        // 4. Resolve submission → concept (name, cover, description)
-        const { data: subs } = await supabase
-          .from("tournament_submission")
-          .select("tournamentsub_id, concept(concept_title, concept_description, concept_styling)")
-          .in("tournamentsub_id", subIds);
-
-        const nameMap: Record<string, string> = {};
-        const coverMap: Record<string, string | null> = {};
-        const descMap: Record<string, string | null> = {};
-
-        (subs ?? []).forEach((s: any) => {
-          const c = s.concept;
-          if (!c) return;
-          nameMap[s.tournamentsub_id] = c.concept_title ?? "TBD";
-          descMap[s.tournamentsub_id] = c.concept_description ?? null;
-          coverMap[s.tournamentsub_id] = c.concept_styling?.book_cover ?? null;
-        });
-
-        // 5. Sort by round then slot
-        const sorted = [...rawMatches].sort((a, b) => {
-          const ar = a.bmatch_index?.round ?? 1;
-          const br = b.bmatch_index?.round ?? 1;
-          const as = a.bmatch_index?.slot ?? 1;
-          const bs = b.bmatch_index?.slot ?? 1;
-          return ar !== br ? ar - br : as - bs;
-        });
-
-        // 6. Total rounds from round 1 count
-        const r1Count = sorted.filter((m) => (m.bmatch_index?.round ?? 1) === 1).length;
-        const computedTotalRounds = Math.max(1, Math.ceil(Math.log2(r1Count * 2)));
-        setTotalRounds(computedTotalRounds);
-
-        // 7. Group by round
-        const uniqueRounds = [
-          ...new Set(sorted.map((m) => m.bmatch_index?.round ?? 1)),
-        ].sort((a, b) => a - b);
-
-        const byRound: Record<number, typeof sorted> = {};
-        sorted.forEach((m) => {
-          const r = m.bmatch_index?.round ?? 1;
-          if (!byRound[r]) byRound[r] = [];
-          byRound[r].push(m);
-        });
-
-        const r1Matches = byRound[1] ?? [];
-        const r1Half = Math.ceil(r1Matches.length / 2);
-        const finalRound = uniqueRounds.length > 1 ? uniqueRounds[uniqueRounds.length - 1] : null;
-
-        // 8. Build BracketMatch[]
-        const built: BracketMatch[] = sorted.map((m) => {
-          const round = m.bmatch_index?.round ?? 1;
-          const roundMatches = byRound[round] ?? [];
-          const indexInRound = roundMatches.findIndex((x) => x.bmatch_id === m.bmatch_id);
-
-          let side: "left" | "right" | "final" = "left";
-          if (round === finalRound) {
-            side = "final";
-          } else if (round === 1) {
-            side = indexInRound < r1Half ? "left" : "right";
-          } else {
-            side = indexInRound < roundMatches.length / 2 ? "left" : "right";
-          }
-
-          const nextRoundIdx = uniqueRounds.indexOf(round) + 1;
-          const nextRound = uniqueRounds[nextRoundIdx];
-          const nextRoundMatches = nextRound ? byRound[nextRound] : null;
-          const nextMatch = nextRoundMatches?.[Math.floor(indexInRound / 2)] ?? null;
-
-          return {
-            id: m.bmatch_id,
-            bmatchId: String(m.bmatch_id),
-            roundNumber: round,
-            slot: m.bmatch_index?.slot ?? 1,
-            nameA: nameMap[m.bmatch_submission_a] ?? "TBD",
-            nameB: nameMap[m.bmatch_submission_b] ?? "TBD",
-            coverA: coverMap[m.bmatch_submission_a] ?? null,
-            coverB: coverMap[m.bmatch_submission_b] ?? null,
-            descA: descMap[m.bmatch_submission_a] ?? null,
-            descB: descMap[m.bmatch_submission_b] ?? null,
-            status: m.bmatch_status ?? "active",
-            side,
-            indexInRound,
-            nextMatchId: nextMatch?.bmatch_id ?? null,
-            tournamentSubAId: m.bmatch_submission_a ?? "",
-            tournamentSubBId: m.bmatch_submission_b ?? "",
-          };
-        });
-
-        setMatches(built);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load bracket.");
-      } finally {
-        setLoading(false);
+        await supabase.rpc("advance_tournament_lifecycle", { p_tournament_id: Number(tournamentId) });
+      } catch (e) {
+        console.warn("Lifecycle update check failed:", e);
       }
-    }
 
-    load();
+      const { data: tournamentRow, error: tournamentError } = await supabase
+        .from("tournament")
+        .select("tournament_id, tournament_title, tournament_status, tournament_start_date, tournament_s2_start_date, tournament_end_date")
+        .eq("tournament_id", Number(tournamentId))
+        .single();
+
+      if (tournamentError) {
+        setError("Unable to load tournament details.");
+        return;
+      }
+
+      setTournament(tournamentRow);
+
+      const { data: bracketRows, error: bracketError } = await supabase
+        .from("bracket")
+        .select("bracket_id, bracket_round_number, bracket_status")
+        .eq("tournament_id", Number(tournamentId));
+
+      if (bracketError) {
+        setError("Unable to load bracket for this tournament.");
+        return;
+      }
+
+      // No bracket yet is a valid state (e.g. stage1 waiting for stage2). Treat as empty matches.
+      if (!bracketRows || !bracketRows.length) {
+        setMatches([]);
+        setTotalRounds(1);
+        setActiveRound(1);
+        return;
+      }
+
+      const bracketIds = bracketRows.map((row) => row.bracket_id);
+      const computedTotalRounds = Math.max(1, ...bracketRows.map((row) => row.bracket_round_number ?? 1));
+      const computedActiveRound = bracketRows.find((row) => row.bracket_status === "active")?.bracket_round_number
+        ?? computedTotalRounds;
+
+      setTotalRounds(computedTotalRounds);
+      setActiveRound(computedActiveRound);
+
+      const { data: rawMatches, error: matchError } = await supabase
+        .from("bracket_match")
+        .select("*")
+        .in("bracket_id", bracketIds);
+
+      if (matchError) {
+        setError("No matches found for this bracket.");
+        return;
+      }
+
+      // If bracket exists but no matches have been created yet, treat as empty.
+      if (!rawMatches || !rawMatches.length) {
+        setMatches([]);
+        setTotalRounds(1);
+        setActiveRound(1);
+        return;
+      }
+
+      const subIds = [
+        ...new Set(
+          [
+            ...rawMatches.map((m) => m.bmatch_submission_a),
+            ...rawMatches.map((m) => m.bmatch_submission_b),
+          ].filter(Boolean)
+        ),
+      ];
+
+      const { data: subs } = await supabase
+        .from("tournament_submission")
+        .select("tournamentsub_id, concept(concept_title, concept_description, concept_styling)")
+        .in("tournamentsub_id", subIds);
+
+      const nameMap: Record<string, string> = {};
+      const coverMap: Record<string, string | null> = {};
+      const descMap: Record<string, string | null> = {};
+
+      (subs ?? []).forEach((s: any) => {
+        const c = s.concept;
+        if (!c) return;
+        nameMap[s.tournamentsub_id] = c.concept_title ?? "TBD";
+        descMap[s.tournamentsub_id] = c.concept_description ?? null;
+        coverMap[s.tournamentsub_id] = c.concept_styling?.book_cover ?? null;
+      });
+
+      const sorted = [...rawMatches].sort((a, b) => {
+        const ar = a.bmatch_index?.round ?? 1;
+        const br = b.bmatch_index?.round ?? 1;
+        const as = a.bmatch_index?.slot ?? 1;
+        const bs = b.bmatch_index?.slot ?? 1;
+        return ar !== br ? ar - br : as - bs;
+      });
+
+      const r1Count = sorted.filter((m) => (m.bmatch_index?.round ?? 1) === 1).length;
+      const computedSvgRounds = Math.max(1, Math.ceil(Math.log2(r1Count * 2)));
+      setTotalRounds(computedSvgRounds);
+
+      const byRound: Record<number, typeof sorted> = {};
+      sorted.forEach((m) => {
+        const r = m.bmatch_index?.round ?? 1;
+        if (!byRound[r]) byRound[r] = [];
+        byRound[r].push(m);
+      });
+
+      const r1Matches = byRound[1] ?? [];
+      const r1Half = Math.ceil(r1Matches.length / 2);
+      const finalRound = computedSvgRounds;
+
+      const built: BracketMatch[] = sorted.map((m) => {
+        const round = m.bmatch_index?.round ?? 1;
+        const roundMatches = byRound[round] ?? [];
+        const indexInRound = roundMatches.findIndex((x) => x.bmatch_id === m.bmatch_id);
+
+        let side: "left" | "right" | "final" = "left";
+        if (round === finalRound) {
+          side = "final";
+        } else if (round === 1) {
+          side = indexInRound < r1Half ? "left" : "right";
+        } else {
+          side = indexInRound < roundMatches.length / 2 ? "left" : "right";
+        }
+
+        const nextRound = round + 1;
+        const nextRoundMatches = byRound[nextRound] ?? null;
+        const nextMatch = nextRoundMatches?.[Math.floor(indexInRound / 2)] ?? null;
+
+        return {
+          id: m.bmatch_id,
+          bmatchId: String(m.bmatch_id),
+          roundNumber: round,
+          slot: m.bmatch_index?.slot ?? 1,
+          nameA: nameMap[m.bmatch_submission_a] ?? "TBD",
+          nameB: nameMap[m.bmatch_submission_b] ?? "TBD",
+          coverA: coverMap[m.bmatch_submission_a] ?? null,
+          coverB: coverMap[m.bmatch_submission_b] ?? null,
+          descA: descMap[m.bmatch_submission_a] ?? null,
+          descB: descMap[m.bmatch_submission_b] ?? null,
+          status: m.bmatch_status ?? "active",
+          side,
+          indexInRound,
+          nextMatchId: nextMatch?.bmatch_id ?? null,
+          tournamentSubAId: m.bmatch_submission_a ?? "",
+          tournamentSubBId: m.bmatch_submission_b ?? "",
+        };
+      });
+
+      setMatches(built);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load bracket.");
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [tournamentId]);
+
+  useEffect(() => {
+    load();
+    // hydrate admin flag from user profile
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile, error } = await supabase
+          .from("user")
+          .select("user_role")
+          .eq("user_id", user.id)
+          .single();
+        if (!error && profile && profile.user_role === "admin") setIsAdmin(true);
+      } catch (e) {
+        console.warn("admin check failed", e);
+      }
+    })();
+  }, [load]);
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => setNow(Date.now()), 15000);
+    return () => window.clearInterval(timerId);
+  }, []);
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      load(true);
+    }, 30000);
+
+    return () => window.clearInterval(timerId);
+  }, [load]);
+
+  const resolvedStatus = tournament ? resolveTournamentLifecycleStatus(tournament, now) : "upcoming";
+  const totalCountdown = getCountdownParts(tournament?.tournament_end_date ? new Date(tournament.tournament_end_date).getTime() : null, now);
+  const milestone = getTournamentMilestoneTarget(tournament, resolvedStatus as TournamentLifecycleStatus);
+  const milestoneCountdown = getCountdownParts(milestone.targetMs, now);
+  const roundCountdownTarget = getRoundCountdownTarget(tournament, totalRounds, activeRound);
+  const roundCountdown = getCountdownParts(roundCountdownTarget, now);
 
   const handleMatchClick = (m: BracketMatch) => {
     router.push(`/tournament/${tournamentId}/tournamentbracket/${m.bmatchId}/onevsone`);
   };
 
+  const openConfirm = (action: "stage2" | "round") => {
+    setConfirmAction(action);
+    setConfirmOpen(true);
+  };
+
+  const doAdvance = async () => {
+    if (!tournament) return;
+    setConfirmOpen(false);
+    setLoading(true);
+    try {
+      if (confirmAction === "stage2") {
+        // set stage2 start to now and seed
+        const { error: upErr } = await supabase
+          .from("tournament")
+          .update({ tournament_s2_start_date: new Date().toISOString() })
+          .eq("tournament_id", tournament.tournament_id);
+        if (upErr) throw upErr;
+
+        const { error: rpcErr } = await supabase.rpc("seed_tournament_brackets", { p_tournament_id: Number(tournament.tournament_id) });
+        if (rpcErr) throw rpcErr;
+      } else if (confirmAction === "round") {
+        // finalize the active round
+        const { error: rpcErr } = await supabase.rpc("finalize_bracket_round", {
+          p_tournament_id: Number(tournament.tournament_id),
+          p_round: Number(activeRound),
+          p_force: true,
+        });
+        if (rpcErr) throw rpcErr;
+      }
+
+      // reschedule jobs and refresh state
+      await supabase.rpc("reschedule_tournament_jobs", { p_tournament_id: Number(tournament.tournament_id) });
+      await load(true);
+    } catch (err: any) {
+      console.error("Advance action failed", err);
+      setError(err?.message ?? String(err));
+    } finally {
+      setLoading(false);
+      setConfirmAction(null);
+    }
+  };
+
   if (loading) return <div className="p-6 text-gray-500">Loading bracket...</div>;
   if (error) return <div className="p-6 text-red-500 relative">
     {error}
-    <Button className="absolute left-0 top-20 bg-white hover:bg-slate-100 tracking-normal text-sm font-medium text-slate-700" onClick={() => { router.push("./") }}>
-      ← Back to Tournament
-    </Button>
-  </div>;
-  if (!matches.length) return <div className="p-6 text-gray-400 relative">
-    No matches available.
     <Button className="absolute left-0 top-20 bg-white hover:bg-slate-100 tracking-normal text-sm font-medium text-slate-700" onClick={() => { router.push("./") }}>
       ← Back to Tournament
     </Button>
@@ -740,11 +866,65 @@ export default function TournamentBracketPage({
           ← Back to Tournament
         </Button>
       </h1>
+
+      {tournament && (
+        <div className="mb-6 grid gap-4 rounded-2xl border border-emerald-200 bg-gradient-to-r from-white to-emerald-50 p-5 shadow-sm lg:grid-cols-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Live tournament status</p>
+            <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-[#1d2436]">
+              {resolvedStatus.charAt(0).toUpperCase() + resolvedStatus.slice(1)}
+            </p>
+            <p className="mt-1 text-sm text-[#6b7490]">Auto-refreshes every 30s</p>
+          </div>
+
+          <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">Tournament ends in</p>
+            <p className="mt-2 text-xl font-extrabold text-purple-900">{formatCountdownParts(totalCountdown)}</p>
+          </div>
+
+          <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">{milestone.label}</p>
+            <p className="mt-2 text-xl font-extrabold text-emerald-900">{formatCountdownParts(milestoneCountdown)}</p>
+            {resolvedStatus === "stage2" && (
+              <p className="mt-2 text-sm text-[#6b7490]">Current round remaining: {formatCountdownParts(roundCountdown)}</p>
+            )}
+            {isAdmin && (tournament.tournament_status === "stage1" || tournament.tournament_status === "stage2") && (
+              <div className="mt-3 flex gap-2">
+                {tournament.tournament_status === "stage1" && (
+                  <Button variant="outline" onClick={() => openConfirm("stage2")}>Advance to Stage 2 (seed now)</Button>
+                )}
+                {tournament.tournament_status === "stage2" && (
+                  <Button variant="outline" onClick={() => openConfirm("round")}>Advance to Round {activeRound + 1}</Button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <BracketSVG
         matches={matches}
         totalRounds={totalRounds}
         onMatchClick={handleMatchClick}
       />
+      {/* Confirmation modal for admin advance actions */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm advance</DialogTitle>
+            <DialogDescription>
+              {confirmAction === "stage2" && "This will set the Stage 2 start time to now, seed the bracket, and start round 1. Continue?"}
+              {confirmAction === "round" && `This will finalize round ${activeRound} immediately and advance winners to round ${activeRound + 1}. Continue?`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+              <Button onClick={doAdvance} disabled={loading}>Confirm</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

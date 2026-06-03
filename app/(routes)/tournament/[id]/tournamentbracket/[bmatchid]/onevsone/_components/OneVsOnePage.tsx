@@ -2,10 +2,18 @@
 
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Concept } from "@/app/_types/model/Concept";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  formatCountdownParts,
+  getCountdownParts,
+  getRoundCountdownTarget,
+  getTournamentMilestoneTarget,
+  resolveTournamentLifecycleStatus,
+  TournamentLifecycleStatus,
+} from "@/app/_utilities/tournamentLifecycle";
 
 import {
   Dialog,
@@ -25,12 +33,15 @@ type Props = {
 
 type Bracket = {
   bracket_round_number: number;
+  bracket_status?: string;
 };
 
 type Tournament = {
   tournament_title: string;
+  tournament_start_date: string;
+  tournament_s2_start_date: string | null;
   tournament_end_date: string;
-  tournament_status?: string;
+  tournament_status: string;
 };
 
 const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
@@ -53,6 +64,8 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [tournamentStatus, setTournamentStatus] = useState<string | null>(null);
   const [bracket, setBracket] = useState<Bracket | null>(null);
+  const [totalRounds, setTotalRounds] = useState(1);
+  const [activeRound, setActiveRound] = useState(1);
 
   const [book1, setBook1] = useState<Concept | null>(null);
   const [book2, setBook2] = useState<Concept | null>(null);
@@ -60,106 +73,120 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
   const [submissionBId, setSubmissionBId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(() => Date.now());
 
   const hasVoted = userVote === "a" ? book1?.concept_title : userVote === "b" ? book2?.concept_title : null;
 
-  useEffect(() => {
-
-    const fetchMatchup = async () => {
-      setLoading(true);
+  const fetchMatchup = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
       try {
-        // 1. Fetch the match
-        const { data: match, error: matchError } = await supabase
-          .from("bracket_match")
-          .select("*")
-          .eq("bmatch_id", bmatchId)
-          .single();
-
-        if (matchError) throw matchError;
-
-        // 2. Fetch the bracket and validate tournament_id matches the URL
-        const { data: bracketData, error: bracketError } = await supabase
-          .from("bracket")
-          .select("bracket_round_number, tournament_id")
-          .eq("bracket_id", match.bracket_id)
-          .single();
-
-        if (bracketError) throw bracketError;
-
-        if (String(bracketData.tournament_id) !== String(tournamentId)) {
-          router.push(`/tournament/${tournamentId}/tournamentbracket`);
-          return;
-        }
-
-        setBracket(bracketData);
-
-        // 3. Fetch tournament data
-        const { data: tournamentData, error: tournamentError } = await supabase
-          .from("tournament")
-          .select("tournament_title, tournament_end_date, tournament_status")
-          .eq("tournament_id", bracketData.tournament_id)
-          .single();
-
-        if (tournamentError) throw tournamentError;
-        setTournament(tournamentData);
-        if (tournamentData?.tournament_status) setTournamentStatus(tournamentData.tournament_status);
-
-        // 4. Fetch submissions
-        const { data: submissions, error: subError } = await supabase
-          .from("tournament_submission")
-          .select("tournamentsub_id, concept_id")
-          .in("tournamentsub_id", [
-            match.bmatch_submission_a,
-            match.bmatch_submission_b,
-          ])
-          .not("tournamentsub_status", "eq", "deleted");
-
-        if (subError) throw subError;
-
-        const conceptIds = submissions.map((sub) => sub.concept_id);
-
-        // 5. Fetch concepts
-        const { data: concepts, error: conceptError } = await supabase
-          .from("concept")
-          .select("*")
-          .in("concept_id", conceptIds)
-          .not("concept_status", "eq", "deleted");
-
-        if (conceptError) throw conceptError;
-
-
-        const subA = submissions.find(
-          (sub) => sub.tournamentsub_id === match.bmatch_submission_a
-        );
-        const subB = submissions.find(
-          (sub) => sub.tournamentsub_id === match.bmatch_submission_b
-        );
-
-        const bookA = concepts.find(
-          (concept) => concept.concept_id === subA?.concept_id
-        );
-        const bookB = concepts.find(
-          (concept) => concept.concept_id === subB?.concept_id
-        );
-
-        setBook1(bookA ?? null);
-        setBook2(bookB ?? null);
-        setSubmissionAId(subA?.tournamentsub_id ?? null);
-        setSubmissionBId(subB?.tournamentsub_id ?? null);
-
-
-
-      } catch (error) {
-        console.error("Fetch matchup failed:", error);
-        router.push(`/tournament/${tournamentId}/tournamentbracket`);
-      } finally {
-        setLoading(false);
+        await supabase.rpc("advance_tournament_lifecycle", { p_tournament_id: Number(tournamentId) });
+      } catch (e) {
+        console.warn("Lifecycle update check failed:", e);
       }
-    };
 
+      const { data: match, error: matchError } = await supabase
+        .from("bracket_match")
+        .select("*")
+        .eq("bmatch_id", bmatchId)
+        .single();
 
-    fetchMatchup();
+      if (matchError) throw matchError;
+
+      const { data: bracketData, error: bracketError } = await supabase
+        .from("bracket")
+        .select("bracket_id, bracket_round_number, tournament_id, bracket_status")
+        .eq("bracket_id", match.bracket_id)
+        .single();
+
+      if (bracketError) throw bracketError;
+
+      if (String(bracketData.tournament_id) !== String(tournamentId)) {
+        router.push(`/tournament/${tournamentId}/tournamentbracket`);
+        return;
+      }
+
+      setBracket(bracketData);
+
+      const { data: bracketMatches, error: matchesError } = await supabase
+        .from("bracket_match")
+        .select("bmatch_index")
+        .eq("bracket_id", bracketData.bracket_id);
+
+      const r1Count = (bracketMatches ?? []).filter(
+        (m: any) => (m.bmatch_index?.round ?? 1) === 1
+      ).length;
+      const computedTotalRounds = Math.max(1, Math.ceil(Math.log2(r1Count * 2)));
+      const computedActiveRound = bracketData.bracket_round_number ?? 1;
+
+      setTotalRounds(computedTotalRounds);
+      setActiveRound(computedActiveRound);
+
+      const { data: tournamentData, error: tournamentError } = await supabase
+        .from("tournament")
+        .select("tournament_title, tournament_start_date, tournament_s2_start_date, tournament_end_date, tournament_status")
+        .eq("tournament_id", bracketData.tournament_id)
+        .single();
+
+      if (tournamentError) throw tournamentError;
+      setTournament(tournamentData);
+      if (tournamentData?.tournament_status) setTournamentStatus(tournamentData.tournament_status);
+
+      const { data: submissions, error: subError } = await supabase
+        .from("tournament_submission")
+        .select("tournamentsub_id, concept_id")
+        .in("tournamentsub_id", [match.bmatch_submission_a, match.bmatch_submission_b])
+        .not("tournamentsub_status", "eq", "deleted");
+
+      if (subError) throw subError;
+
+      const conceptIds = submissions.map((sub) => sub.concept_id);
+
+      const { data: concepts, error: conceptError } = await supabase
+        .from("concept")
+        .select("*")
+        .in("concept_id", conceptIds)
+        .not("concept_status", "eq", "deleted");
+
+      if (conceptError) throw conceptError;
+
+      const subA = submissions.find((sub) => sub.tournamentsub_id === match.bmatch_submission_a);
+      const subB = submissions.find((sub) => sub.tournamentsub_id === match.bmatch_submission_b);
+
+      const bookA = concepts.find((concept) => concept.concept_id === subA?.concept_id);
+      const bookB = concepts.find((concept) => concept.concept_id === subB?.concept_id);
+
+      setBook1(bookA ?? null);
+      setBook2(bookB ?? null);
+      setSubmissionAId(subA?.tournamentsub_id ?? null);
+      setSubmissionBId(subB?.tournamentsub_id ?? null);
+    } catch (error) {
+      console.error("Fetch matchup failed:", error);
+      router.push(`/tournament/${tournamentId}/tournamentbracket`);
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [bmatchId, tournamentId, router]);
+
+  useEffect(() => {
+    fetchMatchup();
+  }, [fetchMatchup]);
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => setNow(Date.now()), 15000);
+    return () => window.clearInterval(timerId);
+  }, []);
+
+  useEffect(() => {
+    if (!tournament) return;
+
+    const timerId = window.setInterval(() => {
+      fetchMatchup(true);
+    }, 30000);
+
+    return () => window.clearInterval(timerId);
+  }, [fetchMatchup, tournament]);
 
 
 
@@ -199,18 +226,32 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
   }, [submissionAId, submissionBId, bmatchId]);
   //________________helpers________________________________________________________
 
+  const resolvedStatus = useMemo<TournamentLifecycleStatus>(() => {
+    return resolveTournamentLifecycleStatus(tournament, now);
+  }, [now, tournament]);
 
-  const calculateTimeLeft = (endDate: string) => {
-    const difference = new Date(endDate).getTime() - new Date().getTime();
+  const totalCountdown = useMemo(() => {
+    return getCountdownParts(
+      tournament?.tournament_end_date ? new Date(tournament.tournament_end_date).getTime() : null,
+      now,
+    );
+  }, [now, tournament?.tournament_end_date]);
 
-    if (difference <= 0) return "Voting ended";
+  const milestone = useMemo(() => {
+    return getTournamentMilestoneTarget(tournament, resolvedStatus);
+  }, [resolvedStatus, tournament]);
 
-    const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-    const minutes = Math.floor((difference / (1000 * 60)) % 60);
+  const milestoneCountdown = useMemo(() => {
+    return getCountdownParts(milestone.targetMs, now);
+  }, [milestone.targetMs, now]);
 
-    return `${days}d ${hours}h ${minutes}m`;
-  };
+  const roundCountdownTarget = useMemo(() => {
+    return getRoundCountdownTarget(tournament, totalRounds, activeRound);
+  }, [activeRound, totalRounds, tournament]);
+
+  const roundCountdown = useMemo(() => {
+    return getCountdownParts(roundCountdownTarget, now);
+  }, [now, roundCountdownTarget]);
 
 
 
@@ -229,7 +270,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
     }
 
     // Prevent voting unless the tournament is in stage2
-    if (tournamentStatus !== "stage2") {
+    if (resolvedStatus !== "stage2") {
       alert("Voting is not open for this tournament.");
       setIsVoting(false);
       return;
@@ -308,13 +349,39 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
           <h1 className=" md:text-5xl font-headline font-bold text-on-surface tracking-tighter pt-3 ">
             {tournament?.tournament_title}</h1>
 
-          <div className="rounded-full bg-green-100 px-5 py-3 text-sm font-semibold text-blue-800 shadow-lg mb-3 ">
-            {calculateTimeLeft(tournament ? tournament.tournament_end_date : "") === "Voting ended"
-              ? "Voting has ended"
-              : `Voting Ends in ${calculateTimeLeft(tournament ? tournament.tournament_end_date : "")}`}
+          <div className={`rounded-full px-5 py-3 text-sm font-semibold shadow-lg mb-3 ${resolvedStatus === "stage2" ? "bg-green-100 text-blue-800" : "bg-slate-100 text-slate-700"}`}>
+            {resolvedStatus === "stage2"
+              ? `Voting ends in ${formatCountdownParts(totalCountdown)}`
+              : resolvedStatus === "stage1"
+                ? `Stage 2 starts in ${formatCountdownParts(milestoneCountdown)}`
+                : resolvedStatus === "upcoming"
+                  ? `Tournament starts in ${formatCountdownParts(milestoneCountdown)}`
+                  : "Voting has ended"}
           </div>
         </div>
-        <p className="mb-2 max-w-4xl text-base font-bold text-gray-500 sm:text-xl pt-3">Round: {bracket?.bracket_round_number} One vs One</p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <span className="rounded-full bg-purple-100 px-4 py-2 text-sm font-bold text-purple-800">
+            {resolvedStatus.charAt(0).toUpperCase() + resolvedStatus.slice(1)}
+          </span>
+          <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm">
+            Round {activeRound} of {totalRounds}
+          </span>
+        </div>
+        <p className="mb-2 max-w-4xl text-base font-bold text-gray-500 sm:text-xl pt-3">{bracket?.bracket_round_number} One vs One</p>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-3xl border border-purple-200 bg-purple-50 p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">Tournament time remaining</p>
+            <p className="mt-3 text-3xl font-extrabold text-purple-900">{formatCountdownParts(totalCountdown)}</p>
+          </div>
+
+          {resolvedStatus === "stage2" && (
+            <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Current round time remaining</p>
+              <p className="mt-3 text-3xl font-extrabold text-emerald-900">{formatCountdownParts(roundCountdown)}</p>
+            </div>
+          )}
+        </div>
 
         {/* Book section */}
 
@@ -348,7 +415,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
 
                 <div className="mt-5 flex justify-center">
-                  {tournamentStatus === "stage2" && (
+                  {resolvedStatus === "stage2" && (
                     <Button
                       className="pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
                       onClick={(e) => {
@@ -417,7 +484,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 />
 
                 <div className="mt-5 flex justify-center">
-                  {tournamentStatus === "stage2" && (
+                  {resolvedStatus === "stage2" && (
                     <Button
                       className=" pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
                       onClick={(e) => {

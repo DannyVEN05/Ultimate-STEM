@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   formatCountdownParts,
+  formatStatusLabel,
   getCountdownParts,
   getRoundCountdownTarget,
   getTournamentMilestoneTarget,
@@ -799,7 +800,7 @@ export default function TournamentBracketPage({
 
   const resolvedStatus = tournament ? resolveTournamentLifecycleStatus(tournament, now) : "upcoming";
   const totalCountdown = getCountdownParts(tournament?.tournament_end_date ? new Date(tournament.tournament_end_date).getTime() : null, now);
-  const milestone = getTournamentMilestoneTarget(tournament, resolvedStatus as TournamentLifecycleStatus);
+  const milestone = getTournamentMilestoneTarget(tournament, resolvedStatus as TournamentLifecycleStatus, activeRound, totalRounds);
   const milestoneCountdown = getCountdownParts(milestone.targetMs, now);
   const roundCountdownTarget = getRoundCountdownTarget(tournament, totalRounds, activeRound);
   const roundCountdown = getCountdownParts(roundCountdownTarget, now);
@@ -873,7 +874,7 @@ export default function TournamentBracketPage({
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Tournament status</p>
               <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-[#1d2436]">
-                {resolvedStatus.charAt(0).toUpperCase() + resolvedStatus.slice(1)}
+                {formatStatusLabel(resolvedStatus, activeRound)}
               </p>
             </div>
             <span className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-emerald-700">
@@ -885,7 +886,7 @@ export default function TournamentBracketPage({
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Live tournament status</p>
               <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-[#1d2436]">
-                {resolvedStatus.charAt(0).toUpperCase() + resolvedStatus.slice(1)}
+                {formatStatusLabel(resolvedStatus, activeRound)}
               </p>
               <p className="mt-1 text-sm text-[#6b7490]">Auto-refreshes every 30s</p>
             </div>
@@ -898,9 +899,6 @@ export default function TournamentBracketPage({
             <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">{milestone.label}</p>
               <p className="mt-2 text-xl font-extrabold text-emerald-900">{formatCountdownParts(milestoneCountdown)}</p>
-              {resolvedStatus === "stage2" && (
-                <p className="mt-2 text-sm text-[#6b7490]">Current round remaining: {formatCountdownParts(roundCountdown)}</p>
-              )}
               {isAdmin && (tournament.tournament_status === "stage1" || tournament.tournament_status === "stage2") && (
                 <div className="mt-3 flex gap-2">
                   {tournament.tournament_status === "stage1" && (

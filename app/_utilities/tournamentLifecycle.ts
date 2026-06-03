@@ -81,6 +81,8 @@ export function formatCountdownParts(
 export function getTournamentMilestoneTarget(
   tournament: TournamentTiming | null | undefined,
   status: TournamentLifecycleStatus,
+  activeRound?: number | null,
+  totalRounds?: number | null,
 ): CountdownTarget {
   const startMs = toMs(tournament?.tournament_start_date);
   const stage2Ms = toMs(tournament?.tournament_s2_start_date);
@@ -98,7 +100,11 @@ export function getTournamentMilestoneTarget(
   }
 
   if (status === "stage2") {
-    return { label: "Voting ends in", targetMs: endMs };
+    if (activeRound && totalRounds && activeRound > 0 && totalRounds > 0) {
+      const roundEnd = getRoundCountdownTarget(tournament, totalRounds, activeRound);
+      return { label: `Round ${activeRound} voting ends`, targetMs: roundEnd };
+    }
+    return { label: "Voting ends", targetMs: endMs };
   }
 
   return { label: "Tournament finished", targetMs: null };
@@ -121,3 +127,19 @@ export function getRoundCountdownTarget(
   const roundDuration = (endMs - stage2Ms) / totalRounds;
   return stage2Ms + (roundDuration * activeRound);
 }
+
+export function formatStatusLabel(
+  status: TournamentLifecycleStatus | string,
+  activeRound?: number | null,
+): string {
+  if (status === "stage1") return "Stage 1";
+  if (status === "stage2") {
+    return activeRound ? `Stage 2 - Round ${activeRound}` : "Stage 2";
+  }
+  if (status === "upcoming") return "Upcoming";
+  if (status === "concluded") return "Concluded";
+  if (status === "terminated") return "Terminated";
+  const str = status as string;
+  return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
+}
+

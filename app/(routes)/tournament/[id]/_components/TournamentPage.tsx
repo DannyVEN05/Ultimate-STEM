@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { BookCover } from "@/app/_types/model/Concept";
 import {
   formatCountdownParts,
+  formatStatusLabel,
   getCountdownParts,
   getTournamentMilestoneTarget,
   resolveTournamentLifecycleStatus,
@@ -48,6 +49,9 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => Date.now());
 
+  const [activeRound, setActiveRound] = useState<number | null>(null);
+  const [totalRounds, setTotalRounds] = useState<number | null>(null);
+
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
@@ -73,6 +77,35 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
     }
 
     setTournamentData(data);
+
+    try {
+      const { data: bracketRows } = await supabase
+        .from("bracket")
+        .select("bracket_id, bracket_round_number, bracket_status")
+        .eq("tournament_id", Number(id));
+
+      if (bracketRows && bracketRows.length > 0) {
+        const activeBracket = bracketRows.find(b => b.bracket_status === "active") || bracketRows[0];
+        setActiveRound(activeBracket.bracket_round_number);
+
+        const bracketIds = bracketRows.map(b => b.bracket_id);
+        const { data: matches } = await supabase
+          .from("bracket_match")
+          .select("bmatch_index")
+          .in("bracket_id", bracketIds);
+
+        if (matches && matches.length > 0) {
+          const r1Count = matches.filter(m => (m.bmatch_index?.round ?? 1) === 1).length;
+          const computedTotalRounds = Math.max(1, Math.ceil(Math.log2(r1Count * 2)));
+          setTotalRounds(computedTotalRounds);
+        } else {
+          setTotalRounds(1);
+        }
+      }
+    } catch (e) {
+      console.warn("Error fetching bracket rounds:", e);
+    }
+
     setLoading(false);
   }, [id]);
 
@@ -145,8 +178,8 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
   }, [now, tournamentData?.tournament_end_date]);
 
   const milestone = useMemo(() => {
-    return getTournamentMilestoneTarget(tournamentData, resolvedStatus);
-  }, [resolvedStatus, tournamentData]);
+    return getTournamentMilestoneTarget(tournamentData, resolvedStatus, activeRound, totalRounds);
+  }, [resolvedStatus, tournamentData, activeRound, totalRounds]);
 
   const milestoneCountdown = useMemo(() => {
     return getCountdownParts(milestone.targetMs, now);
@@ -169,7 +202,13 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
       <div className="mx-auto max-w-6xl">
         <section className="rounded-2xl bg-[#baffe5af] px-10 py-12 shadow-lg">
           <div className={`mb-4 inline-block rounded-full px-4 py-1 text-sm font-bold ${statusStyles[resolvedStatus]}`}>
-            {resolvedStatus.charAt(0).toUpperCase() + resolvedStatus.slice(1)} Tournament
+            {resolvedStatus === "stage1" || resolvedStatus === "stage2"
+              ? "Active Tournament"
+              : resolvedStatus === "upcoming"
+                ? "Upcoming Tournament"
+                : resolvedStatus === "concluded"
+                  ? "Concluded Tournament"
+                  : "Terminated Tournament"}
           </div>
 
           <h1 className="max-w-2xl text-4xl font-bold leading-tight text-purple-950">{tournamentData.tournament_title}</h1>
@@ -177,7 +216,7 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
             {tournamentData.tournament_genre}
           </div>
           <div className="mb-4 inline-block rounded-full bg-purple-300 px-4 py-1 text-sm font-bold text-purple-900">
-            {resolvedStatus.charAt(0).toUpperCase() + resolvedStatus.slice(1)}
+            {formatStatusLabel(resolvedStatus, activeRound)}
           </div>
 
           <p className="max-w-3xl text-md text-gray-700">

@@ -6,6 +6,7 @@ import AuthContext from "@/app/_context/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { Bell, FlaskConical, Zap, BookOpen, Mail } from "lucide-react";
 import { getCategoryEmoji, getCategoryBg } from "@/app/_utilities/categoryUtils";
+import { formatStatusLabel } from "@/app/_utilities/tournamentLifecycle";
 
 type TournamentStatus = "upcoming" | "stage1" | "stage2" | "concluded" | "cancelled";
 
@@ -18,6 +19,7 @@ interface Tournament {
   participants: number;
   participantLimit: number;
   status: TournamentStatus;
+  activeRound?: number | null;
 }
 
 function getCountdown(targetDate: string, now: number): { days: number; hours: number } {
@@ -133,23 +135,37 @@ const DashboardPage = () => {
 
       const { data, error: err } = await supabase
         .from("tournament")
-        .select("tournament_id, tournament_title, tournament_genre, tournament_start_date, tournament_end_date, tournament_user_limit, tournament_status, tournament_submission(count)")
+        .select(`
+          tournament_id,
+          tournament_title,
+          tournament_genre,
+          tournament_start_date,
+          tournament_end_date,
+          tournament_user_limit,
+          tournament_status,
+          tournament_submission(count),
+          bracket(bracket_round_number, bracket_status)
+        `)
         .in("tournament_status", ["stage1", "stage2", "upcoming", "concluded"])
         .order("tournament_start_date", { ascending: false });
 
       if (err) {
         setError(err.message);
       } else if (data) {
-        setAllTournaments(data.map((row: any) => ({
-          id: String(row.tournament_id),
-          title: row.tournament_title,
-          category: row.tournament_genre ?? "",
-          startDate: row.tournament_start_date,
-          endDate: row.tournament_end_date,
-          participants: (row.tournament_submission?.[0]?.count ?? 0) as number,
-          participantLimit: row.tournament_user_limit ?? 0,
-          status: row.tournament_status as TournamentStatus,
-        })));
+        setAllTournaments(data.map((row: any) => {
+          const activeBracket = row.bracket?.find((b: any) => b.bracket_status === "active") || row.bracket?.[0];
+          return {
+            id: String(row.tournament_id),
+            title: row.tournament_title,
+            category: row.tournament_genre ?? "",
+            startDate: row.tournament_start_date,
+            endDate: row.tournament_end_date,
+            participants: (row.tournament_submission?.[0]?.count ?? 0) as number,
+            participantLimit: row.tournament_user_limit ?? 0,
+            status: row.tournament_status as TournamentStatus,
+            activeRound: activeBracket ? activeBracket.bracket_round_number : null,
+          };
+        }));
       }
       setLoading(false);
     };
@@ -274,7 +290,7 @@ const DashboardPage = () => {
                     <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-500">Ending Soon</span>
                   )}
                   <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
-                    {active[0].status === "stage1" ? "Stage 1" : "Stage 2"}
+                    {formatStatusLabel(active[0].status as any, active[0].activeRound)}
                   </span>
                 </div>
                 <div className="flex -space-x-2">

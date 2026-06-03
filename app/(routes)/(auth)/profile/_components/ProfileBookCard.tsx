@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useContext, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import BookContext from "@/app/_context/book/BookContext";
+import { formatStatusLabel } from "@/app/_utilities/tournamentLifecycle";
 import {
   Dialog,
   DialogContent,
@@ -56,7 +57,12 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
     try {
       const { data: tData, error: tError } = await supabase
         .from("tournament")
-        .select("tournament_id, tournament_title, tournament_status")
+        .select(`
+          tournament_id,
+          tournament_title,
+          tournament_status,
+          bracket(bracket_round_number, bracket_status)
+        `)
         .in("tournament_status", ["stage1", "stage2"])
         .order("tournament_start_date", { ascending: false });
 
@@ -228,7 +234,9 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
                     <div key={t.tournament_id} className="flex items-center justify-between gap-4 p-3 border rounded-md">
                       <div>
                         <div className="font-semibold">{t.tournament_title}</div>
-                        <div className="text-sm text-muted-foreground">Tournament Status: {t.tournament_status === "stage1" ? "Stage 1" : "Stage 2"}</div>
+                        <div className="text-sm text-muted-foreground text-opacity-80">
+                          Tournament Status: {formatStatusLabel(t.tournament_status, t.bracket?.find((b: any) => b.bracket_status === "active")?.bracket_round_number || t.bracket?.[0]?.bracket_round_number)}
+                        </div>
                         {submissionStatus && <div className="text-sm">Submission: {submissionStatus}</div>}
                       </div>
                       <div className="flex items-center gap-2">

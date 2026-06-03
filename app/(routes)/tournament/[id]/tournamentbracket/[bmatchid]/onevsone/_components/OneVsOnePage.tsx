@@ -8,6 +8,7 @@ import { Concept } from "@/app/_types/model/Concept";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   formatCountdownParts,
+  formatStatusLabel,
   getCountdownParts,
   getRoundCountdownTarget,
   getTournamentMilestoneTarget,
@@ -351,7 +352,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
           <div className={`rounded-full px-5 py-3 text-sm font-semibold shadow-lg mb-3 ${resolvedStatus === "stage2" ? "bg-green-100 text-blue-800" : "bg-slate-100 text-slate-700"}`}>
             {resolvedStatus === "stage2"
-              ? `Voting ends in ${formatCountdownParts(totalCountdown)}`
+              ? `Round ${activeRound} voting ends in ${formatCountdownParts(roundCountdown)}`
               : resolvedStatus === "stage1"
                 ? `Stage 2 starts in ${formatCountdownParts(milestoneCountdown)}`
                 : resolvedStatus === "upcoming"
@@ -361,7 +362,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <span className="rounded-full bg-purple-100 px-4 py-2 text-sm font-bold text-purple-800">
-            {resolvedStatus.charAt(0).toUpperCase() + resolvedStatus.slice(1)}
+            {formatStatusLabel(resolvedStatus, activeRound)}
           </span>
           <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm">
             Round {activeRound} of {totalRounds}
@@ -372,13 +373,13 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
         {resolvedStatus !== "concluded" && resolvedStatus !== "terminated" && (
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div className="rounded-3xl border border-purple-200 bg-purple-50 p-5 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">Tournament time remaining</p>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">Tournament ends in</p>
               <p className="mt-3 text-3xl font-extrabold text-purple-900">{formatCountdownParts(totalCountdown)}</p>
             </div>
 
             {resolvedStatus === "stage2" && (
               <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Current round time remaining</p>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Round {activeRound} voting ends</p>
                 <p className="mt-3 text-3xl font-extrabold text-emerald-900">{formatCountdownParts(roundCountdown)}</p>
               </div>
             )}

@@ -241,6 +241,7 @@ function BracketSVG({
   resolvedStatus,
   activeRound,
   userVotes,
+  bracketWinnerId,
 }: {
   matches: BracketMatch[];
   totalRounds: number;
@@ -248,6 +249,7 @@ function BracketSVG({
   resolvedStatus: TournamentLifecycleStatus;
   activeRound: number | null;
   userVotes: Record<number, string>;
+  bracketWinnerId?: string | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredMatch, setHoveredMatch] = useState<BracketMatch | null>(null);
@@ -586,6 +588,28 @@ function BracketSVG({
     const hasVoted = !!userVotes[m.id];
     const dotColor = hasVoted ? "#3b82f6" : "#ef4444";
 
+    let winnerSide: "a" | "b" | null = null;
+    if (isCompleted) {
+      if (m.side === "final") {
+        if (bracketWinnerId === m.tournamentSubAId) winnerSide = "a";
+        else if (bracketWinnerId === m.tournamentSubBId) winnerSide = "b";
+      } else if (m.nextMatchId) {
+        const nextMatch = matches.find((x) => x.id === m.nextMatchId);
+        if (nextMatch) {
+          if (nextMatch.tournamentSubAId === m.tournamentSubAId || nextMatch.tournamentSubBId === m.tournamentSubAId) {
+            winnerSide = "a";
+          } else if (nextMatch.tournamentSubAId === m.tournamentSubBId || nextMatch.tournamentSubBId === m.tournamentSubBId) {
+            winnerSide = "b";
+          }
+        }
+      }
+    }
+
+    const isWinnerA = winnerSide === "a";
+    const isLoserA = winnerSide === "b";
+    const isWinnerB = winnerSide === "b";
+    const isLoserB = winnerSide === "a";
+
     cards.push(
       <g key={m.id} onClick={() => onMatchClick(m)} style={{ cursor: "pointer" }}>
         <rect x={p.x + 2} y={p.y + 2} width={MW} height={MH} rx={6} fill="#00000015" />
@@ -594,10 +618,16 @@ function BracketSVG({
           stroke={isHovered ? "#7c3aed" : "#e5e7eb"}
           strokeWidth={isHovered ? 2 : 1} />
         <line x1={p.x + 1} y1={p.y + MH / 2} x2={p.x + MW - 1} y2={p.y + MH / 2} stroke="#f3f4f6" strokeWidth={1} />
-        <text x={p.x + 10} y={p.y + MH / 4 + 4} fontSize={11} fill="#1a1a1a" fontFamily="sans-serif">
+        <text x={p.x + 10} y={p.y + MH / 4 + 4} fontSize={11}
+          fill="#1a1a1a"
+          fontWeight={isWinnerA ? "bold" : "normal"}
+          fontFamily="sans-serif">
           {trunc(m.nameA, 22)}
         </text>
-        <text x={p.x + 10} y={p.y + (MH * 3) / 4 + 4} fontSize={11} fill="#1a1a1a" fontFamily="sans-serif">
+        <text x={p.x + 10} y={p.y + (MH * 3) / 4 + 4} fontSize={11}
+          fill="#1a1a1a"
+          fontWeight={isWinnerB ? "bold" : "normal"}
+          fontFamily="sans-serif">
           {trunc(m.nameB, 22)}
         </text>
         <circle cx={p.x + MW - 10} cy={p.y + MH / 2} r={4} fill={dotColor} />
@@ -666,6 +696,7 @@ export default function TournamentBracketPage({
   const [totalRounds, setTotalRounds] = useState(1);
   const [activeRound, setActiveRound] = useState(1);
   const [userVotes, setUserVotes] = useState<Record<number, string>>({});
+  const [bracketWinnerId, setBracketWinnerId] = useState<string | null>(null);
   const [tournament, setTournament] = useState<{
     tournament_id: number;
     tournament_title: string;
@@ -708,7 +739,7 @@ export default function TournamentBracketPage({
 
       const { data: bracketRows, error: bracketError } = await supabase
         .from("bracket")
-        .select("bracket_id, bracket_round_number, bracket_status")
+        .select("bracket_id, bracket_round_number, bracket_status, tournamentsub_id")
         .eq("tournament_id", Number(tournamentId));
 
       if (bracketError) {
@@ -721,6 +752,7 @@ export default function TournamentBracketPage({
         setMatches([]);
         setTotalRounds(1);
         setActiveRound(1);
+        setBracketWinnerId(null);
         return;
       }
 
@@ -728,9 +760,11 @@ export default function TournamentBracketPage({
       const computedTotalRounds = Math.max(1, ...bracketRows.map((row) => row.bracket_round_number ?? 1));
       const computedActiveRound = bracketRows.find((row) => row.bracket_status === "active")?.bracket_round_number
         ?? computedTotalRounds;
+      const winnerId = bracketRows.find((row) => row.tournamentsub_id)?.tournamentsub_id ?? null;
 
       setTotalRounds(computedTotalRounds);
       setActiveRound(computedActiveRound);
+      setBracketWinnerId(winnerId);
 
       const { data: rawMatches, error: matchError } = await supabase
         .from("bracket_match")
@@ -1019,6 +1053,7 @@ export default function TournamentBracketPage({
         resolvedStatus={resolvedStatus}
         activeRound={activeRound}
         userVotes={userVotes}
+        bracketWinnerId={bracketWinnerId}
       />
       {/* Confirmation modal for admin advance actions */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>

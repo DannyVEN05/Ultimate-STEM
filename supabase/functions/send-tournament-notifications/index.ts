@@ -4,6 +4,7 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const SHARED_SECRET = Deno.env.get("SHARED_SECRET");
+const APP_URL = Deno.env.get("APP_URL") || "https://ultimate-stem.vercel.app";
 
 // 1. Explicitly type the expected database join structure
 interface UserProfile {
@@ -116,7 +117,7 @@ Deno.serve(async (req) => {
             <p>You registered your interest for <strong>${safeTournamentTitleForHtml}</strong>.</p>
             <p>The tournament is now live. Head over to your dashboard to view the rules and secure your placement slot!</p>
             <br />
-            <a href="https://ultimate-stem.vercel.app/dashboard" style="display: inline-block; background: linear-gradient(135deg,#8b5cf6 0%,#6d3ef0 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Enter Tournament</a>
+            <a href="${APP_URL}/dashboard" style="display: inline-block; background: linear-gradient(135deg,#8b5cf6 0%,#6d3ef0 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Enter Tournament</a>
           </div>
         `,
       }));

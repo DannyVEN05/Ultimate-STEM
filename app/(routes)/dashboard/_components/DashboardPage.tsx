@@ -124,28 +124,37 @@ const DashboardPage = () => {
   const sidebar = active.slice(1);
 
   useEffect(() => {
-    supabase
-      .from("tournament")
-      .select("tournament_id, tournament_title, tournament_genre, tournament_start_date, tournament_end_date, tournament_user_limit, tournament_status, tournament_submission(count)")
-      .in("tournament_status", ["stage1", "stage2", "upcoming", "concluded"])
-      .order("tournament_start_date", { ascending: false })
-      .then(({ data, error: err }) => {
-        if (err) {
-          setError(err.message);
-        } else if (data) {
-          setAllTournaments(data.map((row: any) => ({
-            id: String(row.tournament_id),
-            title: row.tournament_title,
-            category: row.tournament_genre ?? "",
-            startDate: row.tournament_start_date,
-            endDate: row.tournament_end_date,
-            participants: (row.tournament_submission?.[0]?.count ?? 0) as number,
-            participantLimit: row.tournament_user_limit ?? 0,
-            status: row.tournament_status as TournamentStatus,
-          })));
-        }
-        setLoading(false);
-      });
+    const fetchDashboardTournaments = async () => {
+      try {
+        await supabase.rpc("run_tournament_cron");
+      } catch (e) {
+        console.warn("Cron update check failed:", e);
+      }
+
+      const { data, error: err } = await supabase
+        .from("tournament")
+        .select("tournament_id, tournament_title, tournament_genre, tournament_start_date, tournament_end_date, tournament_user_limit, tournament_status, tournament_submission(count)")
+        .in("tournament_status", ["stage1", "stage2", "upcoming", "concluded"])
+        .order("tournament_start_date", { ascending: false });
+
+      if (err) {
+        setError(err.message);
+      } else if (data) {
+        setAllTournaments(data.map((row: any) => ({
+          id: String(row.tournament_id),
+          title: row.tournament_title,
+          category: row.tournament_genre ?? "",
+          startDate: row.tournament_start_date,
+          endDate: row.tournament_end_date,
+          participants: (row.tournament_submission?.[0]?.count ?? 0) as number,
+          participantLimit: row.tournament_user_limit ?? 0,
+          status: row.tournament_status as TournamentStatus,
+        })));
+      }
+      setLoading(false);
+    };
+
+    fetchDashboardTournaments();
   }, []);
 
   useEffect(() => {

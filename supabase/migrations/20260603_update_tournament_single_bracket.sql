@@ -519,3 +519,11 @@ begin
   return new;
 end;
 $$;
+
+-- Drop and recreate the trigger to run on both INSERT and UPDATE
+drop trigger if exists trigger_tournament_started on public.tournament;
+
+create trigger trigger_tournament_started
+after insert or update on public.tournament
+for each row
+execute function public.on_tournament_started_trigger();

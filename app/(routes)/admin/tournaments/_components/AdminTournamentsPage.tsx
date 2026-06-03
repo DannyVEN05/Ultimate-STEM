@@ -187,8 +187,13 @@ const AdminTournamentsPage = () => {
   const [terminatingId, setTerminatingId] = useState<string | null>(null);
   const [isTerminating, setIsTerminating] = useState(false);
 
-  const fetchData = useCallback(() => {
+  const fetchData = useCallback(async () => {
     setError(null);
+    try {
+      await supabase.rpc("run_tournament_cron");
+    } catch (e) {
+      console.warn("Cron update check failed:", e);
+    }
     getTournaments()
       .then(setTournaments)
       .catch((err: Error) => setError(err.message));

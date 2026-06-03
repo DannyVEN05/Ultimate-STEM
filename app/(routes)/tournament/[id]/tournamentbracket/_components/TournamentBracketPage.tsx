@@ -845,7 +845,7 @@ export default function TournamentBracketPage({
           .from("vote")
           .select("bmatch_id, tournamentsub_id")
           .eq("user_id", user.id);
-        
+
         if (voteRows) {
           const votesMap: Record<number, string> = {};
           voteRows.forEach((v) => {
@@ -960,7 +960,7 @@ export default function TournamentBracketPage({
   return (
     <div className="p-6">
       <h1 className="relative text-3xl font-bold tracking-tight text-center text-gray-900 mb-6">
-        Tournament Bracket
+        {tournament ? tournament.tournament_title : "Tournament Bracket"}
         <Button className="absolute left-0 bg-white hover:bg-slate-100 tracking-normal text-sm font-medium text-slate-700" onClick={() => { router.push("./") }}>
           ← Back to Tournament
         </Button>

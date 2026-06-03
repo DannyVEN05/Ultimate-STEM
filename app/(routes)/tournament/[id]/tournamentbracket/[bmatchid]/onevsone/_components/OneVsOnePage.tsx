@@ -60,6 +60,8 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
   const [book1Flipped, setBook1Flipped] = useState(false);
   const [book2Flipped, setBook2Flipped] = useState(false);
+  const [book1HasBeenFlipped, setBook1HasBeenFlipped] = useState(false);
+  const [book2HasBeenFlipped, setBook2HasBeenFlipped] = useState(false);
 
 
 
@@ -447,13 +449,17 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
                   alt={book1.concept_title}
                   className="w-full flex-1 min-h-0 rounded-lg shadow-md cursor-pointer aspect-[3/4]"
-                  onClick={() => setBook1Flipped(!book1Flipped)}
+                  onClick={() => { setBook1Flipped(!book1Flipped); setBook1HasBeenFlipped(true); }}
                 />
 
 
-                <div className="mt-5 flex justify-center">
+                <div className="mt-5 flex justify-center min-h-[48px] items-center">
                   {resolvedStatus === "stage2" && matchRound === activeRound && (
-                    userVote === "a" ? (
+                    !(book1HasBeenFlipped && book2HasBeenFlipped) ? (
+                      <span className="text-red-500 font-semibold text-sm animate-pulse">
+                        Flip both books to cast your vote
+                      </span>
+                    ) : userVote === "a" ? (
                       <Button
                         className="pointer-events-auto bg-red-500 hover:bg-red-600 text-white px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
                         onClick={(e) => {
@@ -484,7 +490,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
               {/* Back */}
               <div
-                onClick={() => setBook1Flipped(!book1Flipped)}
+                onClick={() => { setBook1Flipped(!book1Flipped); setBook1HasBeenFlipped(true); }}
                 className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
               >
                 <h2 className="text-2xl font-bold text-gray-800">
@@ -531,12 +537,16 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
                   alt={book2.concept_title}
                   className="w-full flex-1 min-h-0 rounded-lg shadow-md cursor-pointer aspect-[3/4]"
-                  onClick={() => setBook2Flipped(!book2Flipped)}
+                  onClick={() => { setBook2Flipped(!book2Flipped); setBook2HasBeenFlipped(true); }}
                 />
 
-                <div className="mt-5 flex justify-center">
+                <div className="mt-5 flex justify-center min-h-[48px] items-center">
                   {resolvedStatus === "stage2" && matchRound === activeRound && (
-                    userVote === "b" ? (
+                    !(book1HasBeenFlipped && book2HasBeenFlipped) ? (
+                      <span className="text-red-500 font-semibold text-sm animate-pulse">
+                        Flip both books to cast your vote
+                      </span>
+                    ) : userVote === "b" ? (
                       <Button
                         className="pointer-events-auto bg-red-500 hover:bg-red-600 text-white px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
                         onClick={(e) => {
@@ -568,7 +578,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
               {/* Back */}
               <div
-                onClick={() => setBook2Flipped(!book2Flipped)}
+                onClick={() => { setBook2Flipped(!book2Flipped); setBook2HasBeenFlipped(true); }}
                 className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
               >
 

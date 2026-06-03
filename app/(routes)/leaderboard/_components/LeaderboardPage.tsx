@@ -35,6 +35,12 @@ const LeaderBoardPage = () => {
 
     const fetchTournaments = async () => {
       try {
+        try {
+          await supabase.rpc("run_tournament_cron");
+        } catch (e) {
+          console.warn("Cron update check failed:", e);
+        }
+
         const { data, error } = await supabase
           .from("tournament")
           .select(`

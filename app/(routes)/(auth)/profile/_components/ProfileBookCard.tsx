@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useContext, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import BookContext from "@/app/_context/book/BookContext";
+import { formatStatusLabel } from "@/app/_utilities/tournamentLifecycle";
 import {
   Dialog,
   DialogContent,
@@ -56,7 +57,14 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
     try {
       const { data: tData, error: tError } = await supabase
         .from("tournament")
-        .select("tournament_id, tournament_title, tournament_status")
+        .select(`
+          tournament_id,
+          tournament_title,
+          tournament_status,
+          tournament_user_limit,
+          tournament_submission(tournamentsub_status),
+          bracket(bracket_round_number, bracket_status)
+        `)
         .in("tournament_status", ["stage1", "stage2"])
         .order("tournament_start_date", { ascending: false });
 
@@ -134,6 +142,36 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
     } catch (err) {
       console.error(err);
       alert("Failed to remove submission.");
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleReApply = async (submissionId: string) => {
+    if (pendingAction) return;
+    const actionKey = `reapply-${submissionId}`;
+    setPendingAction(actionKey);
+    try {
+      const { error } = await supabase
+        .from("tournament_submission")
+        .update({ tournamentsub_status: "pending", tournamentsub_updated_at: new Date().toISOString() })
+        .eq("tournamentsub_id", submissionId);
+
+      if (error) {
+        alert(`Failed to re-apply: ${error.message}`);
+        return;
+      }
+
+      // refresh submissions list
+      const { data: sData } = await supabase
+        .from("tournament_submission")
+        .select("*")
+        .eq("concept_id", concept.concept_id)
+        .not("tournamentsub_status", "eq", "deleted");
+      setSubs(sData ?? []);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to re-apply.");
     } finally {
       setPendingAction(null);
     }
@@ -223,24 +261,52 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
                 tournaments.map((t) => {
                   const submission = subs.find((s) => String(s.tournament_id) === String(t.tournament_id));
                   const submitted = !!submission;
-                  const submissionStatus = submission ? (submission.tournamentsub_status === 'approved' ? 'Approved' : 'Awaiting approval') : 'No submission';
+                  const submissionStatus = submission ? (
+                    submission.tournamentsub_status === 'approved'
+                      ? 'Approved'
+                      : submission.tournamentsub_status === 'rejected'
+                        ? 'Rejected'
+                        : 'Awaiting approval'
+                  ) : 'No submission';
                   return (
                     <div key={t.tournament_id} className="flex items-center justify-between gap-4 p-3 border rounded-md">
                       <div>
                         <div className="font-semibold">{t.tournament_title}</div>
-                        <div className="text-sm text-muted-foreground">Tournament Status: {t.tournament_status === "stage1" ? "Stage 1" : "Stage 2"}</div>
+                        <div className="text-sm text-muted-foreground text-opacity-80">
+                          Tournament Status: {formatStatusLabel(t.tournament_status, t.bracket?.find((b: any) => b.bracket_status === "active")?.bracket_round_number || t.bracket?.[0]?.bracket_round_number)}
+                        </div>
                         {submissionStatus && <div className="text-sm">Submission: {submissionStatus}</div>}
                       </div>
                       <div className="flex items-center gap-2">
-                        {t.tournament_status === 'stage1' && !submitted && (
-                          <Button disabled={!!pendingAction} onClick={() => handleAdd(t.tournament_id)}>
-                            {pendingAction === `add-${t.tournament_id}` ? "Adding..." : "Add to tournament"}
-                          </Button>
-                        )}
+                        {t.tournament_status === 'stage1' && !submitted && (() => {
+                          const allSubs: { tournamentsub_status: string }[] = t.tournament_submission ?? [];
+                          const validCount = allSubs.filter(
+                            (s: { tournamentsub_status: string }) =>
+                              s.tournamentsub_status !== 'rejected' &&
+                              s.tournamentsub_status !== 'terminated' &&
+                              s.tournamentsub_status !== 'deleted'
+                          ).length;
+                          const limit = t.tournament_user_limit ?? 0;
+                          const isFull = limit > 0 && validCount >= limit;
+                          return isFull ? (
+                            <span className="text-sm font-semibold text-red-600">Tournament full</span>
+                          ) : (
+                            <Button disabled={!!pendingAction} onClick={() => handleAdd(t.tournament_id)}>
+                              {pendingAction === `add-${t.tournament_id}` ? "Adding..." : "Add to tournament"}
+                            </Button>
+                          );
+                        })()}
                         {t.tournament_status === 'stage1' && submitted && (
-                          <Button disabled={!!pendingAction} variant="destructive" onClick={() => handleRemove(submission.tournamentsub_id)}>
-                            {pendingAction === `remove-${submission.tournamentsub_id}` ? "Removing..." : "Remove from tournament"}
-                          </Button>
+                          <>
+                            {submission.tournamentsub_status === 'rejected' && (
+                              <Button disabled={!!pendingAction} onClick={() => handleReApply(submission.tournamentsub_id)}>
+                                {pendingAction === `reapply-${submission.tournamentsub_id}` ? "Re-applying..." : "Re-apply"}
+                              </Button>
+                            )}
+                            <Button disabled={!!pendingAction} variant="destructive" onClick={() => handleRemove(submission.tournamentsub_id)}>
+                              {pendingAction === `remove-${submission.tournamentsub_id}` ? "Removing..." : "Remove from tournament"}
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>

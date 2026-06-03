@@ -128,7 +128,7 @@ const BookBuilderPage = () => {
             try {
               const { data: tRows, error: tError } = await supabase
                 .from("tournament")
-                .select("tournament_id, tournament_status")
+                .select("tournament_id, tournament_status, tournament_user_limit, tournament_submission(tournamentsub_status)")
                 .eq("tournament_id", tId)
                 .limit(1);
 
@@ -141,13 +141,26 @@ const BookBuilderPage = () => {
                 if (tournamentRow.tournament_status !== "stage1") {
                   warning = `The tournament is not accepting submissions (status: ${tournamentRow.tournament_status}). Your concept has been submitted but it has not been added to the tournament. You can manage your submissions on your profile page.`;
                 } else {
-                  const { error: submissionError } = await supabase
-                    .from("tournament_submission")
-                    .insert({ concept_id: data.concept_id, tournament_id: tId });
+                  // Check capacity: count valid (non-rejected, non-terminated, non-deleted) submissions
+                  const allSubs: { tournamentsub_status: string }[] = tournamentRow.tournament_submission ?? [];
+                  const validCount = allSubs.filter(
+                    (s: { tournamentsub_status: string }) =>
+                      s.tournamentsub_status !== 'rejected' &&
+                      s.tournamentsub_status !== 'terminated' &&
+                      s.tournamentsub_status !== 'deleted'
+                  ).length;
+                  const limit: number = tournamentRow.tournament_user_limit ?? 0;
+                  if (limit > 0 && validCount >= limit) {
+                    warning = `Your book was created successfully, but could not be added to the tournament because it is full (${validCount}/${limit} slots taken). You can try adding it to another tournament from your profile page.`;
+                  } else {
+                    const { error: submissionError } = await supabase
+                      .from("tournament_submission")
+                      .insert({ concept_id: data.concept_id, tournament_id: tId });
 
-                  if (submissionError) {
-                    console.log("Error adding tournament submission - ", submissionError.message, "Code", submissionError.code);
-                    warning = `Your concept has been submitted, but it has not been added to the tournament: ${submissionError.message}`;
+                    if (submissionError) {
+                      console.log("Error adding tournament submission - ", submissionError.message, "Code", submissionError.code);
+                      warning = `Your concept has been submitted, but it has not been added to the tournament: ${submissionError.message}`;
+                    }
                   }
                 }
               }

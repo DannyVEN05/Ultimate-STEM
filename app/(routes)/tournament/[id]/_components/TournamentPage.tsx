@@ -3,16 +3,24 @@
 import TournamentContext from "@/app/_context/tournament/TournamentContext";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BookCover } from "@/app/_types/model/Concept";
-
-
+import {
+  formatCountdownParts,
+  formatStatusLabel,
+  getCountdownParts,
+  getTournamentMilestoneTarget,
+  resolveTournamentLifecycleStatus,
+  TournamentLifecycleStatus,
+} from "@/app/_utilities/tournamentLifecycle";
 
 type Tournament = {
   tournament_id: number;
   tournament_title: string;
   tournament_genre: string;
+  tournament_start_date: string;
+  tournament_s2_start_date: string | null;
   tournament_status: string;
   tournament_end_date: string;
   description: string;
@@ -34,59 +42,77 @@ type ConceptSubmission = {
 
 const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boolean }) => {
   const router = useRouter();
-  const { tournament, setTournament } = useContext(TournamentContext);
+  const { setTournament } = useContext(TournamentContext);
 
   const [tournamentData, setTournamentData] = useState<Tournament | null>(null);
   const [conceptSubmissions, setConceptSubmissions] = useState<ConceptSubmission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(() => Date.now());
+
+  const [activeRound, setActiveRound] = useState<number | null>(null);
+  const [totalRounds, setTotalRounds] = useState<number | null>(null);
 
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
+    return text.substring(0, maxLength) + "...";
   };
 
-  const getTimeLeft = (endDate?: string) => {
-    if (!endDate) {
-      return { days: 0, hours: 0, minutes: 0 };
+  const fetchTournamentData = useCallback(async () => {
+    try {
+      await supabase.rpc("advance_tournament_lifecycle", { p_tournament_id: Number(id) });
+    } catch (e) {
+      console.warn("Lifecycle update check failed:", e);
     }
 
-    const difference = new Date(endDate).getTime() - Date.now();
+    const { data, error } = await supabase
+      .from("tournament")
+      .select("*")
+      .eq("tournament_id", Number(id))
+      .single();
 
-    if (difference <= 0) {
-      return { days: 0, hours: 0, minutes: 0 };
+    if (error) {
+      console.error("Error fetching tournament data:", error);
+      setLoading(false);
+      return;
     }
 
-    return {
-      days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-      hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-      minutes: Math.floor((difference / (1000 * 60)) % 60),
-    };
-  };
+    setTournamentData(data);
 
-  const [timeLeft, setTimeLeft] = useState(() => getTimeLeft());
+    try {
+      const { data: bracketRows } = await supabase
+        .from("bracket")
+        .select("bracket_id, bracket_round_number, bracket_status")
+        .eq("tournament_id", Number(id));
+
+      if (bracketRows && bracketRows.length > 0) {
+        const activeBracket = bracketRows.find(b => b.bracket_status === "active") || bracketRows[0];
+        setActiveRound(activeBracket.bracket_round_number);
+
+        const bracketIds = bracketRows.map(b => b.bracket_id);
+        const { data: matches } = await supabase
+          .from("bracket_match")
+          .select("bmatch_index")
+          .in("bracket_id", bracketIds);
+
+        if (matches && matches.length > 0) {
+          const r1Count = matches.filter(m => (m.bmatch_index?.round ?? 1) === 1).length;
+          const computedTotalRounds = Math.max(1, Math.ceil(Math.log2(r1Count * 2)));
+          setTotalRounds(computedTotalRounds);
+        } else {
+          setTotalRounds(1);
+        }
+      }
+    } catch (e) {
+      console.warn("Error fetching bracket rounds:", e);
+    }
+
+    setLoading(false);
+  }, [id]);
 
   useEffect(() => {
     setTournament(Number(id));
-
-    const getTournamentData = async () => {
-      const { data, error } = await supabase
-        .from("tournament")
-        .select("*")
-        .eq("tournament_id", Number(id))
-        .single();
-
-      if (error) {
-        console.error("Error fetching tournament data:", error);
-        setLoading(false);
-        return;
-      }
-
-      setTournamentData(data);
-      setLoading(false);
-    };
-    getTournamentData();
-
-  }, [id, setTournament]);
+    fetchTournamentData();
+  }, [fetchTournamentData, id, setTournament]);
 
   useEffect(() => {
     const getConceptSubmissions = async () => {
@@ -126,43 +152,46 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
   }, [tournamentData, id]);
 
   useEffect(() => {
-    if (readonly) return;
+    const timerId = window.setInterval(() => setNow(Date.now()), 15000);
+    return () => window.clearInterval(timerId);
+  }, []);
 
-    if (!tournamentData?.tournament_end_date) {
-      setTimeLeft({ days: 0, hours: 0, minutes: 0 });
-      return;
-    }
+  useEffect(() => {
+    if (!tournamentData) return;
 
-    let timeoutId: number | undefined;
+    const timerId = window.setInterval(() => {
+      fetchTournamentData();
+    }, 30000);
 
-    const scheduleNextUpdate = () => {
-      const nextTimeLeft = getTimeLeft(tournamentData.tournament_end_date);
-      setTimeLeft(nextTimeLeft);
+    return () => window.clearInterval(timerId);
+  }, [fetchTournamentData, tournamentData]);
 
-      if (
-        nextTimeLeft.days === 0 &&
-        nextTimeLeft.hours === 0 &&
-        nextTimeLeft.minutes === 0
-      ) {
-        return;
-      }
+  const resolvedStatus = useMemo<TournamentLifecycleStatus>(() => {
+    return resolveTournamentLifecycleStatus(tournamentData, now);
+  }, [now, tournamentData]);
 
-      const endDate = new Date(tournamentData.tournament_end_date).getTime();
-      const now = Date.now();
-      const diff = endDate - now;
-      const delay = diff > 0 ? Math.max(diff % 60000, 1000) : 1000;
+  const totalCountdown = useMemo(() => {
+    return getCountdownParts(
+      tournamentData?.tournament_end_date ? new Date(tournamentData.tournament_end_date).getTime() : null,
+      now,
+    );
+  }, [now, tournamentData?.tournament_end_date]);
 
-      timeoutId = window.setTimeout(scheduleNextUpdate, delay);
-    };
+  const milestone = useMemo(() => {
+    return getTournamentMilestoneTarget(tournamentData, resolvedStatus, activeRound, totalRounds);
+  }, [resolvedStatus, tournamentData, activeRound, totalRounds]);
 
-    scheduleNextUpdate();
+  const milestoneCountdown = useMemo(() => {
+    return getCountdownParts(milestone.targetMs, now);
+  }, [milestone.targetMs, now]);
 
-    return () => {
-      if (timeoutId !== undefined) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, [readonly, tournamentData?.tournament_end_date]);
+  const statusStyles: Record<TournamentLifecycleStatus, string> = {
+    upcoming: "bg-[#fff7e6] text-[#b97805]",
+    stage1: "bg-[#e0f0ff] text-[#1565c0]",
+    stage2: "bg-[#ede9fe] text-[#6d3ef0]",
+    concluded: "bg-[#e6f9f0] text-[#1a8a55]",
+    terminated: "bg-[#f0f1f7] text-[#4b5563]",
+  };
 
   if (loading) return <p>Loading tournament...</p>;
 
@@ -171,13 +200,15 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
   return (
     <div className="min-h-screen bg-white px-6 py-10">
       <div className="mx-auto max-w-6xl">
-
         <section className="rounded-2xl bg-[#baffe5af] px-10 py-12 shadow-lg">
-          <div className={`mb-4 inline-block rounded-full px-4 py-1 text-sm font-bold ${tournamentData.tournament_status === "active"
-            ? "bg-tertiary text-orange-900"
-            : "bg-gray-200 text-gray-600"
-            }`}>
-            {tournamentData.tournament_status !== "concluded" ? "Active Tournament" : "Concluded Tournament"}
+          <div className={`mb-4 inline-block rounded-full px-4 py-1 text-sm font-bold ${statusStyles[resolvedStatus]}`}>
+            {resolvedStatus === "stage1" || resolvedStatus === "stage2"
+              ? "Active Tournament"
+              : resolvedStatus === "upcoming"
+                ? "Upcoming Tournament"
+                : resolvedStatus === "concluded"
+                  ? "Concluded Tournament"
+                  : "Terminated Tournament"}
           </div>
 
           <h1 className="max-w-2xl text-4xl font-bold leading-tight text-purple-950">{tournamentData.tournament_title}</h1>
@@ -185,43 +216,45 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
             {tournamentData.tournament_genre}
           </div>
           <div className="mb-4 inline-block rounded-full bg-purple-300 px-4 py-1 text-sm font-bold text-purple-900">
-            {tournamentData.tournament_status.charAt(0).toUpperCase() + tournamentData.tournament_status.slice(1)}
+            {formatStatusLabel(resolvedStatus, activeRound)}
           </div>
 
-
           <p className="max-w-3xl text-md text-gray-700">
-            {tournamentData.tournament_status === "active"
+            {resolvedStatus === "stage1" || resolvedStatus === "stage2"
               ? "Join as the most creative concepts face off in the ultimate STEM showdown! Vote for your favourite concepts to shape their future."
               : "Browse the concepts that competed in this concluded tournament."}
           </p>
-
         </section>
 
-        {!readonly && <section className="mt-10 rounded-[2rem] bg-[whitesmoke] px-8 py-10 text-center shadow-lg">
-          <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700">
-            Time remaining to vote
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-purple-600">
-
-            <div className="rounded-3xl border border-purple-200 bg-purple-50 px-8 py-8 shadow-sm">
-              <div className="text-5xl font-extrabold">{timeLeft.days}</div>
-              <div className="mt-2 text-sm uppercase tracking-[0.2em] text-purple-700">Days</div>
-            </div>
-            <span className="text-6xl font-extrabold">:</span>
-
-            <div className="rounded-3xl border border-purple-200 bg-purple-50 px-8 py-8 shadow-sm">
-              <div className="text-5xl font-extrabold">{timeLeft.hours}</div>
-              <div className="mt-2 text-sm uppercase tracking-[0.2em] text-purple-700">Hours</div>
-            </div>
-            <span className="text-6xl font-extrabold">:</span>
-
-            <div className="rounded-3xl border border-purple-200 bg-purple-50 px-8 py-8 shadow-sm">
-              <div className="text-5xl font-extrabold">{timeLeft.minutes}</div>
-              <div className="mt-2 text-sm uppercase tracking-[0.2em] text-purple-700">Minutes</div>
+        {!readonly && resolvedStatus !== "concluded" && resolvedStatus !== "terminated" && (
+          <section className="mt-10 rounded-[2rem] bg-[whitesmoke] px-8 py-10 text-center shadow-lg">
+            <div className="flex flex-wrap items-center justify-between gap-4 text-left">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-700">
+                  Live Tournament Clock
+                </p>
+                <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-[#1d2436]">
+                  Total and stage countdowns
+                </h2>
+              </div>
+              <span className="rounded-full bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#6b7490] shadow-sm">
+                Auto-refreshes every 15s
+              </span>
             </div>
 
-          </div>
-        </section>}
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              <div className="rounded-3xl border border-purple-200 bg-purple-50 px-8 py-8 shadow-sm">
+                <div className="text-xs font-black uppercase tracking-[0.14em] text-purple-700">Tournament ends in</div>
+                <div className="mt-3 text-4xl font-extrabold text-purple-900">{formatCountdownParts(totalCountdown)}</div>
+              </div>
+
+              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 px-8 py-8 shadow-sm">
+                <div className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">{milestone.label}</div>
+                <div className="mt-3 text-4xl font-extrabold text-emerald-900">{formatCountdownParts(milestoneCountdown)}</div>
+              </div>
+            </div>
+          </section>
+        )}
 
         <section className="mt-10">
           <div className="flex justify-between items-start mb-6">
@@ -242,31 +275,30 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
           {conceptSubmissions.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {conceptSubmissions.map((submission) => {
-                // Calculate coverUrl here (copied from ProfileBookCard logic)
-                const fallbackCoverUrl = '/covers/engineering.png';
+                const fallbackCoverUrl = "/covers/engineering.png";
                 const fallbackStyling = { book_cover: fallbackCoverUrl } as BookCover;
                 const rawConceptStyling = submission.concept.concept_styling as unknown;
                 let styling: BookCover = fallbackStyling;
 
-                if (typeof rawConceptStyling === 'string') {
+                if (typeof rawConceptStyling === "string") {
                   try {
                     const parsedStyling = JSON.parse(rawConceptStyling) as unknown;
-                    if (parsedStyling && typeof parsedStyling === 'object') {
+                    if (parsedStyling && typeof parsedStyling === "object") {
                       styling = parsedStyling as BookCover;
                     }
                   } catch {
                     styling = fallbackStyling;
                   }
-                } else if (rawConceptStyling && typeof rawConceptStyling === 'object') {
+                } else if (rawConceptStyling && typeof rawConceptStyling === "object") {
                   styling = rawConceptStyling as BookCover;
                 }
 
-                const bookCover = typeof styling.book_cover === 'string'
+                const bookCover = typeof styling.book_cover === "string"
                   ? styling.book_cover
                   : fallbackStyling.book_cover;
                 let coverUrl = fallbackCoverUrl;
                 if (bookCover) {
-                  const isLocalPath = bookCover.startsWith('/');
+                  const isLocalPath = bookCover.startsWith("/");
                   const isAbsoluteUrl = /^(https?:)?\/\//.test(bookCover);
                   if (isLocalPath || isAbsoluteUrl) {
                     coverUrl = bookCover;
@@ -295,7 +327,7 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
 
                       <p className="text-sm text-gray-700 mb-4 flex-1">{truncateText(submission.concept.concept_description, 25)}</p>
 
-                      <div className="flex items-center justify-between mb-3  mt-auto">
+                      <div className="flex items-center justify-between mb-3 mt-auto">
                         <span className="text-lg font-semibold text-purple-600 flex-shrink-0"></span>
 
                         {!readonly && <Button onClick={() => router.push(`/tournament/${id}/submissions`)}
@@ -323,7 +355,6 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
           </div>
 
           <Button
-
             className="py-2 px-6 text-white bg-purple-600 hover:bg-purple-700"
             onClick={() => router.push(`/tournament/${id}/tournamentbracket`)}
           >
@@ -334,7 +365,5 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
     </div>
   );
 };
-
-
 
 export default TournamentPage;

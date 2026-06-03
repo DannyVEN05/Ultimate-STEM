@@ -4,8 +4,9 @@ import { useEffect, useState, useContext } from "react";
 import { supabase } from "@/lib/supabase";
 import AuthContext from "@/app/_context/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import { Bell, FlaskConical, Zap, BookOpen, Mail } from "lucide-react";
+import { Bell, FlaskConical, Zap, BookOpen, Mail, Calendar, Users } from "lucide-react";
 import { getCategoryEmoji, getCategoryBg } from "@/app/_utilities/categoryUtils";
+import { formatStatusLabel } from "@/app/_utilities/tournamentLifecycle";
 
 type TournamentStatus = "upcoming" | "stage1" | "stage2" | "concluded" | "cancelled";
 
@@ -16,8 +17,11 @@ interface Tournament {
   startDate: string;
   endDate: string;
   participants: number;
+  approvedCount: number;
+  pendingCount: number;
   participantLimit: number;
   status: TournamentStatus;
+  activeRound?: number | null;
 }
 
 function getCountdown(targetDate: string, now: number): { days: number; hours: number } {
@@ -31,6 +35,14 @@ function getCountdown(targetDate: string, now: number): { days: number; hours: n
 
 function capacityPct(t: Tournament) {
   return t.participantLimit > 0 ? Math.min(100, Math.round((t.participants / t.participantLimit) * 100)) : 0;
+}
+
+function approvedPct(t: Tournament) {
+  return t.participantLimit > 0 ? Math.min(100, Math.round((t.approvedCount / t.participantLimit) * 100)) : 0;
+}
+
+function pendingPct(t: Tournament) {
+  return t.participantLimit > 0 ? Math.min(100, Math.round((t.pendingCount / t.participantLimit) * 100)) : 0;
 }
 
 function slotsLeft(t: Tournament) {
@@ -124,28 +136,64 @@ const DashboardPage = () => {
   const sidebar = active.slice(1);
 
   useEffect(() => {
-    supabase
-      .from("tournament")
-      .select("tournament_id, tournament_title, tournament_genre, tournament_start_date, tournament_end_date, tournament_user_limit, tournament_status, tournament_submission(count)")
-      .in("tournament_status", ["stage1", "stage2", "upcoming", "concluded"])
-      .order("tournament_start_date", { ascending: false })
-      .then(({ data, error: err }) => {
-        if (err) {
-          setError(err.message);
-        } else if (data) {
-          setAllTournaments(data.map((row: any) => ({
+    const fetchDashboardTournaments = async () => {
+      try {
+        await supabase.rpc("run_tournament_cron");
+      } catch (e) {
+        console.warn("Cron update check failed:", e);
+      }
+
+      const { data, error: err } = await supabase
+        .from("tournament")
+        .select(`
+          tournament_id,
+          tournament_title,
+          tournament_genre,
+          tournament_start_date,
+          tournament_end_date,
+          tournament_user_limit,
+          tournament_status,
+          tournament_submission(tournamentsub_status),
+          bracket(bracket_round_number, bracket_status)
+        `)
+        .in("tournament_status", ["stage1", "stage2", "upcoming", "concluded"])
+        .order("tournament_end_date", { ascending: false });
+
+      if (err) {
+        setError(err.message);
+      } else if (data) {
+        setAllTournaments(data.map((row: any) => {
+          const activeBracket = row.bracket?.find((b: any) => b.bracket_status === "active") || row.bracket?.[0];
+          const allSubs: { tournamentsub_status: string }[] = row.tournament_submission ?? [];
+          // Match admin page: exclude rejected, terminated, deleted
+          const validSubs = allSubs.filter(
+            (s) => s.tournamentsub_status !== "rejected" &&
+                   s.tournamentsub_status !== "terminated" &&
+                   s.tournamentsub_status !== "deleted"
+          );
+          const approvedCount = validSubs.filter((s) => s.tournamentsub_status === "approved").length;
+          const pendingCount = validSubs.filter(
+            (s) => s.tournamentsub_status !== "approved"
+          ).length;
+          return {
             id: String(row.tournament_id),
             title: row.tournament_title,
             category: row.tournament_genre ?? "",
             startDate: row.tournament_start_date,
             endDate: row.tournament_end_date,
-            participants: (row.tournament_submission?.[0]?.count ?? 0) as number,
+            participants: validSubs.length,
+            approvedCount,
+            pendingCount,
             participantLimit: row.tournament_user_limit ?? 0,
             status: row.tournament_status as TournamentStatus,
-          })));
-        }
-        setLoading(false);
-      });
+            activeRound: activeBracket ? activeBracket.bracket_round_number : null,
+          };
+        }));
+      }
+      setLoading(false);
+    };
+
+    fetchDashboardTournaments();
   }, []);
 
   useEffect(() => {
@@ -265,7 +313,7 @@ const DashboardPage = () => {
                     <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-500">Ending Soon</span>
                   )}
                   <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
-                    {active[0].status === "stage1" ? "Stage 1" : "Stage 2"}
+                    {formatStatusLabel(active[0].status as any, active[0].activeRound)}
                   </span>
                 </div>
                 <div className="flex -space-x-2">
@@ -294,8 +342,19 @@ const DashboardPage = () => {
                   <span className="text-primary font-semibold">{capacityPct(active[0])}% Capacity reached</span>
                   <span className="text-gray-500">{slotsLeft(active[0])} Slots left</span>
                 </div>
-                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${capacityPct(active[0])}%` }} />
+                <div className="h-2 rounded-full bg-gray-100 overflow-hidden flex">
+                  <div className="h-full rounded-l-full bg-primary transition-all" style={{ width: `${approvedPct(active[0])}%` }} />
+                  <div className="h-full bg-amber-400 transition-all" style={{ width: `${pendingPct(active[0])}%` }} />
+                </div>
+                <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+                    {active[0].approvedCount} Approved
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
+                    {active[0].pendingCount} Pending
+                  </span>
                 </div>
               </div>
 
@@ -379,7 +438,12 @@ const DashboardPage = () => {
                 "lg:grid-cols-4"
             }`}>
             {concluded.slice(0, 3).map((t, i) => (
-              <div key={t.id} className="rounded-xl overflow-hidden border border-gray-100 bg-white shadow-sm">
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => router.push(`/tournament/${t.id}`)}
+                className="rounded-xl overflow-hidden border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer text-left w-full"
+              >
                 <div className={`aspect-[4/3] flex items-center justify-center text-5xl ${["bg-orange-100", "bg-slate-700", "bg-stone-200"][i % 3]}`}>
                   {CHAMPION_EMOJIS[i % CHAMPION_EMOJIS.length]}
                 </div>
@@ -389,8 +453,20 @@ const DashboardPage = () => {
                   </span>
                   <h3 className="font-bold text-gray-900 text-sm leading-snug">{t.title}</h3>
                   {t.category && <p className="text-xs text-gray-500">{t.category}</p>}
+                  <div className="flex items-center gap-3 pt-1 text-[11px] text-gray-400">
+                    {t.endDate && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Ended {t.endDate.slice(0, 10)}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {t.participants} participants
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </button>
             ))}
 
             {/* Discover More */}

@@ -2,10 +2,19 @@
 
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Concept } from "@/app/_types/model/Concept";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  formatCountdownParts,
+  formatStatusLabel,
+  getCountdownParts,
+  getRoundCountdownTarget,
+  getTournamentMilestoneTarget,
+  resolveTournamentLifecycleStatus,
+  TournamentLifecycleStatus,
+} from "@/app/_utilities/tournamentLifecycle";
 
 import {
   Dialog,
@@ -25,12 +34,15 @@ type Props = {
 
 type Bracket = {
   bracket_round_number: number;
+  bracket_status?: string;
 };
 
 type Tournament = {
   tournament_title: string;
+  tournament_start_date: string;
+  tournament_s2_start_date: string | null;
   tournament_end_date: string;
-  tournament_status?: string;
+  tournament_status: string;
 };
 
 const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
@@ -40,6 +52,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
   const [selectedSide, setSelectedSide] = useState<"a" | "b" | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const [voteSuccess, setVoteSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
 
   const [isSubmittingVote, setIsSubmittingVote] = useState(false);
@@ -47,119 +60,159 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
   const [book1Flipped, setBook1Flipped] = useState(false);
   const [book2Flipped, setBook2Flipped] = useState(false);
+  const [book1HasBeenFlipped, setBook1HasBeenFlipped] = useState(false);
+  const [book2HasBeenFlipped, setBook2HasBeenFlipped] = useState(false);
 
 
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [tournamentStatus, setTournamentStatus] = useState<string | null>(null);
   const [bracket, setBracket] = useState<Bracket | null>(null);
+  const [totalRounds, setTotalRounds] = useState(1);
+  const [activeRound, setActiveRound] = useState(1);
+  const [matchRound, setMatchRound] = useState(1);
 
   const [book1, setBook1] = useState<Concept | null>(null);
   const [book2, setBook2] = useState<Concept | null>(null);
+  const [book1IsDeleted, setBook1IsDeleted] = useState(false);
+  const [book2IsDeleted, setBook2IsDeleted] = useState(false);
   const [submissionAId, setSubmissionAId] = useState<string | null>(null);
   const [submissionBId, setSubmissionBId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(() => Date.now());
 
   const hasVoted = userVote === "a" ? book1?.concept_title : userVote === "b" ? book2?.concept_title : null;
 
-  useEffect(() => {
-
-    const fetchMatchup = async () => {
-      setLoading(true);
+  const fetchMatchup = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
       try {
-        // 1. Fetch the match
-        const { data: match, error: matchError } = await supabase
-          .from("bracket_match")
-          .select("*")
-          .eq("bmatch_id", bmatchId)
-          .single();
+        await supabase.rpc("advance_tournament_lifecycle", { p_tournament_id: Number(tournamentId) });
+      } catch (e) {
+        console.warn("Lifecycle update check failed:", e);
+      }
 
-        if (matchError) throw matchError;
+      const { data: match, error: matchError } = await supabase
+        .from("bracket_match")
+        .select("*")
+        .eq("bmatch_id", bmatchId)
+        .single();
 
-        // 2. Fetch the bracket and validate tournament_id matches the URL
-        const { data: bracketData, error: bracketError } = await supabase
-          .from("bracket")
-          .select("bracket_round_number, tournament_id")
-          .eq("bracket_id", match.bracket_id)
-          .single();
+      if (matchError) throw matchError;
 
-        if (bracketError) throw bracketError;
+      if (match) {
+        setMatchRound(match.bmatch_index?.round ?? 1);
+      }
 
-        if (String(bracketData.tournament_id) !== String(tournamentId)) {
-          router.push(`/tournament/${tournamentId}/tournamentbracket`);
-          return;
-        }
+      const { data: bracketData, error: bracketError } = await supabase
+        .from("bracket")
+        .select("bracket_id, bracket_round_number, tournament_id, bracket_status")
+        .eq("bracket_id", match.bracket_id)
+        .single();
 
-        setBracket(bracketData);
+      if (bracketError) throw bracketError;
 
-        // 3. Fetch tournament data
-        const { data: tournamentData, error: tournamentError } = await supabase
-          .from("tournament")
-          .select("tournament_title, tournament_end_date, tournament_status")
-          .eq("tournament_id", bracketData.tournament_id)
-          .single();
+      if (String(bracketData.tournament_id) !== String(tournamentId)) {
+        router.push(`/tournament/${tournamentId}/tournamentbracket`);
+        return;
+      }
 
-        if (tournamentError) throw tournamentError;
-        setTournament(tournamentData);
-        if (tournamentData?.tournament_status) setTournamentStatus(tournamentData.tournament_status);
+      setBracket(bracketData);
 
-        // 4. Fetch submissions
-        const { data: submissions, error: subError } = await supabase
-          .from("tournament_submission")
-          .select("tournamentsub_id, concept_id")
-          .in("tournamentsub_id", [
-            match.bmatch_submission_a,
-            match.bmatch_submission_b,
-          ])
-          .not("tournamentsub_status", "eq", "deleted");
+      const { data: bracketMatches, error: matchesError } = await supabase
+        .from("bracket_match")
+        .select("bmatch_index")
+        .eq("bracket_id", bracketData.bracket_id);
 
-        if (subError) throw subError;
+      const r1Count = (bracketMatches ?? []).filter(
+        (m: any) => (m.bmatch_index?.round ?? 1) === 1
+      ).length;
+      const computedTotalRounds = Math.max(1, Math.ceil(Math.log2(r1Count * 2)));
+      const computedActiveRound = bracketData.bracket_round_number ?? 1;
 
-        const conceptIds = submissions.map((sub) => sub.concept_id);
+      setTotalRounds(computedTotalRounds);
+      setActiveRound(computedActiveRound);
 
-        // 5. Fetch concepts
-        const { data: concepts, error: conceptError } = await supabase
+      const { data: tournamentData, error: tournamentError } = await supabase
+        .from("tournament")
+        .select("tournament_title, tournament_start_date, tournament_s2_start_date, tournament_end_date, tournament_status")
+        .eq("tournament_id", bracketData.tournament_id)
+        .single();
+
+      if (tournamentError) throw tournamentError;
+      setTournament(tournamentData);
+      if (tournamentData?.tournament_status) setTournamentStatus(tournamentData.tournament_status);
+
+      // Fetch submissions without filtering deleted — we need to detect deleted ones
+      const { data: submissions, error: subError } = await supabase
+        .from("tournament_submission")
+        .select("tournamentsub_id, concept_id, tournamentsub_status")
+        .in("tournamentsub_id", [match.bmatch_submission_a, match.bmatch_submission_b]);
+
+      if (subError) throw subError;
+
+      const subA = submissions?.find((sub) => sub.tournamentsub_id === match.bmatch_submission_a);
+      const subB = submissions?.find((sub) => sub.tournamentsub_id === match.bmatch_submission_b);
+
+      const subADeleted = !subA || subA.tournamentsub_status === 'deleted' || subA.tournamentsub_status === 'terminated';
+      const subBDeleted = !subB || subB.tournamentsub_status === 'deleted' || subB.tournamentsub_status === 'terminated';
+
+      // Only fetch concepts for non-deleted submissions
+      const validConceptIds = [
+        !subADeleted ? subA!.concept_id : null,
+        !subBDeleted ? subB!.concept_id : null,
+      ].filter(Boolean) as string[];
+
+      let concepts: any[] = [];
+      if (validConceptIds.length > 0) {
+        const { data: conceptData, error: conceptError } = await supabase
           .from("concept")
           .select("*")
-          .in("concept_id", conceptIds)
-          .not("concept_status", "eq", "deleted");
-
+          .in("concept_id", validConceptIds);
         if (conceptError) throw conceptError;
-
-
-        const subA = submissions.find(
-          (sub) => sub.tournamentsub_id === match.bmatch_submission_a
-        );
-        const subB = submissions.find(
-          (sub) => sub.tournamentsub_id === match.bmatch_submission_b
-        );
-
-        const bookA = concepts.find(
-          (concept) => concept.concept_id === subA?.concept_id
-        );
-        const bookB = concepts.find(
-          (concept) => concept.concept_id === subB?.concept_id
-        );
-
-        setBook1(bookA ?? null);
-        setBook2(bookB ?? null);
-        setSubmissionAId(subA?.tournamentsub_id ?? null);
-        setSubmissionBId(subB?.tournamentsub_id ?? null);
-
-
-
-      } catch (error) {
-        console.error("Fetch matchup failed:", error);
-        router.push(`/tournament/${tournamentId}/tournamentbracket`);
-      } finally {
-        setLoading(false);
+        concepts = conceptData ?? [];
       }
-    };
 
+      const bookA = !subADeleted ? concepts.find((c) => c.concept_id === subA!.concept_id) ?? null : null;
+      const bookB = !subBDeleted ? concepts.find((c) => c.concept_id === subB!.concept_id) ?? null : null;
 
-    fetchMatchup();
+      // A book is "deleted" if its sub is deleted/terminated OR its concept couldn't be fetched
+      const aIsDeleted = subADeleted || (!subADeleted && bookA === null);
+      const bIsDeleted = subBDeleted || (!subBDeleted && bookB === null);
+
+      setBook1(bookA);
+      setBook2(bookB);
+      setBook1IsDeleted(aIsDeleted);
+      setBook2IsDeleted(bIsDeleted);
+      setSubmissionAId(subA?.tournamentsub_id ?? null);
+      setSubmissionBId(subB?.tournamentsub_id ?? null);
+    } catch (error) {
+      console.error("Fetch matchup failed:", error);
+      router.push(`/tournament/${tournamentId}/tournamentbracket`);
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [bmatchId, tournamentId, router]);
+
+  useEffect(() => {
+    fetchMatchup();
+  }, [fetchMatchup]);
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => setNow(Date.now()), 15000);
+    return () => window.clearInterval(timerId);
+  }, []);
+
+  useEffect(() => {
+    if (!tournament) return;
+
+    const timerId = window.setInterval(() => {
+      fetchMatchup(true);
+    }, 30000);
+
+    return () => window.clearInterval(timerId);
+  }, [fetchMatchup, tournament]);
 
 
 
@@ -199,18 +252,32 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
   }, [submissionAId, submissionBId, bmatchId]);
   //________________helpers________________________________________________________
 
+  const resolvedStatus = useMemo<TournamentLifecycleStatus>(() => {
+    return resolveTournamentLifecycleStatus(tournament, now);
+  }, [now, tournament]);
 
-  const calculateTimeLeft = (endDate: string) => {
-    const difference = new Date(endDate).getTime() - new Date().getTime();
+  const totalCountdown = useMemo(() => {
+    return getCountdownParts(
+      tournament?.tournament_end_date ? new Date(tournament.tournament_end_date).getTime() : null,
+      now,
+    );
+  }, [now, tournament?.tournament_end_date]);
 
-    if (difference <= 0) return "Voting ended";
+  const milestone = useMemo(() => {
+    return getTournamentMilestoneTarget(tournament, resolvedStatus);
+  }, [resolvedStatus, tournament]);
 
-    const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-    const minutes = Math.floor((difference / (1000 * 60)) % 60);
+  const milestoneCountdown = useMemo(() => {
+    return getCountdownParts(milestone.targetMs, now);
+  }, [milestone.targetMs, now]);
 
-    return `${days}d ${hours}h ${minutes}m`;
-  };
+  const roundCountdownTarget = useMemo(() => {
+    return getRoundCountdownTarget(tournament, totalRounds, matchRound);
+  }, [matchRound, totalRounds, tournament]);
+
+  const roundCountdown = useMemo(() => {
+    return getCountdownParts(roundCountdownTarget, now);
+  }, [now, roundCountdownTarget]);
 
 
 
@@ -222,21 +289,14 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
       return;
     }
 
-
-    if (userVote === selectedSide) {
-      setIsVoting(false);
-      return;
-    }
-
-    // Prevent voting unless the tournament is in stage2
-    if (tournamentStatus !== "stage2") {
-      alert("Voting is not open for this tournament.");
+    // Prevent voting unless the tournament is in stage2 and this match belongs to the active round
+    if (resolvedStatus !== "stage2" || matchRound !== activeRound) {
+      alert("Voting is not open for this match.");
       setIsVoting(false);
       return;
     }
 
     setIsSubmittingVote(true);
-
 
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -246,42 +306,62 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
       return;
     }
 
-    const newSubmissionId =
-      selectedSide === "a" ? submissionAId : submissionBId;
-
-    if (!newSubmissionId) {
-      console.error("Submission ID missing");
-      setIsSubmittingVote(false);
-      return;
-    }
-
-
     try {
+      if (userVote === selectedSide) {
+        // Cancel Vote
+        const { error } = await supabase
+          .from("vote")
+          .delete()
+          .eq("bmatch_id", bmatchId)
+          .eq("user_id", user.id);
 
-      // ── UPDATE existing vote row ──────────────────────────────────────
-      const { error } = await supabase
-        .from("vote")
-        .upsert({
-          bmatch_id: bmatchId,
-          user_id: user.id,
-          tournamentsub_id: newSubmissionId,
-        }, {
-          onConflict: "bmatch_id,user_id"
-        });
+        if (error) throw error;
 
-      if (error) throw error;
+        setUserVote(null);
+        setSuccessMessage(`✓ Your vote for ${selectedBook} has been cancelled.`);
+        setVoteSuccess(true);
+        setTimeout(() => {
+          setVoteSuccess(false);
+          setIsVoting(false);
+        }, 3000);
+      } else {
+        // Vote or Switch Vote
+        const newSubmissionId =
+          selectedSide === "a" ? submissionAId : submissionBId;
 
-      setUserVote(selectedSide);
+        if (!newSubmissionId) {
+          console.error("Submission ID missing");
+          setIsSubmittingVote(false);
+          return;
+        }
 
-      setVoteSuccess(true);
-      setTimeout(() => {
-        setVoteSuccess(false);
-        setIsVoting(false);
-      }, 3000);
+        const { error } = await supabase
+          .from("vote")
+          .upsert({
+            bmatch_id: bmatchId,
+            user_id: user.id,
+            tournamentsub_id: newSubmissionId,
+          }, {
+            onConflict: "bmatch_id,user_id"
+          });
 
+        if (error) throw error;
 
+        const isSwitch = userVote !== null;
+        setUserVote(selectedSide);
+        setSuccessMessage(
+          isSwitch
+            ? `✓ Your vote has been switched to ${selectedBook}!`
+            : `✓ Your vote for ${selectedBook} has been submitted!`
+        );
+        setVoteSuccess(true);
+        setTimeout(() => {
+          setVoteSuccess(false);
+          setIsVoting(false);
+        }, 3000);
+      }
     } catch (err) {
-      console.error("vote failed", err);
+      console.error("operation failed", err);
     } finally {
       setIsVoting(false);
       setIsSubmittingVote(false);
@@ -290,7 +370,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
 
   if (loading) return <p>Loading matchup...</p>;
-  if (!book1 || !book2) return <p>No matchup found.</p>;
+  if (!book1 && !book2 && !book1IsDeleted && !book2IsDeleted) return <p>No matchup found.</p>;
 
   return (
 
@@ -306,15 +386,58 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
         <div className="flex justify-between items-start">
           <h1 className=" md:text-5xl font-headline font-bold text-on-surface tracking-tighter pt-3 ">
-            {tournament?.tournament_title}</h1>
+            {tournament?.tournament_title} - One Vs One</h1>
 
-          <div className="rounded-full bg-green-100 px-5 py-3 text-sm font-semibold text-blue-800 shadow-lg mb-3 ">
-            {calculateTimeLeft(tournament ? tournament.tournament_end_date : "") === "Voting ended"
-              ? "Voting has ended"
-              : `Voting Ends in ${calculateTimeLeft(tournament ? tournament.tournament_end_date : "")}`}
+          <div className={`rounded-full px-5 py-3 text-sm font-semibold shadow-lg mb-3 ${resolvedStatus === "stage2" && matchRound === activeRound ? "bg-green-100 text-blue-800" : "bg-slate-100 text-slate-700"}`}>
+            {resolvedStatus === "stage2"
+              ? matchRound === activeRound
+                ? `Round ${matchRound} voting ends in ${formatCountdownParts(roundCountdown)}`
+                : matchRound < activeRound
+                  ? `Round ${matchRound} voting has ended`
+                  : `Round ${matchRound} voting hasn't started`
+              : resolvedStatus === "stage1"
+                ? `Stage 2 starts in ${formatCountdownParts(milestoneCountdown)}`
+                : resolvedStatus === "upcoming"
+                  ? `Tournament starts in ${formatCountdownParts(milestoneCountdown)}`
+                  : "Voting has ended"}
           </div>
         </div>
-        <p className="mb-2 max-w-4xl text-base font-bold text-gray-500 sm:text-xl pt-3">Round: {bracket?.bracket_round_number} One vs One</p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <span className="rounded-full bg-purple-100 px-4 py-2 text-sm font-bold text-purple-800">
+            {formatStatusLabel(resolvedStatus, matchRound)}
+          </span>
+          <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm">
+            Round {matchRound} of {totalRounds}
+          </span>
+        </div>
+
+        {resolvedStatus !== "concluded" && resolvedStatus !== "terminated" && (
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-3xl border border-purple-200 bg-purple-50 p-5 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">Tournament ends in</p>
+              <p className="mt-3 text-3xl font-extrabold text-purple-900">{formatCountdownParts(totalCountdown)}</p>
+            </div>
+
+            {resolvedStatus === "stage2" && (
+              matchRound === activeRound ? (
+                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Round {matchRound} voting ends</p>
+                  <p className="mt-3 text-3xl font-extrabold text-emerald-900">{formatCountdownParts(roundCountdown)}</p>
+                </div>
+              ) : matchRound < activeRound ? (
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-700">Round {matchRound} voting</p>
+                  <p className="mt-3 text-3xl font-extrabold text-slate-900">Voting has ended</p>
+                </div>
+              ) : (
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-700">Round {matchRound} voting</p>
+                  <p className="mt-3 text-3xl font-extrabold text-slate-900">Upcoming</p>
+                </div>
+              )
+            )}
+          </div>
+        )}
 
         {/* Book section */}
 
@@ -322,7 +445,17 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 mt-6 items-center justify-items-center">
           {/* book 1 item */}
-
+          {book1IsDeleted ? (
+            <div className="perspective-[1000px] w-[400px]">
+              <div className="relative aspect-[3/4] w-full">
+                <div className="absolute inset-0 overflow-hidden rounded-lg p-6 bg-gray-100 border-2 border-dashed border-gray-300 shadow-sm flex flex-col items-center justify-center gap-3">
+                  <span className="text-5xl">📕</span>
+                  <p className="text-gray-500 font-semibold text-center">Book Unavailable</p>
+                  <p className="text-gray-400 text-sm text-center">This book was removed from the tournament.</p>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="perspective-[1000px] w-[400px]">
             <div
               className={`relative aspect-[3/4] w-full transition-transform duration-500 [transform-style:preserve-3d] ${book1Flipped ? "[transform:rotateY(180deg)]" : "hover:-translate-y-3"}`}
@@ -333,53 +466,72 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 className="absolute inset-0 overflow-hidden rounded-lg p-4 bg-purple-100  hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
               >
                 <img
-                  src={book1.concept_styling?.book_cover
+                  src={book1!.concept_styling?.book_cover
                     ? supabase.storage
                       .from("book-covers")
-                      .getPublicUrl(book1.concept_styling.book_cover)
+                      .getPublicUrl(book1!.concept_styling.book_cover)
                       .data.publicUrl
                     : "/placeholder-cover.png"
                   }
 
-                  alt={book1.concept_title}
+                  alt={book1!.concept_title}
                   className="w-full flex-1 min-h-0 rounded-lg shadow-md cursor-pointer aspect-[3/4]"
-                  onClick={() => setBook1Flipped(!book1Flipped)}
+                  onClick={() => { setBook1Flipped(!book1Flipped); setBook1HasBeenFlipped(true); }}
                 />
 
 
-                <div className="mt-5 flex justify-center">
-                  {tournamentStatus === "stage2" && (
-                    <Button
-                      className="pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedBook(book1.concept_title);
-                        setSelectedSide("a")
-                        setIsVoting(true);
-                      }}
-                    >
-                      Vote
-                    </Button>
+                <div className="mt-5 flex justify-center min-h-[48px] items-center">
+                  {resolvedStatus === "stage2" && matchRound === activeRound && (
+                    !(book1HasBeenFlipped && book2HasBeenFlipped) ? (
+                      <span className="text-red-500 font-semibold text-sm animate-pulse">
+                        Flip both books to cast your vote
+                      </span>
+                    ) : userVote === "a" ? (
+                      <Button
+                        className="pointer-events-auto bg-red-500 hover:bg-red-600 text-white px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBook(book1!.concept_title);
+                          setSelectedSide("a");
+                          setIsVoting(true);
+                        }}
+                      >
+                        Cancel Vote
+                      </Button>
+                    ) : (
+                      <Button
+                        className="pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBook(book1!.concept_title);
+                          setSelectedSide("a");
+                          setIsVoting(true);
+                        }}
+                      >
+                        {userVote === "b" ? "Switch Vote" : "Vote"}
+                      </Button>
+                    )
                   )}
                 </div>
               </div>
 
               {/* Back */}
               <div
-                onClick={() => setBook1Flipped(!book1Flipped)}
+                onClick={() => { setBook1Flipped(!book1Flipped); setBook1HasBeenFlipped(true); }}
                 className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
               >
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {book1.concept_title}
+                  {book1!.concept_title}
                 </h2>
 
                 <p className="text-base text-gray-700 leading-relaxed overflow-y-auto">
-                  {book1.concept_description}
+                  {book1!.concept_description}
                 </p>
 
               </div>
             </div>
           </div>
+          )}
 
           {/* end of book1 item */}
 
@@ -391,7 +543,17 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
           </div>
 
           {/* Book 2 item */}
-
+          {book2IsDeleted ? (
+            <div className="perspective-[1000px] w-[400px]">
+              <div className="relative aspect-[3/4] w-full">
+                <div className="absolute inset-0 overflow-hidden rounded-lg p-6 bg-gray-100 border-2 border-dashed border-gray-300 shadow-sm flex flex-col items-center justify-center gap-3">
+                  <span className="text-5xl">📕</span>
+                  <p className="text-gray-500 font-semibold text-center">Book Unavailable</p>
+                  <p className="text-gray-400 text-sm text-center">This book was removed from the tournament.</p>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="perspective-[1000px] w-[400px]">
             <div
               className={`relative aspect-[3/4] w-full transition-transform duration-500 [transform-style:preserve-3d] ${book2Flipped ? "[transform:rotateY(180deg)]" : "hover:-translate-y-3"}`}
@@ -403,32 +565,50 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 className="absolute inset-0 overflow-hidden rounded-lg p-4 bg-purple-100 hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
               >
                 <img
-                  src={book2.concept_styling?.book_cover
+                  src={book2!.concept_styling?.book_cover
                     ? supabase.storage
                       .from("book-covers")
-                      .getPublicUrl(book2.concept_styling.book_cover)
+                      .getPublicUrl(book2!.concept_styling.book_cover)
                       .data.publicUrl
                     : "/placeholder-cover.png"
                   }
 
-                  alt={book2.concept_title}
+                  alt={book2!.concept_title}
                   className="w-full flex-1 min-h-0 rounded-lg shadow-md cursor-pointer aspect-[3/4]"
-                  onClick={() => setBook2Flipped(!book2Flipped)}
+                  onClick={() => { setBook2Flipped(!book2Flipped); setBook2HasBeenFlipped(true); }}
                 />
 
-                <div className="mt-5 flex justify-center">
-                  {tournamentStatus === "stage2" && (
-                    <Button
-                      className=" pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedBook(book2.concept_title);
-                        setSelectedSide("b");
-                        setIsVoting(true);
-                      }}
-                    >
-                      Vote
-                    </Button>
+                <div className="mt-5 flex justify-center min-h-[48px] items-center">
+                  {resolvedStatus === "stage2" && matchRound === activeRound && (
+                    !(book1HasBeenFlipped && book2HasBeenFlipped) ? (
+                      <span className="text-red-500 font-semibold text-sm animate-pulse">
+                        Flip both books to cast your vote
+                      </span>
+                    ) : userVote === "b" ? (
+                      <Button
+                        className="pointer-events-auto bg-red-500 hover:bg-red-600 text-white px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBook(book2!.concept_title);
+                          setSelectedSide("b");
+                          setIsVoting(true);
+                        }}
+                      >
+                        Cancel Vote
+                      </Button>
+                    ) : (
+                      <Button
+                        className="pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBook(book2!.concept_title);
+                          setSelectedSide("b");
+                          setIsVoting(true);
+                        }}
+                      >
+                        {userVote === "a" ? "Switch Vote" : "Vote"}
+                      </Button>
+                    )
                   )}
 
                 </div>
@@ -436,31 +616,38 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
               {/* Back */}
               <div
-                onClick={() => setBook2Flipped(!book2Flipped)}
+                onClick={() => { setBook2Flipped(!book2Flipped); setBook2HasBeenFlipped(true); }}
                 className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
               >
 
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {book2.concept_title}
+                  {book2!.concept_title}
                 </h2>
 
                 <p className="text-base text-gray-700 leading-relaxed overflow-y-auto">
-                  {book2.concept_description}
+                  {book2!.concept_description}
                 </p>
 
               </div>
             </div>
           </div>
+          )}
 
           {/* dialog for voting */}
           <Dialog open={isVoting} onOpenChange={setIsVoting}>
-            <DialogContent className="max-w-sm rounded-2xl">
+            <DialogContent className="max-w-sm rounded-2xl animate-in fade-in-50 zoom-in-95 duration-200">
 
               <DialogHeader>
-                <DialogTitle className="text-[#1d2436]">Confirm Your Vote</DialogTitle>
+                <DialogTitle className="text-[#1d2436]">
+                  {userVote === selectedSide
+                    ? "Cancel Your Vote"
+                    : userVote && userVote !== selectedSide
+                      ? "Switch Your Vote"
+                      : "Confirm Your Vote"}
+                </DialogTitle>
                 <DialogDescription className="text-[#8088a0]">
                   {userVote === selectedSide
-                    ? `You have already voted for ${selectedBook}.`
+                    ? `Are you sure you want to cancel your vote for ${selectedBook}?`
                     : userVote && userVote !== selectedSide
                       ? `Would you like to switch your vote to ${selectedBook}?`
                       : `Would you like to vote for ${selectedBook}?`}
@@ -468,7 +655,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="gap-2 sm:gap-2">
-                <Button onClick={() => setIsVoting(false)} disabled={isSubmittingVote}>
+                <Button onClick={() => setIsVoting(false)} variant="outline" disabled={isSubmittingVote}>
                   Cancel
                 </Button>
                 <Button onClick={handleConfirmVote} disabled={isSubmittingVote}>
@@ -479,10 +666,10 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
           </Dialog>
 
           {voteSuccess && (
-            <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50">
+            <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
               <Alert className="border-green-200 bg-green-100 shadow-lg px-6 py-4 w-fit">
                 <AlertDescription className="text-green-800 font-medium">
-                  ✓ Your vote for <span className="font-bold">{hasVoted}</span> has been submitted!
+                  {successMessage}
                 </AlertDescription>
               </Alert>
             </div>

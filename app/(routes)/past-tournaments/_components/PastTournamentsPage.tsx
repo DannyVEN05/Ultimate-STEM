@@ -25,25 +25,35 @@ const PastTournamentsPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("tournament")
-      .select("tournament_id, tournament_title, tournament_genre, tournament_end_date, tournament_submission(count)")
-      .eq("tournament_status", "concluded")
-      .eq("tournament_submission.tournamentsub_status", "approved")
-      .order("tournament_end_date", { ascending: false })
-      .then(({ data, error: err }) => {
-        if (err) { setError(err.message); }
-        else if (data) {
-          setTournaments(data.map((row: any) => ({
-            id: String(row.tournament_id),
-            title: row.tournament_title,
-            category: row.tournament_genre ?? "",
-            endDate: row.tournament_end_date ?? "",
-            participants: (row.tournament_submission?.[0]?.count ?? 0) as number,
-          })));
-        }
-        setLoading(false);
-      });
+    const fetchPastTournaments = async () => {
+      try {
+        await supabase.rpc("run_tournament_cron");
+      } catch (e) {
+        console.warn("Cron update check failed:", e);
+      }
+
+      const { data, error: err } = await supabase
+        .from("tournament")
+        .select("tournament_id, tournament_title, tournament_genre, tournament_end_date, tournament_submission(count)")
+        .eq("tournament_status", "concluded")
+        .eq("tournament_submission.tournamentsub_status", "approved")
+        .order("tournament_end_date", { ascending: false });
+
+      if (err) {
+        setError(err.message);
+      } else if (data) {
+        setTournaments(data.map((row: any) => ({
+          id: String(row.tournament_id),
+          title: row.tournament_title,
+          category: row.tournament_genre ?? "",
+          endDate: row.tournament_end_date ?? "",
+          participants: (row.tournament_submission?.[0]?.count ?? 0) as number,
+        })));
+      }
+      setLoading(false);
+    };
+
+    fetchPastTournaments();
   }, []);
 
   return (

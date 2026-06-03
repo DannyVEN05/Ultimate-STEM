@@ -38,23 +38,7 @@ export function resolveTournamentLifecycleStatus(
 ): TournamentLifecycleStatus {
   if (!tournament) return "upcoming";
 
-  const storedStatus = tournament
-    .tournament_status as TournamentLifecycleStatus;
-  if (
-    storedStatus === "terminated" || storedStatus === "concluded" ||
-    storedStatus === "stage2"
-  ) {
-    return storedStatus;
-  }
-
-  const startMs = toMs(tournament.tournament_start_date);
-  const stage2Ms = toMs(tournament.tournament_s2_start_date);
-  const endMs = toMs(tournament.tournament_end_date);
-
-  if (endMs !== null && now >= endMs) return "concluded";
-  if (stage2Ms !== null && now >= stage2Ms) return "stage2";
-  if (startMs !== null && now >= startMs) return "stage1";
-  return "upcoming";
+  return tournament.tournament_status as TournamentLifecycleStatus;
 }
 
 export function getCountdownParts(

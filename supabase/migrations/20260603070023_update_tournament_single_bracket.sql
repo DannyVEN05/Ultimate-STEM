@@ -46,7 +46,21 @@ begin
 
   -- 3. Advancing bracket rounds in stage2
   if v_tournament.tournament_status = 'stage2' then
-    perform public.advance_bracket_round(p_tournament_id);
+    -- Check if it is in limbo (stage2 but no brackets exist)
+    if not exists (
+      select 1
+      from public.bracket b
+      where b.tournament_id = p_tournament_id
+    ) then
+      update public.tournament
+      set tournament_status = 'concluded',
+          tournament_updated_at = now()
+      where tournament_id = p_tournament_id;
+      
+      v_tournament.tournament_status := 'concluded';
+    else
+      perform public.advance_bracket_round(p_tournament_id);
+    end if;
   end if;
 end;
 $$;
@@ -87,6 +101,10 @@ begin
     and tournamentsub_status = 'approved';
 
   if v_approved_count is null or v_approved_count = 0 then
+    update public.tournament
+    set tournament_status = 'concluded',
+        tournament_updated_at = now()
+    where tournament_id = p_tournament_id;
     return;
   end if;
 

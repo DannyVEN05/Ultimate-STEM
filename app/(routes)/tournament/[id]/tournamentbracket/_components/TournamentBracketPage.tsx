@@ -733,6 +733,12 @@ export default function TournamentBracketPage({
   const [isAdmin, setIsAdmin] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"stage2" | "round" | null>(null);
+  // Forfeit state
+  const [userSubIds, setUserSubIds] = useState<Set<string>>(new Set());
+  const [userSubNames, setUserSubNames] = useState<Record<string, string>>({});
+  const [forfeitOpen, setForfeitOpen] = useState(false);
+  const [forfeitSubId, setForfeitSubId] = useState<string | null>(null);
+  const [isForfeiting, setIsForfeiting] = useState(false);
   const router = useRouter();
 
   const load = useCallback(async (silent = false) => {
@@ -817,13 +823,18 @@ export default function TournamentBracketPage({
 
       const { data: subs } = await supabase
         .from("tournament_submission")
-        .select("tournamentsub_id, tournamentsub_status, concept(concept_title, concept_description, concept_styling, concept_status)")
+        .select("tournamentsub_id, tournamentsub_status, concept(concept_id, concept_title, concept_description, concept_styling, concept_status, user_id)")
         .in("tournamentsub_id", subIds);
 
       const nameMap: Record<string, string> = {};
       const coverMap: Record<string, string | null> = {};
       const descMap: Record<string, string | null> = {};
       const deletedSet = new Set<string>();
+
+      // Determine which subs belong to the current user
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const ownedSubIds = new Set<string>();
+      const ownedSubNames: Record<string, string> = {};
 
       (subs ?? []).forEach((s: any) => {
         const isSubDeleted = s.tournamentsub_status === 'deleted' || s.tournamentsub_status === 'terminated';
@@ -837,7 +848,15 @@ export default function TournamentBracketPage({
         nameMap[s.tournamentsub_id] = c.concept_title ?? "TBD";
         descMap[s.tournamentsub_id] = c.concept_description ?? null;
         coverMap[s.tournamentsub_id] = c.concept_styling?.book_cover ?? null;
+
+        if (currentUser && c.user_id === currentUser.id) {
+          ownedSubIds.add(s.tournamentsub_id);
+          ownedSubNames[s.tournamentsub_id] = c.concept_title ?? "Your Book";
+        }
       });
+
+      setUserSubIds(ownedSubIds);
+      setUserSubNames(ownedSubNames);
 
       const sorted = [...rawMatches].sort((a, b) => {
         const ar = a.bmatch_index?.round ?? 1;
@@ -972,6 +991,47 @@ export default function TournamentBracketPage({
     router.push(`/tournament/${tournamentId}/tournamentbracket/${m.bmatchId}/onevsone`);
   };
 
+  const openForfeit = (subId: string) => {
+    setForfeitSubId(subId);
+    setForfeitOpen(true);
+  };
+
+  const handleForfeit = async () => {
+    if (!forfeitSubId) return;
+    setIsForfeiting(true);
+    try {
+      const { error } = await supabase
+        .from("tournament_submission")
+        .update({ tournamentsub_status: "deleted" })
+        .eq("tournamentsub_id", forfeitSubId);
+
+      if (error) throw error;
+
+      setForfeitOpen(false);
+      setForfeitSubId(null);
+      await load(true);
+    } catch (err: any) {
+      console.error("Forfeit failed:", err);
+      alert("Failed to forfeit: " + (err?.message ?? String(err)));
+    } finally {
+      setIsForfeiting(false);
+    }
+  };
+
+  // Collect the user's active (non-deleted) submissions that are in a running match
+  const userActiveSubmissions: Array<{ subId: string; name: string; matchId: number | null }> = [];
+  if (userSubIds.size > 0) {
+    matches.forEach((m) => {
+      if (m.status !== "running" && m.status !== "active") return;
+      if (userSubIds.has(m.tournamentSubAId) && !m.deletedA) {
+        userActiveSubmissions.push({ subId: m.tournamentSubAId, name: userSubNames[m.tournamentSubAId] ?? m.nameA, matchId: m.id });
+      }
+      if (userSubIds.has(m.tournamentSubBId) && !m.deletedB) {
+        userActiveSubmissions.push({ subId: m.tournamentSubBId, name: userSubNames[m.tournamentSubBId] ?? m.nameB, matchId: m.id });
+      }
+    });
+  }
+
   const openConfirm = (action: "stage2" | "round") => {
     setConfirmAction(action);
     setConfirmOpen(true);
@@ -1086,6 +1146,31 @@ export default function TournamentBracketPage({
         userVotes={userVotes}
         bracketWinnerId={bracketWinnerId}
       />
+
+      {/* ── USER FORFEIT PANEL ───────────────────────────────── */}
+      {userActiveSubmissions.length > 0 && resolvedStatus === "stage2" && (
+        <div className="mt-8 rounded-2xl border border-red-100 bg-red-50 p-5 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-base font-bold text-red-800">Your Active Submissions</h2>
+            <p className="text-xs text-red-600 mt-0.5">You can forfeit a submission to withdraw it from the tournament. The opposing book will automatically advance.</p>
+          </div>
+          <div className="flex flex-col gap-3">
+            {userActiveSubmissions.map(({ subId, name }) => (
+              <div key={subId} className="flex items-center justify-between rounded-xl border border-red-200 bg-white px-4 py-3 shadow-sm">
+                <span className="font-semibold text-gray-800 text-sm truncate mr-4">{name}</span>
+                <Button
+                  variant="outline"
+                  className="shrink-0 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 text-sm font-semibold"
+                  onClick={() => openForfeit(subId)}
+                >
+                  Forfeit
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Confirmation modal for admin advance actions */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
@@ -1101,6 +1186,30 @@ export default function TournamentBracketPage({
               <Button variant="secondary" onClick={() => setConfirmOpen(false)}>Cancel</Button>
               <Button onClick={doAdvance} disabled={loading}>Confirm</Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Forfeit confirmation dialog */}
+      <Dialog open={forfeitOpen} onOpenChange={setForfeitOpen}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-red-700">Forfeit Submission</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to forfeit <span className="font-semibold text-gray-800">{forfeitSubId ? (userSubNames[forfeitSubId] ?? "this book") : "this book"}</span>? It will be withdrawn from the tournament and the opposing book will automatically advance. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setForfeitOpen(false)} disabled={isForfeiting}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleForfeit}
+              disabled={isForfeiting}
+            >
+              {isForfeiting ? "Forfeiting..." : "Confirm Forfeit"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

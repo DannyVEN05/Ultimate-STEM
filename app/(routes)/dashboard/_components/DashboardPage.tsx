@@ -4,7 +4,7 @@ import { useEffect, useState, useContext } from "react";
 import { supabase } from "@/lib/supabase";
 import AuthContext from "@/app/_context/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import { Bell, FlaskConical, Zap, BookOpen, Mail } from "lucide-react";
+import { Bell, FlaskConical, Zap, BookOpen, Mail, Calendar, Users } from "lucide-react";
 import { getCategoryEmoji, getCategoryBg } from "@/app/_utilities/categoryUtils";
 import { formatStatusLabel } from "@/app/_utilities/tournamentLifecycle";
 
@@ -157,7 +157,7 @@ const DashboardPage = () => {
           bracket(bracket_round_number, bracket_status)
         `)
         .in("tournament_status", ["stage1", "stage2", "upcoming", "concluded"])
-        .order("tournament_start_date", { ascending: false });
+        .order("tournament_end_date", { ascending: false });
 
       if (err) {
         setError(err.message);
@@ -438,7 +438,12 @@ const DashboardPage = () => {
                 "lg:grid-cols-4"
             }`}>
             {concluded.slice(0, 3).map((t, i) => (
-              <div key={t.id} className="rounded-xl overflow-hidden border border-gray-100 bg-white shadow-sm">
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => router.push(`/tournament/${t.id}`)}
+                className="rounded-xl overflow-hidden border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer text-left w-full"
+              >
                 <div className={`aspect-[4/3] flex items-center justify-center text-5xl ${["bg-orange-100", "bg-slate-700", "bg-stone-200"][i % 3]}`}>
                   {CHAMPION_EMOJIS[i % CHAMPION_EMOJIS.length]}
                 </div>
@@ -448,8 +453,20 @@ const DashboardPage = () => {
                   </span>
                   <h3 className="font-bold text-gray-900 text-sm leading-snug">{t.title}</h3>
                   {t.category && <p className="text-xs text-gray-500">{t.category}</p>}
+                  <div className="flex items-center gap-3 pt-1 text-[11px] text-gray-400">
+                    {t.endDate && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Ended {t.endDate.slice(0, 10)}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {t.participants} participants
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </button>
             ))}
 
             {/* Discover More */}

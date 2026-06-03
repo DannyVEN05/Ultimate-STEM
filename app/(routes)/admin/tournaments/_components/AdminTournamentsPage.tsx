@@ -47,7 +47,7 @@ async function getTournaments(): Promise<Tournament[]> {
     .not("tournament_submission.tournamentsub_status", "eq", "terminated")
     .not("tournament_submission.tournamentsub_status", "eq", "rejected")
     .not("tournament_submission.tournamentsub_status", "eq", "deleted")
-    .order("tournament_start_date", { ascending: false });
+    .order("tournament_end_date", { ascending: false });
 
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => ({

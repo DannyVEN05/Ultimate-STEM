@@ -87,7 +87,7 @@ function MatchTooltip({
   mouseX: number;
   mouseY: number;
   containerW: number;
-  userVotes: Set<string>;
+  userVotes: Record<number, string>;
 }) {
   const TOOLTIP_W = 360;
   const OFFSET = 16;
@@ -99,9 +99,10 @@ function MatchTooltip({
 
   const top = mouseY - 90;
 
-  const votedA = userVotes.has(match.tournamentSubAId);
-  const votedB = userVotes.has(match.tournamentSubBId);
-  const hasVoted = votedA || votedB;
+  const votedSubId = userVotes[match.id];
+  const votedA = votedSubId === match.tournamentSubAId;
+  const votedB = votedSubId === match.tournamentSubBId;
+  const hasVoted = !!votedSubId;
 
   return (
     <div
@@ -246,7 +247,7 @@ function BracketSVG({
   onMatchClick: (m: BracketMatch) => void;
   resolvedStatus: TournamentLifecycleStatus;
   activeRound: number | null;
-  userVotes: Set<string>;
+  userVotes: Record<number, string>;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredMatch, setHoveredMatch] = useState<BracketMatch | null>(null);
@@ -582,7 +583,7 @@ function BracketSVG({
     const isCompleted = m.status === "completed";
     const isHovered = hoveredMatch?.id === m.id;
 
-    const hasVoted = userVotes.has(m.tournamentSubAId) || userVotes.has(m.tournamentSubBId);
+    const hasVoted = !!userVotes[m.id];
     const dotColor = hasVoted ? "#3b82f6" : "#ef4444";
 
     cards.push(
@@ -664,7 +665,7 @@ export default function TournamentBracketPage({
   const [matches, setMatches] = useState<BracketMatch[]>([]);
   const [totalRounds, setTotalRounds] = useState(1);
   const [activeRound, setActiveRound] = useState(1);
-  const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
+  const [userVotes, setUserVotes] = useState<Record<number, string>>({});
   const [tournament, setTournament] = useState<{
     tournament_id: number;
     tournament_title: string;
@@ -842,11 +843,17 @@ export default function TournamentBracketPage({
       if (user) {
         const { data: voteRows } = await supabase
           .from("vote")
-          .select("tournamentsub_id")
+          .select("bmatch_id, tournamentsub_id")
           .eq("user_id", user.id);
         
         if (voteRows) {
-          setUserVotes(new Set(voteRows.map((v) => v.tournamentsub_id)));
+          const votesMap: Record<number, string> = {};
+          voteRows.forEach((v) => {
+            if (v.bmatch_id) {
+              votesMap[v.bmatch_id] = v.tournamentsub_id;
+            }
+          });
+          setUserVotes(votesMap);
         }
       }
     } catch (err) {

@@ -145,6 +145,36 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
     }
   };
 
+  const handleReApply = async (submissionId: string) => {
+    if (pendingAction) return;
+    const actionKey = `reapply-${submissionId}`;
+    setPendingAction(actionKey);
+    try {
+      const { error } = await supabase
+        .from("tournament_submission")
+        .update({ tournamentsub_status: "pending", tournamentsub_updated_at: new Date().toISOString() })
+        .eq("tournamentsub_id", submissionId);
+
+      if (error) {
+        alert(`Failed to re-apply: ${error.message}`);
+        return;
+      }
+
+      // refresh submissions list
+      const { data: sData } = await supabase
+        .from("tournament_submission")
+        .select("*")
+        .eq("concept_id", concept.concept_id)
+        .not("tournamentsub_status", "eq", "deleted");
+      setSubs(sData ?? []);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to re-apply.");
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
   const handleDeleteConcept = async () => {
     if (pendingAction) return;
     const ok = window.confirm("Permanently delete this book concept? This cannot be undone.");
@@ -229,7 +259,13 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
                 tournaments.map((t) => {
                   const submission = subs.find((s) => String(s.tournament_id) === String(t.tournament_id));
                   const submitted = !!submission;
-                  const submissionStatus = submission ? (submission.tournamentsub_status === 'approved' ? 'Approved' : 'Awaiting approval') : 'No submission';
+                  const submissionStatus = submission ? (
+                    submission.tournamentsub_status === 'approved'
+                      ? 'Approved'
+                      : submission.tournamentsub_status === 'rejected'
+                        ? 'Rejected'
+                        : 'Awaiting approval'
+                  ) : 'No submission';
                   return (
                     <div key={t.tournament_id} className="flex items-center justify-between gap-4 p-3 border rounded-md">
                       <div>
@@ -246,9 +282,16 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
                           </Button>
                         )}
                         {t.tournament_status === 'stage1' && submitted && (
-                          <Button disabled={!!pendingAction} variant="destructive" onClick={() => handleRemove(submission.tournamentsub_id)}>
-                            {pendingAction === `remove-${submission.tournamentsub_id}` ? "Removing..." : "Remove from tournament"}
-                          </Button>
+                          <>
+                            {submission.tournamentsub_status === 'rejected' && (
+                              <Button disabled={!!pendingAction} onClick={() => handleReApply(submission.tournamentsub_id)}>
+                                {pendingAction === `reapply-${submission.tournamentsub_id}` ? "Re-applying..." : "Re-apply"}
+                              </Button>
+                            )}
+                            <Button disabled={!!pendingAction} variant="destructive" onClick={() => handleRemove(submission.tournamentsub_id)}>
+                              {pendingAction === `remove-${submission.tournamentsub_id}` ? "Removing..." : "Remove from tournament"}
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>

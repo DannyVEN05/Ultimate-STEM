@@ -74,6 +74,8 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
   const [book1, setBook1] = useState<Concept | null>(null);
   const [book2, setBook2] = useState<Concept | null>(null);
+  const [book1IsDeleted, setBook1IsDeleted] = useState(false);
+  const [book2IsDeleted, setBook2IsDeleted] = useState(false);
   const [submissionAId, setSubmissionAId] = useState<string | null>(null);
   const [submissionBId, setSubmissionBId] = useState<string | null>(null);
 
@@ -142,32 +144,47 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
       setTournament(tournamentData);
       if (tournamentData?.tournament_status) setTournamentStatus(tournamentData.tournament_status);
 
+      // Fetch submissions without filtering deleted — we need to detect deleted ones
       const { data: submissions, error: subError } = await supabase
         .from("tournament_submission")
-        .select("tournamentsub_id, concept_id")
-        .in("tournamentsub_id", [match.bmatch_submission_a, match.bmatch_submission_b])
-        .not("tournamentsub_status", "eq", "deleted");
+        .select("tournamentsub_id, concept_id, tournamentsub_status")
+        .in("tournamentsub_id", [match.bmatch_submission_a, match.bmatch_submission_b]);
 
       if (subError) throw subError;
 
-      const conceptIds = submissions.map((sub) => sub.concept_id);
+      const subA = submissions?.find((sub) => sub.tournamentsub_id === match.bmatch_submission_a);
+      const subB = submissions?.find((sub) => sub.tournamentsub_id === match.bmatch_submission_b);
 
-      const { data: concepts, error: conceptError } = await supabase
-        .from("concept")
-        .select("*")
-        .in("concept_id", conceptIds)
-        .not("concept_status", "eq", "deleted");
+      const subADeleted = !subA || subA.tournamentsub_status === 'deleted' || subA.tournamentsub_status === 'terminated';
+      const subBDeleted = !subB || subB.tournamentsub_status === 'deleted' || subB.tournamentsub_status === 'terminated';
 
-      if (conceptError) throw conceptError;
+      // Only fetch concepts for non-deleted submissions
+      const validConceptIds = [
+        !subADeleted ? subA!.concept_id : null,
+        !subBDeleted ? subB!.concept_id : null,
+      ].filter(Boolean) as string[];
 
-      const subA = submissions.find((sub) => sub.tournamentsub_id === match.bmatch_submission_a);
-      const subB = submissions.find((sub) => sub.tournamentsub_id === match.bmatch_submission_b);
+      let concepts: any[] = [];
+      if (validConceptIds.length > 0) {
+        const { data: conceptData, error: conceptError } = await supabase
+          .from("concept")
+          .select("*")
+          .in("concept_id", validConceptIds);
+        if (conceptError) throw conceptError;
+        concepts = conceptData ?? [];
+      }
 
-      const bookA = concepts.find((concept) => concept.concept_id === subA?.concept_id);
-      const bookB = concepts.find((concept) => concept.concept_id === subB?.concept_id);
+      const bookA = !subADeleted ? concepts.find((c) => c.concept_id === subA!.concept_id) ?? null : null;
+      const bookB = !subBDeleted ? concepts.find((c) => c.concept_id === subB!.concept_id) ?? null : null;
 
-      setBook1(bookA ?? null);
-      setBook2(bookB ?? null);
+      // A book is "deleted" if its sub is deleted/terminated OR its concept couldn't be fetched
+      const aIsDeleted = subADeleted || (!subADeleted && bookA === null);
+      const bIsDeleted = subBDeleted || (!subBDeleted && bookB === null);
+
+      setBook1(bookA);
+      setBook2(bookB);
+      setBook1IsDeleted(aIsDeleted);
+      setBook2IsDeleted(bIsDeleted);
       setSubmissionAId(subA?.tournamentsub_id ?? null);
       setSubmissionBId(subB?.tournamentsub_id ?? null);
     } catch (error) {
@@ -353,7 +370,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
 
   if (loading) return <p>Loading matchup...</p>;
-  if (!book1 || !book2) return <p>No matchup found.</p>;
+  if (!book1 && !book2 && !book1IsDeleted && !book2IsDeleted) return <p>No matchup found.</p>;
 
   return (
 
@@ -428,7 +445,17 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 mt-6 items-center justify-items-center">
           {/* book 1 item */}
-
+          {book1IsDeleted ? (
+            <div className="perspective-[1000px] w-[400px]">
+              <div className="relative aspect-[3/4] w-full">
+                <div className="absolute inset-0 overflow-hidden rounded-lg p-6 bg-gray-100 border-2 border-dashed border-gray-300 shadow-sm flex flex-col items-center justify-center gap-3">
+                  <span className="text-5xl">📕</span>
+                  <p className="text-gray-500 font-semibold text-center">Book Unavailable</p>
+                  <p className="text-gray-400 text-sm text-center">This book was removed from the tournament.</p>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="perspective-[1000px] w-[400px]">
             <div
               className={`relative aspect-[3/4] w-full transition-transform duration-500 [transform-style:preserve-3d] ${book1Flipped ? "[transform:rotateY(180deg)]" : "hover:-translate-y-3"}`}
@@ -439,15 +466,15 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 className="absolute inset-0 overflow-hidden rounded-lg p-4 bg-purple-100  hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
               >
                 <img
-                  src={book1.concept_styling?.book_cover
+                  src={book1!.concept_styling?.book_cover
                     ? supabase.storage
                       .from("book-covers")
-                      .getPublicUrl(book1.concept_styling.book_cover)
+                      .getPublicUrl(book1!.concept_styling.book_cover)
                       .data.publicUrl
                     : "/placeholder-cover.png"
                   }
 
-                  alt={book1.concept_title}
+                  alt={book1!.concept_title}
                   className="w-full flex-1 min-h-0 rounded-lg shadow-md cursor-pointer aspect-[3/4]"
                   onClick={() => { setBook1Flipped(!book1Flipped); setBook1HasBeenFlipped(true); }}
                 />
@@ -464,7 +491,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                         className="pointer-events-auto bg-red-500 hover:bg-red-600 text-white px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedBook(book1.concept_title);
+                          setSelectedBook(book1!.concept_title);
                           setSelectedSide("a");
                           setIsVoting(true);
                         }}
@@ -476,7 +503,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                         className="pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedBook(book1.concept_title);
+                          setSelectedBook(book1!.concept_title);
                           setSelectedSide("a");
                           setIsVoting(true);
                         }}
@@ -494,16 +521,17 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 className="absolute inset-0 overflow-hidden rounded-[1.75rem] p-6 bg-purple-100 cursor-pointer hover:bg-purple-200 shadow-md flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
               >
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {book1.concept_title}
+                  {book1!.concept_title}
                 </h2>
 
                 <p className="text-base text-gray-700 leading-relaxed overflow-y-auto">
-                  {book1.concept_description}
+                  {book1!.concept_description}
                 </p>
 
               </div>
             </div>
           </div>
+          )}
 
           {/* end of book1 item */}
 
@@ -515,7 +543,17 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
           </div>
 
           {/* Book 2 item */}
-
+          {book2IsDeleted ? (
+            <div className="perspective-[1000px] w-[400px]">
+              <div className="relative aspect-[3/4] w-full">
+                <div className="absolute inset-0 overflow-hidden rounded-lg p-6 bg-gray-100 border-2 border-dashed border-gray-300 shadow-sm flex flex-col items-center justify-center gap-3">
+                  <span className="text-5xl">📕</span>
+                  <p className="text-gray-500 font-semibold text-center">Book Unavailable</p>
+                  <p className="text-gray-400 text-sm text-center">This book was removed from the tournament.</p>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="perspective-[1000px] w-[400px]">
             <div
               className={`relative aspect-[3/4] w-full transition-transform duration-500 [transform-style:preserve-3d] ${book2Flipped ? "[transform:rotateY(180deg)]" : "hover:-translate-y-3"}`}
@@ -527,15 +565,15 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 className="absolute inset-0 overflow-hidden rounded-lg p-4 bg-purple-100 hover:bg-purple-200 shadow-md flex flex-col [backface-visibility:hidden]"
               >
                 <img
-                  src={book2.concept_styling?.book_cover
+                  src={book2!.concept_styling?.book_cover
                     ? supabase.storage
                       .from("book-covers")
-                      .getPublicUrl(book2.concept_styling.book_cover)
+                      .getPublicUrl(book2!.concept_styling.book_cover)
                       .data.publicUrl
                     : "/placeholder-cover.png"
                   }
 
-                  alt={book2.concept_title}
+                  alt={book2!.concept_title}
                   className="w-full flex-1 min-h-0 rounded-lg shadow-md cursor-pointer aspect-[3/4]"
                   onClick={() => { setBook2Flipped(!book2Flipped); setBook2HasBeenFlipped(true); }}
                 />
@@ -551,7 +589,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                         className="pointer-events-auto bg-red-500 hover:bg-red-600 text-white px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedBook(book2.concept_title);
+                          setSelectedBook(book2!.concept_title);
                           setSelectedSide("b");
                           setIsVoting(true);
                         }}
@@ -563,7 +601,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                         className="pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedBook(book2.concept_title);
+                          setSelectedBook(book2!.concept_title);
                           setSelectedSide("b");
                           setIsVoting(true);
                         }}
@@ -583,16 +621,17 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
               >
 
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {book2.concept_title}
+                  {book2!.concept_title}
                 </h2>
 
                 <p className="text-base text-gray-700 leading-relaxed overflow-y-auto">
-                  {book2.concept_description}
+                  {book2!.concept_description}
                 </p>
 
               </div>
             </div>
           </div>
+          )}
 
           {/* dialog for voting */}
           <Dialog open={isVoting} onOpenChange={setIsVoting}>

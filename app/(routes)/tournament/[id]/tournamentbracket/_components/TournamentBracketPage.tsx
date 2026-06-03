@@ -51,6 +51,8 @@ interface BracketMatch {
   coverB: string | null;
   descA: string | null;
   descB: string | null;
+  deletedA: boolean;
+  deletedB: boolean;
   status: string;
   side: "left" | "right" | "final";
   indexInRound: number;
@@ -134,12 +136,21 @@ function MatchTooltip({
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
           {/* Book A */}
           <div style={{ flex: 1, display: "flex", gap: 8 }}>
-            <img
-              src={getCoverUrl(match.coverA)}
-              alt={match.nameA}
-              onError={(e) => { (e.target as HTMLImageElement).src = "/covers/space.jpg"; }}
-              style={{ width: 52, height: 70, objectFit: "cover", borderRadius: 6, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}
-            />
+            {match.deletedA ? (
+              <div style={{
+                width: 52, height: 70, borderRadius: 6, flexShrink: 0,
+                background: "#f3f4f6", border: "2px dashed #d1d5db",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 20,
+              }}>📕</div>
+            ) : (
+              <img
+                src={getCoverUrl(match.coverA)}
+                alt={match.nameA}
+                onError={(e) => { (e.target as HTMLImageElement).src = "/covers/space.jpg"; }}
+                style={{ width: 52, height: 70, objectFit: "cover", borderRadius: 6, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}
+              />
+            )}
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", lineHeight: 1.3, marginBottom: 4 }}>
                 {match.nameA || "TBD"}
@@ -176,12 +187,21 @@ function MatchTooltip({
 
           {/* Book B */}
           <div style={{ flex: 1, display: "flex", gap: 8, flexDirection: "row-reverse" }}>
-            <img
-              src={getCoverUrl(match.coverB)}
-              alt={match.nameB}
-              onError={(e) => { (e.target as HTMLImageElement).src = "/covers/space.jpg"; }}
-              style={{ width: 52, height: 70, objectFit: "cover", borderRadius: 6, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}
-            />
+            {match.deletedB ? (
+              <div style={{
+                width: 52, height: 70, borderRadius: 6, flexShrink: 0,
+                background: "#f3f4f6", border: "2px dashed #d1d5db",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 20,
+              }}>📕</div>
+            ) : (
+              <img
+                src={getCoverUrl(match.coverB)}
+                alt={match.nameB}
+                onError={(e) => { (e.target as HTMLImageElement).src = "/covers/space.jpg"; }}
+                style={{ width: 52, height: 70, objectFit: "cover", borderRadius: 6, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}
+              />
+            )}
             <div style={{ minWidth: 0, textAlign: "right" }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", lineHeight: 1.3, marginBottom: 4 }}>
                 {match.nameB || "TBD"}
@@ -619,16 +639,18 @@ function BracketSVG({
           strokeWidth={isHovered ? 2 : 1} />
         <line x1={p.x + 1} y1={p.y + MH / 2} x2={p.x + MW - 1} y2={p.y + MH / 2} stroke="#f3f4f6" strokeWidth={1} />
         <text x={p.x + 10} y={p.y + MH / 4 + 4} fontSize={11}
-          fill="#1a1a1a"
+          fill={m.deletedA ? "#9ca3af" : "#1a1a1a"}
           fontWeight={isWinnerA ? "bold" : "normal"}
+          fontStyle={m.deletedA ? "italic" : "normal"}
           fontFamily="sans-serif">
-          {trunc(m.nameA, 22)}
+          {m.deletedA ? "Unavailable" : trunc(m.nameA, 22)}
         </text>
         <text x={p.x + 10} y={p.y + (MH * 3) / 4 + 4} fontSize={11}
-          fill="#1a1a1a"
+          fill={m.deletedB ? "#9ca3af" : "#1a1a1a"}
           fontWeight={isWinnerB ? "bold" : "normal"}
+          fontStyle={m.deletedB ? "italic" : "normal"}
           fontFamily="sans-serif">
-          {trunc(m.nameB, 22)}
+          {m.deletedB ? "Unavailable" : trunc(m.nameB, 22)}
         </text>
         <circle cx={p.x + MW - 10} cy={p.y + MH / 2} r={4} fill={dotColor} />
       </g>
@@ -795,16 +817,23 @@ export default function TournamentBracketPage({
 
       const { data: subs } = await supabase
         .from("tournament_submission")
-        .select("tournamentsub_id, concept(concept_title, concept_description, concept_styling)")
+        .select("tournamentsub_id, tournamentsub_status, concept(concept_title, concept_description, concept_styling, concept_status)")
         .in("tournamentsub_id", subIds);
 
       const nameMap: Record<string, string> = {};
       const coverMap: Record<string, string | null> = {};
       const descMap: Record<string, string | null> = {};
+      const deletedSet = new Set<string>();
 
       (subs ?? []).forEach((s: any) => {
+        const isSubDeleted = s.tournamentsub_status === 'deleted' || s.tournamentsub_status === 'terminated';
         const c = s.concept;
-        if (!c) return;
+        const isConceptDeleted = !c || c.concept_status === 'deleted';
+
+        if (isSubDeleted || isConceptDeleted) {
+          deletedSet.add(s.tournamentsub_id);
+          return;
+        }
         nameMap[s.tournamentsub_id] = c.concept_title ?? "TBD";
         descMap[s.tournamentsub_id] = c.concept_description ?? null;
         coverMap[s.tournamentsub_id] = c.concept_styling?.book_cover ?? null;
@@ -862,6 +891,8 @@ export default function TournamentBracketPage({
           coverB: coverMap[m.bmatch_submission_b] ?? null,
           descA: descMap[m.bmatch_submission_a] ?? null,
           descB: descMap[m.bmatch_submission_b] ?? null,
+          deletedA: deletedSet.has(m.bmatch_submission_a),
+          deletedB: deletedSet.has(m.bmatch_submission_b),
           status: m.bmatch_status ?? "active",
           side,
           indexInRound,

@@ -369,19 +369,21 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
         </div>
         <p className="mb-2 max-w-4xl text-base font-bold text-gray-500 sm:text-xl pt-3">{bracket?.bracket_round_number} One vs One</p>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-3xl border border-purple-200 bg-purple-50 p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">Tournament time remaining</p>
-            <p className="mt-3 text-3xl font-extrabold text-purple-900">{formatCountdownParts(totalCountdown)}</p>
-          </div>
-
-          {resolvedStatus === "stage2" && (
-            <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Current round time remaining</p>
-              <p className="mt-3 text-3xl font-extrabold text-emerald-900">{formatCountdownParts(roundCountdown)}</p>
+        {resolvedStatus !== "concluded" && resolvedStatus !== "terminated" && (
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-3xl border border-purple-200 bg-purple-50 p-5 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">Tournament time remaining</p>
+              <p className="mt-3 text-3xl font-extrabold text-purple-900">{formatCountdownParts(totalCountdown)}</p>
             </div>
-          )}
-        </div>
+
+            {resolvedStatus === "stage2" && (
+              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Current round time remaining</p>
+                <p className="mt-3 text-3xl font-extrabold text-emerald-900">{formatCountdownParts(roundCountdown)}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Book section */}
 

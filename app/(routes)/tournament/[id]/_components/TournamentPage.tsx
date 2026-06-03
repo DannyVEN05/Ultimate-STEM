@@ -187,7 +187,7 @@ const TournamentPage = ({ id, readonly = false }: { id: string; readonly?: boole
           </p>
         </section>
 
-        {!readonly && (
+        {!readonly && resolvedStatus !== "concluded" && resolvedStatus !== "terminated" && (
           <section className="mt-10 rounded-[2rem] bg-[whitesmoke] px-8 py-10 text-center shadow-lg">
             <div className="flex flex-wrap items-center justify-between gap-4 text-left">
               <div>

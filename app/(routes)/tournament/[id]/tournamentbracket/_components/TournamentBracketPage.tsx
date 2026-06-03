@@ -868,38 +868,52 @@ export default function TournamentBracketPage({
       </h1>
 
       {tournament && (
-        <div className="mb-6 grid gap-4 rounded-2xl border border-emerald-200 bg-gradient-to-r from-white to-emerald-50 p-5 shadow-sm lg:grid-cols-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Live tournament status</p>
-            <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-[#1d2436]">
-              {resolvedStatus.charAt(0).toUpperCase() + resolvedStatus.slice(1)}
-            </p>
-            <p className="mt-1 text-sm text-[#6b7490]">Auto-refreshes every 30s</p>
+        resolvedStatus === "concluded" || resolvedStatus === "terminated" ? (
+          <div className="mb-6 rounded-2xl border border-emerald-200 bg-gradient-to-r from-white to-emerald-50 p-5 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Tournament status</p>
+              <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-[#1d2436]">
+                {resolvedStatus.charAt(0).toUpperCase() + resolvedStatus.slice(1)}
+              </p>
+            </div>
+            <span className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-emerald-700">
+              The tournament has finished
+            </span>
           </div>
+        ) : (
+          <div className="mb-6 grid gap-4 rounded-2xl border border-emerald-200 bg-gradient-to-r from-white to-emerald-50 p-5 shadow-sm lg:grid-cols-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Live tournament status</p>
+              <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-[#1d2436]">
+                {resolvedStatus.charAt(0).toUpperCase() + resolvedStatus.slice(1)}
+              </p>
+              <p className="mt-1 text-sm text-[#6b7490]">Auto-refreshes every 30s</p>
+            </div>
 
-          <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">Tournament ends in</p>
-            <p className="mt-2 text-xl font-extrabold text-purple-900">{formatCountdownParts(totalCountdown)}</p>
-          </div>
+            <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">Tournament ends in</p>
+              <p className="mt-2 text-xl font-extrabold text-purple-900">{formatCountdownParts(totalCountdown)}</p>
+            </div>
 
-          <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">{milestone.label}</p>
-            <p className="mt-2 text-xl font-extrabold text-emerald-900">{formatCountdownParts(milestoneCountdown)}</p>
-            {resolvedStatus === "stage2" && (
-              <p className="mt-2 text-sm text-[#6b7490]">Current round remaining: {formatCountdownParts(roundCountdown)}</p>
-            )}
-            {isAdmin && (tournament.tournament_status === "stage1" || tournament.tournament_status === "stage2") && (
-              <div className="mt-3 flex gap-2">
-                {tournament.tournament_status === "stage1" && (
-                  <Button variant="outline" onClick={() => openConfirm("stage2")}>Advance to Stage 2 (seed now)</Button>
-                )}
-                {tournament.tournament_status === "stage2" && (
-                  <Button variant="outline" onClick={() => openConfirm("round")}>Advance to Round {activeRound + 1}</Button>
-                )}
-              </div>
-            )}
+            <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">{milestone.label}</p>
+              <p className="mt-2 text-xl font-extrabold text-emerald-900">{formatCountdownParts(milestoneCountdown)}</p>
+              {resolvedStatus === "stage2" && (
+                <p className="mt-2 text-sm text-[#6b7490]">Current round remaining: {formatCountdownParts(roundCountdown)}</p>
+              )}
+              {isAdmin && (tournament.tournament_status === "stage1" || tournament.tournament_status === "stage2") && (
+                <div className="mt-3 flex gap-2">
+                  {tournament.tournament_status === "stage1" && (
+                    <Button variant="outline" onClick={() => openConfirm("stage2")}>Advance to Stage 2 (seed now)</Button>
+                  )}
+                  {tournament.tournament_status === "stage2" && (
+                    <Button variant="outline" onClick={() => openConfirm("round")}>Advance to Round {activeRound + 1}</Button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )
       )}
 
       <BracketSVG

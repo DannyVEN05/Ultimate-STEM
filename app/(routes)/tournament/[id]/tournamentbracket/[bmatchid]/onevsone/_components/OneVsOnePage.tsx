@@ -52,6 +52,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
   const [selectedSide, setSelectedSide] = useState<"a" | "b" | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const [voteSuccess, setVoteSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
 
   const [isSubmittingVote, setIsSubmittingVote] = useState(false);
@@ -67,6 +68,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
   const [bracket, setBracket] = useState<Bracket | null>(null);
   const [totalRounds, setTotalRounds] = useState(1);
   const [activeRound, setActiveRound] = useState(1);
+  const [matchRound, setMatchRound] = useState(1);
 
   const [book1, setBook1] = useState<Concept | null>(null);
   const [book2, setBook2] = useState<Concept | null>(null);
@@ -94,6 +96,10 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
         .single();
 
       if (matchError) throw matchError;
+
+      if (match) {
+        setMatchRound(match.bmatch_index?.round ?? 1);
+      }
 
       const { data: bracketData, error: bracketError } = await supabase
         .from("bracket")
@@ -247,8 +253,8 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
   }, [milestone.targetMs, now]);
 
   const roundCountdownTarget = useMemo(() => {
-    return getRoundCountdownTarget(tournament, totalRounds, activeRound);
-  }, [activeRound, totalRounds, tournament]);
+    return getRoundCountdownTarget(tournament, totalRounds, matchRound);
+  }, [matchRound, totalRounds, tournament]);
 
   const roundCountdown = useMemo(() => {
     return getCountdownParts(roundCountdownTarget, now);
@@ -264,21 +270,14 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
       return;
     }
 
-
-    if (userVote === selectedSide) {
-      setIsVoting(false);
-      return;
-    }
-
-    // Prevent voting unless the tournament is in stage2
-    if (resolvedStatus !== "stage2") {
-      alert("Voting is not open for this tournament.");
+    // Prevent voting unless the tournament is in stage2 and this match belongs to the active round
+    if (resolvedStatus !== "stage2" || matchRound !== activeRound) {
+      alert("Voting is not open for this match.");
       setIsVoting(false);
       return;
     }
 
     setIsSubmittingVote(true);
-
 
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -288,42 +287,62 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
       return;
     }
 
-    const newSubmissionId =
-      selectedSide === "a" ? submissionAId : submissionBId;
-
-    if (!newSubmissionId) {
-      console.error("Submission ID missing");
-      setIsSubmittingVote(false);
-      return;
-    }
-
-
     try {
+      if (userVote === selectedSide) {
+        // Cancel Vote
+        const { error } = await supabase
+          .from("vote")
+          .delete()
+          .eq("bmatch_id", bmatchId)
+          .eq("user_id", user.id);
 
-      // ── UPDATE existing vote row ──────────────────────────────────────
-      const { error } = await supabase
-        .from("vote")
-        .upsert({
-          bmatch_id: bmatchId,
-          user_id: user.id,
-          tournamentsub_id: newSubmissionId,
-        }, {
-          onConflict: "bmatch_id,user_id"
-        });
+        if (error) throw error;
 
-      if (error) throw error;
+        setUserVote(null);
+        setSuccessMessage(`✓ Your vote for ${selectedBook} has been cancelled.`);
+        setVoteSuccess(true);
+        setTimeout(() => {
+          setVoteSuccess(false);
+          setIsVoting(false);
+        }, 3000);
+      } else {
+        // Vote or Switch Vote
+        const newSubmissionId =
+          selectedSide === "a" ? submissionAId : submissionBId;
 
-      setUserVote(selectedSide);
+        if (!newSubmissionId) {
+          console.error("Submission ID missing");
+          setIsSubmittingVote(false);
+          return;
+        }
 
-      setVoteSuccess(true);
-      setTimeout(() => {
-        setVoteSuccess(false);
-        setIsVoting(false);
-      }, 3000);
+        const { error } = await supabase
+          .from("vote")
+          .upsert({
+            bmatch_id: bmatchId,
+            user_id: user.id,
+            tournamentsub_id: newSubmissionId,
+          }, {
+            onConflict: "bmatch_id,user_id"
+          });
 
+        if (error) throw error;
 
+        const isSwitch = userVote !== null;
+        setUserVote(selectedSide);
+        setSuccessMessage(
+          isSwitch
+            ? `✓ Your vote has been switched to ${selectedBook}!`
+            : `✓ Your vote for ${selectedBook} has been submitted!`
+        );
+        setVoteSuccess(true);
+        setTimeout(() => {
+          setVoteSuccess(false);
+          setIsVoting(false);
+        }, 3000);
+      }
     } catch (err) {
-      console.error("vote failed", err);
+      console.error("operation failed", err);
     } finally {
       setIsVoting(false);
       setIsSubmittingVote(false);
@@ -348,11 +367,15 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
         <div className="flex justify-between items-start">
           <h1 className=" md:text-5xl font-headline font-bold text-on-surface tracking-tighter pt-3 ">
-            {tournament?.tournament_title}</h1>
+            {tournament?.tournament_title} - One Vs One</h1>
 
-          <div className={`rounded-full px-5 py-3 text-sm font-semibold shadow-lg mb-3 ${resolvedStatus === "stage2" ? "bg-green-100 text-blue-800" : "bg-slate-100 text-slate-700"}`}>
+          <div className={`rounded-full px-5 py-3 text-sm font-semibold shadow-lg mb-3 ${resolvedStatus === "stage2" && matchRound === activeRound ? "bg-green-100 text-blue-800" : "bg-slate-100 text-slate-700"}`}>
             {resolvedStatus === "stage2"
-              ? `Round ${activeRound} voting ends in ${formatCountdownParts(roundCountdown)}`
+              ? matchRound === activeRound
+                ? `Round ${matchRound} voting ends in ${formatCountdownParts(roundCountdown)}`
+                : matchRound < activeRound
+                  ? `Round ${matchRound} voting has ended`
+                  : `Round ${matchRound} voting hasn't started`
               : resolvedStatus === "stage1"
                 ? `Stage 2 starts in ${formatCountdownParts(milestoneCountdown)}`
                 : resolvedStatus === "upcoming"
@@ -362,13 +385,12 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <span className="rounded-full bg-purple-100 px-4 py-2 text-sm font-bold text-purple-800">
-            {formatStatusLabel(resolvedStatus, activeRound)}
+            {formatStatusLabel(resolvedStatus, matchRound)}
           </span>
           <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm">
-            Round {activeRound} of {totalRounds}
+            Round {matchRound} of {totalRounds}
           </span>
         </div>
-        <p className="mb-2 max-w-4xl text-base font-bold text-gray-500 sm:text-xl pt-3">{bracket?.bracket_round_number} One vs One</p>
 
         {resolvedStatus !== "concluded" && resolvedStatus !== "terminated" && (
           <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -378,10 +400,22 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
             </div>
 
             {resolvedStatus === "stage2" && (
-              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Round {activeRound} voting ends</p>
-                <p className="mt-3 text-3xl font-extrabold text-emerald-900">{formatCountdownParts(roundCountdown)}</p>
-              </div>
+              matchRound === activeRound ? (
+                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Round {matchRound} voting ends</p>
+                  <p className="mt-3 text-3xl font-extrabold text-emerald-900">{formatCountdownParts(roundCountdown)}</p>
+                </div>
+              ) : matchRound < activeRound ? (
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-700">Round {matchRound} voting</p>
+                  <p className="mt-3 text-3xl font-extrabold text-slate-900">Voting has ended</p>
+                </div>
+              ) : (
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-700">Round {matchRound} voting</p>
+                  <p className="mt-3 text-3xl font-extrabold text-slate-900">Upcoming</p>
+                </div>
+              )
             )}
           </div>
         )}
@@ -418,18 +452,32 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
 
                 <div className="mt-5 flex justify-center">
-                  {resolvedStatus === "stage2" && (
-                    <Button
-                      className="pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedBook(book1.concept_title);
-                        setSelectedSide("a")
-                        setIsVoting(true);
-                      }}
-                    >
-                      Vote
-                    </Button>
+                  {resolvedStatus === "stage2" && matchRound === activeRound && (
+                    userVote === "a" ? (
+                      <Button
+                        className="pointer-events-auto bg-red-500 hover:bg-red-600 text-white px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBook(book1.concept_title);
+                          setSelectedSide("a");
+                          setIsVoting(true);
+                        }}
+                      >
+                        Cancel Vote
+                      </Button>
+                    ) : (
+                      <Button
+                        className="pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBook(book1.concept_title);
+                          setSelectedSide("a");
+                          setIsVoting(true);
+                        }}
+                      >
+                        {userVote === "b" ? "Switch Vote" : "Vote"}
+                      </Button>
+                    )
                   )}
                 </div>
               </div>
@@ -487,18 +535,32 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 />
 
                 <div className="mt-5 flex justify-center">
-                  {resolvedStatus === "stage2" && (
-                    <Button
-                      className=" pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedBook(book2.concept_title);
-                        setSelectedSide("b");
-                        setIsVoting(true);
-                      }}
-                    >
-                      Vote
-                    </Button>
+                  {resolvedStatus === "stage2" && matchRound === activeRound && (
+                    userVote === "b" ? (
+                      <Button
+                        className="pointer-events-auto bg-red-500 hover:bg-red-600 text-white px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBook(book2.concept_title);
+                          setSelectedSide("b");
+                          setIsVoting(true);
+                        }}
+                      >
+                        Cancel Vote
+                      </Button>
+                    ) : (
+                      <Button
+                        className="pointer-events-auto bg-green-300 hover:bg-green-400 text-gray-700 px-10 py-5.5 text-lg rounded-[1.75rem] shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBook(book2.concept_title);
+                          setSelectedSide("b");
+                          setIsVoting(true);
+                        }}
+                      >
+                        {userVote === "a" ? "Switch Vote" : "Vote"}
+                      </Button>
+                    )
                   )}
 
                 </div>
@@ -524,13 +586,19 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
 
           {/* dialog for voting */}
           <Dialog open={isVoting} onOpenChange={setIsVoting}>
-            <DialogContent className="max-w-sm rounded-2xl">
+            <DialogContent className="max-w-sm rounded-2xl animate-in fade-in-50 zoom-in-95 duration-200">
 
               <DialogHeader>
-                <DialogTitle className="text-[#1d2436]">Confirm Your Vote</DialogTitle>
+                <DialogTitle className="text-[#1d2436]">
+                  {userVote === selectedSide
+                    ? "Cancel Your Vote"
+                    : userVote && userVote !== selectedSide
+                      ? "Switch Your Vote"
+                      : "Confirm Your Vote"}
+                </DialogTitle>
                 <DialogDescription className="text-[#8088a0]">
                   {userVote === selectedSide
-                    ? `You have already voted for ${selectedBook}.`
+                    ? `Are you sure you want to cancel your vote for ${selectedBook}?`
                     : userVote && userVote !== selectedSide
                       ? `Would you like to switch your vote to ${selectedBook}?`
                       : `Would you like to vote for ${selectedBook}?`}
@@ -538,7 +606,7 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="gap-2 sm:gap-2">
-                <Button onClick={() => setIsVoting(false)} disabled={isSubmittingVote}>
+                <Button onClick={() => setIsVoting(false)} variant="outline" disabled={isSubmittingVote}>
                   Cancel
                 </Button>
                 <Button onClick={handleConfirmVote} disabled={isSubmittingVote}>
@@ -549,10 +617,10 @@ const OneVsOnePage = ({ tournamentId, bmatchId }: Props) => {
           </Dialog>
 
           {voteSuccess && (
-            <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50">
+            <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
               <Alert className="border-green-200 bg-green-100 shadow-lg px-6 py-4 w-fit">
                 <AlertDescription className="text-green-800 font-medium">
-                  ✓ Your vote for <span className="font-bold">{hasVoted}</span> has been submitted!
+                  {successMessage}
                 </AlertDescription>
               </Alert>
             </div>

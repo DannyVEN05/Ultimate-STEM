@@ -49,7 +49,7 @@ If you want to transfer the existing database, including already registered user
 3. Once you accept the invitation and log in, you can go to the same settings page and change Danny to Administrator, or remove the existing team if you wish.
 4. The project, database, user authentication logs, and files are now fully owned by you.
 
-**NOTE: The other way would be to retart the database from scratch, this is way too hard and we will not do it this way.**
+**NOTE: The other way would be to restart the database from scratch, this is way too hard and we will not do it this way.**
 
 ---
 

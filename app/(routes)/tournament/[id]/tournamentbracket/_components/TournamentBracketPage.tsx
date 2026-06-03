@@ -81,11 +81,13 @@ function MatchTooltip({
   mouseX,
   mouseY,
   containerW,
+  userVotes,
 }: {
   match: BracketMatch;
   mouseX: number;
   mouseY: number;
   containerW: number;
+  userVotes: Set<string>;
 }) {
   const TOOLTIP_W = 360;
   const OFFSET = 16;
@@ -96,6 +98,10 @@ function MatchTooltip({
     : mouseX + OFFSET;
 
   const top = mouseY - 90;
+
+  const votedA = userVotes.has(match.tournamentSubAId);
+  const votedB = userVotes.has(match.tournamentSubBId);
+  const hasVoted = votedA || votedB;
 
   return (
     <div
@@ -146,6 +152,15 @@ function MatchTooltip({
                   {match.descA}
                 </div>
               )}
+              {votedA && (
+                <div style={{
+                  display: "inline-block", fontSize: 9, fontWeight: 700,
+                  padding: "2px 8px", borderRadius: 4, background: "#dbeafe",
+                  color: "#1e40af", marginTop: 6
+                }}>
+                  ✓ Voted
+                </div>
+              )}
             </div>
           </div>
 
@@ -179,12 +194,29 @@ function MatchTooltip({
                   {match.descB}
                 </div>
               )}
+              {votedB && (
+                <div style={{
+                  display: "inline-block", fontSize: 9, fontWeight: 700,
+                  padding: "2px 8px", borderRadius: 4, background: "#dbeafe",
+                  color: "#1e40af", marginTop: 6
+                }}>
+                  ✓ Voted
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Status */}
-        <div style={{ display: "flex", justifyContent: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
+          {!hasVoted && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: "2px 10px", borderRadius: 20,
+              background: "#fee2e2", color: "#991b1b", letterSpacing: 0.5, textTransform: "uppercase"
+            }}>
+              ● Not Voted
+            </span>
+          )}
           <span style={{
             fontSize: 10, fontWeight: 600, padding: "2px 12px", borderRadius: 20,
             background: match.status === "completed" ? "#dcfce7" : "#fef9c3",
@@ -205,10 +237,16 @@ function BracketSVG({
   matches,
   totalRounds,
   onMatchClick,
+  resolvedStatus,
+  activeRound,
+  userVotes,
 }: {
   matches: BracketMatch[];
   totalRounds: number;
   onMatchClick: (m: BracketMatch) => void;
+  resolvedStatus: TournamentLifecycleStatus;
+  activeRound: number | null;
+  userVotes: Set<string>;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredMatch, setHoveredMatch] = useState<BracketMatch | null>(null);
@@ -454,10 +492,44 @@ function BracketSVG({
   // ROUND LABELS
   // ----------------------------
   const labels: JSX.Element[] = [];
-  const roundNames = ["Round of 32", "Round of 16", "Quarterfinals", "Semifinals"];
+
+  const roundStatusColors = {
+    finished: {
+      fill: "#dcfce7",
+      stroke: "#10b981",
+      text: "#065f46"
+    },
+    active: {
+      fill: "#fef9c3",
+      stroke: "#eab308",
+      text: "#713f12"
+    },
+    upcoming: {
+      fill: "#f3f4f6",
+      stroke: "#d1d5db",
+      text: "#6b7280"
+    }
+  };
+
+  const getRoundState = (rNum: number) => {
+    if (resolvedStatus === "concluded" || resolvedStatus === "terminated") {
+      return "finished";
+    }
+    if (resolvedStatus === "stage2") {
+      if (!activeRound) return "upcoming";
+      if (rNum < activeRound) return "finished";
+      if (rNum === activeRound) return "active";
+      return "upcoming";
+    }
+    return "upcoming";
+  };
 
   for (let rIdx = 0; rIdx < sideRounds; rIdx++) {
-    const label = roundNames[roundNames.length - sideRounds + rIdx] ?? `Round of ${2 ** (sideRounds - rIdx + 1)}`;
+    const roundNumber = rIdx + 1;
+    const state = getRoundState(roundNumber);
+    const colors = roundStatusColors[state];
+
+    const label = `Round ${roundNumber}`;
     const lX = rIdx * (MW + RG) + MW / 2;
     const rX = totalW - rIdx * (MW + RG) - MW / 2;
     const badgeWidth = MW * 0.78;
@@ -467,8 +539,8 @@ function BracketSVG({
     labels.push(
       <g key={`ll-${rIdx}`}>
         <rect x={lX - badgeWidth / 2} y={badgeY} width={badgeWidth} height={badgeHeight} rx={badgeHeight / 2}
-          fill={LABEL_FILL} stroke={LABEL_STROKE} strokeWidth={1} />
-        <text x={lX} y={badgeY + badgeHeight / 2 + 4} textAnchor="middle" fontSize={12} fill={LABEL_TEXT} fontWeight={700}>
+          fill={colors.fill} stroke={colors.stroke} strokeWidth={1} />
+        <text x={lX} y={badgeY + badgeHeight / 2 + 4} textAnchor="middle" fontSize={12} fill={colors.text} fontWeight={700}>
           {label}
         </text>
       </g>
@@ -476,20 +548,24 @@ function BracketSVG({
     labels.push(
       <g key={`rl-${rIdx}`}>
         <rect x={rX - badgeWidth / 2} y={badgeY} width={badgeWidth} height={badgeHeight} rx={badgeHeight / 2}
-          fill={LABEL_FILL} stroke={LABEL_STROKE} strokeWidth={1} />
-        <text x={rX} y={badgeY + badgeHeight / 2 + 4} textAnchor="middle" fontSize={12} fill={LABEL_TEXT} fontWeight={700}>
+          fill={colors.fill} stroke={colors.stroke} strokeWidth={1} />
+        <text x={rX} y={badgeY + badgeHeight / 2 + 4} textAnchor="middle" fontSize={12} fill={colors.text} fontWeight={700}>
           {label}
         </text>
       </g>
     );
   }
 
+  const finalRoundNumber = sideRounds + 1;
+  const finalState = getRoundState(finalRoundNumber);
+  const finalColors = roundStatusColors[finalState];
+
   labels.push(
     <g key="final-label">
       <rect x={finalX + MW / 2 - 75} y={8} width={150} height={30} rx={15}
-        fill={LABEL_FILL} stroke={LABEL_STROKE} strokeWidth={1} />
-      <text x={finalX + MW / 2} y={8 + 30 / 2 + 4} textAnchor="middle" fontSize={13} fill={LABEL_TEXT} fontWeight={700}>
-        Final
+        fill={finalColors.fill} stroke={finalColors.stroke} strokeWidth={1} />
+      <text x={finalX + MW / 2} y={8 + 30 / 2 + 4} textAnchor="middle" fontSize={13} fill={finalColors.text} fontWeight={700}>
+        Round {finalRoundNumber}
       </text>
     </g>
   );
@@ -506,6 +582,9 @@ function BracketSVG({
     const isCompleted = m.status === "completed";
     const isHovered = hoveredMatch?.id === m.id;
 
+    const hasVoted = userVotes.has(m.tournamentSubAId) || userVotes.has(m.tournamentSubBId);
+    const dotColor = hasVoted ? "#3b82f6" : "#ef4444";
+
     cards.push(
       <g key={m.id} onClick={() => onMatchClick(m)} style={{ cursor: "pointer" }}>
         <rect x={p.x + 2} y={p.y + 2} width={MW} height={MH} rx={6} fill="#00000015" />
@@ -520,9 +599,7 @@ function BracketSVG({
         <text x={p.x + 10} y={p.y + (MH * 3) / 4 + 4} fontSize={11} fill="#1a1a1a" fontFamily="sans-serif">
           {trunc(m.nameB, 22)}
         </text>
-        {isCompleted && (
-          <circle cx={p.x + MW - 10} cy={p.y + MH / 2} r={4} fill="#22c55e" />
-        )}
+        <circle cx={p.x + MW - 10} cy={p.y + MH / 2} r={4} fill={dotColor} />
       </g>
     );
   });
@@ -568,6 +645,7 @@ function BracketSVG({
             mouseX={mousePos.x}
             mouseY={mousePos.y}
             containerW={containerW}
+            userVotes={userVotes}
           />
         )}
       </div>
@@ -586,6 +664,7 @@ export default function TournamentBracketPage({
   const [matches, setMatches] = useState<BracketMatch[]>([]);
   const [totalRounds, setTotalRounds] = useState(1);
   const [activeRound, setActiveRound] = useState(1);
+  const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
   const [tournament, setTournament] = useState<{
     tournament_id: number;
     tournament_title: string;
@@ -758,6 +837,18 @@ export default function TournamentBracketPage({
       });
 
       setMatches(built);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: voteRows } = await supabase
+          .from("vote")
+          .select("tournamentsub_id")
+          .eq("user_id", user.id);
+        
+        if (voteRows) {
+          setUserVotes(new Set(voteRows.map((v) => v.tournamentsub_id)));
+        }
+      }
     } catch (err) {
       console.error(err);
       setError("Failed to load bracket.");
@@ -918,6 +1009,9 @@ export default function TournamentBracketPage({
         matches={matches}
         totalRounds={totalRounds}
         onMatchClick={handleMatchClick}
+        resolvedStatus={resolvedStatus}
+        activeRound={activeRound}
+        userVotes={userVotes}
       />
       {/* Confirmation modal for admin advance actions */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>

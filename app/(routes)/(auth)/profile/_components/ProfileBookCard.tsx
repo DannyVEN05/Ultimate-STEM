@@ -61,6 +61,8 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
           tournament_id,
           tournament_title,
           tournament_status,
+          tournament_user_limit,
+          tournament_submission(tournamentsub_status),
           bracket(bracket_round_number, bracket_status)
         `)
         .in("tournament_status", ["stage1", "stage2"])
@@ -276,11 +278,24 @@ const ManageCard: React.FC<{ concept: Concept; className?: string; coverUrl: str
                         {submissionStatus && <div className="text-sm">Submission: {submissionStatus}</div>}
                       </div>
                       <div className="flex items-center gap-2">
-                        {t.tournament_status === 'stage1' && !submitted && (
-                          <Button disabled={!!pendingAction} onClick={() => handleAdd(t.tournament_id)}>
-                            {pendingAction === `add-${t.tournament_id}` ? "Adding..." : "Add to tournament"}
-                          </Button>
-                        )}
+                        {t.tournament_status === 'stage1' && !submitted && (() => {
+                          const allSubs: { tournamentsub_status: string }[] = t.tournament_submission ?? [];
+                          const validCount = allSubs.filter(
+                            (s: { tournamentsub_status: string }) =>
+                              s.tournamentsub_status !== 'rejected' &&
+                              s.tournamentsub_status !== 'terminated' &&
+                              s.tournamentsub_status !== 'deleted'
+                          ).length;
+                          const limit = t.tournament_user_limit ?? 0;
+                          const isFull = limit > 0 && validCount >= limit;
+                          return isFull ? (
+                            <span className="text-sm font-semibold text-red-600">Tournament full</span>
+                          ) : (
+                            <Button disabled={!!pendingAction} onClick={() => handleAdd(t.tournament_id)}>
+                              {pendingAction === `add-${t.tournament_id}` ? "Adding..." : "Add to tournament"}
+                            </Button>
+                          );
+                        })()}
                         {t.tournament_status === 'stage1' && submitted && (
                           <>
                             {submission.tournamentsub_status === 'rejected' && (

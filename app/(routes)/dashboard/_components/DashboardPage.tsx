@@ -17,6 +17,8 @@ interface Tournament {
   startDate: string;
   endDate: string;
   participants: number;
+  approvedCount: number;
+  pendingCount: number;
   participantLimit: number;
   status: TournamentStatus;
   activeRound?: number | null;
@@ -33,6 +35,14 @@ function getCountdown(targetDate: string, now: number): { days: number; hours: n
 
 function capacityPct(t: Tournament) {
   return t.participantLimit > 0 ? Math.min(100, Math.round((t.participants / t.participantLimit) * 100)) : 0;
+}
+
+function approvedPct(t: Tournament) {
+  return t.participantLimit > 0 ? Math.min(100, Math.round((t.approvedCount / t.participantLimit) * 100)) : 0;
+}
+
+function pendingPct(t: Tournament) {
+  return t.participantLimit > 0 ? Math.min(100, Math.round((t.pendingCount / t.participantLimit) * 100)) : 0;
 }
 
 function slotsLeft(t: Tournament) {
@@ -143,7 +153,7 @@ const DashboardPage = () => {
           tournament_end_date,
           tournament_user_limit,
           tournament_status,
-          tournament_submission(count),
+          tournament_submission(tournamentsub_status),
           bracket(bracket_round_number, bracket_status)
         `)
         .in("tournament_status", ["stage1", "stage2", "upcoming", "concluded"])
@@ -154,13 +164,26 @@ const DashboardPage = () => {
       } else if (data) {
         setAllTournaments(data.map((row: any) => {
           const activeBracket = row.bracket?.find((b: any) => b.bracket_status === "active") || row.bracket?.[0];
+          const allSubs: { tournamentsub_status: string }[] = row.tournament_submission ?? [];
+          // Match admin page: exclude rejected, terminated, deleted
+          const validSubs = allSubs.filter(
+            (s) => s.tournamentsub_status !== "rejected" &&
+                   s.tournamentsub_status !== "terminated" &&
+                   s.tournamentsub_status !== "deleted"
+          );
+          const approvedCount = validSubs.filter((s) => s.tournamentsub_status === "approved").length;
+          const pendingCount = validSubs.filter(
+            (s) => s.tournamentsub_status !== "approved"
+          ).length;
           return {
             id: String(row.tournament_id),
             title: row.tournament_title,
             category: row.tournament_genre ?? "",
             startDate: row.tournament_start_date,
             endDate: row.tournament_end_date,
-            participants: (row.tournament_submission?.[0]?.count ?? 0) as number,
+            participants: validSubs.length,
+            approvedCount,
+            pendingCount,
             participantLimit: row.tournament_user_limit ?? 0,
             status: row.tournament_status as TournamentStatus,
             activeRound: activeBracket ? activeBracket.bracket_round_number : null,
@@ -319,8 +342,19 @@ const DashboardPage = () => {
                   <span className="text-primary font-semibold">{capacityPct(active[0])}% Capacity reached</span>
                   <span className="text-gray-500">{slotsLeft(active[0])} Slots left</span>
                 </div>
-                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${capacityPct(active[0])}%` }} />
+                <div className="h-2 rounded-full bg-gray-100 overflow-hidden flex">
+                  <div className="h-full rounded-l-full bg-primary transition-all" style={{ width: `${approvedPct(active[0])}%` }} />
+                  <div className="h-full bg-amber-400 transition-all" style={{ width: `${pendingPct(active[0])}%` }} />
+                </div>
+                <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+                    {active[0].approvedCount} Approved
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
+                    {active[0].pendingCount} Pending
+                  </span>
                 </div>
               </div>
 

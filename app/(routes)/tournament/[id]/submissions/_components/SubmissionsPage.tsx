@@ -56,17 +56,21 @@ const SubmissionsPage = () => {
 
       const limit = Number(tournament.tournament_user_limit ?? 0);
 
-      const { count, error: countErr } = await supabase
+      // Only count valid (approved + pending) submissions — same logic as admin/dashboard
+      const { data: validSubsData, error: countErr } = await supabase
         .from("tournament_submission")
-        .select("*", { count: "exact", head: true })
-        .eq("tournament_id", id);
+        .select("concept_id, tournamentsub_status")
+        .eq("tournament_id", id)
+        .not("tournamentsub_status", "eq", "rejected")
+        .not("tournamentsub_status", "eq", "terminated")
+        .not("tournamentsub_status", "eq", "deleted");
 
       if (countErr) {
         alert("Failed to check current submissions count.");
         return;
       }
 
-      const currentCount = count ?? 0;
+      const currentCount = validSubsData?.length ?? 0;
       const slotsRemaining = limit - currentCount;
 
       if (slotsRemaining <= 0) {
@@ -74,17 +78,8 @@ const SubmissionsPage = () => {
         return;
       }
 
-      const { data: existingSubs, error: subsErr } = await supabase
-        .from("tournament_submission")
-        .select("concept_id")
-        .eq("tournament_id", id);
-
-      if (subsErr) {
-        alert("Failed to fetch existing tournament submissions.");
-        return;
-      }
-
-      const existingConceptIds = existingSubs?.map(s => s.concept_id) ?? [];
+      // Exclude concepts that already have a valid (non-rejected/terminated/deleted) submission
+      const existingConceptIds = validSubsData?.map(s => s.concept_id) ?? [];
 
       const { data: allConcepts, error: conceptsErr } = await supabase
         .from("concept")
